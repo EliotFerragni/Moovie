@@ -181,11 +181,16 @@ public class FilenameParserTests
         Assert.True(parsed.IsLowConfidence);
     }
 
-    [Fact]
-    public void ReportsUnknownWhenThereIsNothingToGoOn()
+    [Theory]
+    [InlineData("1080p.mp4")]
+    [InlineData("x265.mp4")]
+    [InlineData("2160p.HDR.mp4")]
+    public void ReportsUnknownWithNoTitleWhenThereIsNothingToGoOn(string name)
     {
-        var parsed = FilenameParser.Parse("1080p.mp4");
+        var parsed = FilenameParser.Parse(name);
 
         Assert.Equal(MediaKind.Unknown, parsed.Kind);
+        // An empty title is the signal to the matcher not to search at all.
+        Assert.Equal(string.Empty, parsed.Title);
     }
 }

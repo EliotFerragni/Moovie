@@ -139,6 +139,11 @@ public static class FilenameParser
         if (parsed.Kind == MediaKind.Unknown && LooksLikeUsableTitle(parsed.Title))
             parsed = parsed with { Kind = MediaKind.Movie };
 
+        // Still unknown means the leftover text was release noise, not a title. Reporting it as
+        // one would send the matcher off to search TMDB for "1080p".
+        if (parsed.Kind == MediaKind.Unknown)
+            parsed = parsed with { Title = string.Empty };
+
         return parsed;
     }
 

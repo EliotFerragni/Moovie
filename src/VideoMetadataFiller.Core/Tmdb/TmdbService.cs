@@ -213,7 +213,9 @@ public sealed class TmdbService : ITmdbService, IDisposable
     {
         try
         {
-            var config = await SendAsync(() => _client.GetConfigAsync(), cancellationToken).ConfigureAwait(false);
+            var config = await SendAsync<TMDbLib.Objects.General.TMDbConfig>(
+                async () => await _client.GetConfigAsync().ConfigureAwait(false),
+                cancellationToken).ConfigureAwait(false);
             _imageBaseUrl = config.Images?.SecureBaseUrl ?? DefaultImageBaseUrl;
             return null;
         }
@@ -227,7 +229,7 @@ public sealed class TmdbService : ITmdbService, IDisposable
     /// Runs a TMDB call behind the concurrency gate, retrying when the rate limiter or a transient
     /// network error gets in the way, and translating failures into <see cref="TmdbException"/>.
     /// </summary>
-    private async Task<T> SendAsync<T>(Func<Task<T>> call, CancellationToken cancellationToken)
+    private async Task<T> SendAsync<T>(Func<Task<T?>> call, CancellationToken cancellationToken)
         where T : class
     {
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);

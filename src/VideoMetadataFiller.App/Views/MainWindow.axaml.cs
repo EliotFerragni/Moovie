@@ -75,7 +75,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnDragOver(object? sender, DragEventArgs e)
     {
-        var hasFiles = e.Data.Contains(DataFormats.Files);
+        var hasFiles = e.DataTransfer?.Contains(DataFormat.File) == true;
         e.DragEffects = hasFiles && ViewModel?.CanEditList == true
             ? DragDropEffects.Copy
             : DragDropEffects.None;
@@ -88,7 +88,7 @@ public partial class MainWindow : Window
         if (ViewModel is not { CanEditList: true } viewModel)
             return;
 
-        var items = e.Data.GetFiles();
+        var items = e.DataTransfer?.TryGetFiles();
         if (items is null)
             return;
 
