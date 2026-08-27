@@ -1,0 +1,176 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <Styles.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+
+        <!-- Light -->
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="AppBackground" Color="#F4F5F7" />
+          <SolidColorBrush x:Key="PanelBackground" Color="#FFFFFF" />
+          <SolidColorBrush x:Key="PanelBorder" Color="#E1E4E8" />
+          <SolidColorBrush x:Key="ToolbarBackground" Color="#FBFBFD" />
+          <SolidColorBrush x:Key="SubtleText" Color="#6B7280" />
+          <SolidColorBrush x:Key="StrongText" Color="#14161A" />
+          <SolidColorBrush x:Key="RowHover" Color="#F0F2F5" />
+          <SolidColorBrush x:Key="ChipBackground" Color="#EEF1F5" />
+          <SolidColorBrush x:Key="ChipBorder" Color="#D8DDE4" />
+          <SolidColorBrush x:Key="AccentSoft" Color="#E8F0FE" />
+          <SolidColorBrush x:Key="OkColor" Color="#1A8248" />
+          <SolidColorBrush x:Key="WarnColor" Color="#B4690E" />
+          <SolidColorBrush x:Key="ErrorColor" Color="#C22B36" />
+          <SolidColorBrush x:Key="InfoColor" Color="#2563EB" />
+          <SolidColorBrush x:Key="IdleColor" Color="#9AA1AC" />
+          <SolidColorBrush x:Key="PosterPlaceholder" Color="#E6E9ED" />
+        </ResourceDictionary>
+
+        <!-- Dark -->
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="AppBackground" Color="#16181D" />
+          <SolidColorBrush x:Key="PanelBackground" Color="#1E2128" />
+          <SolidColorBrush x:Key="PanelBorder" Color="#2C313A" />
+          <SolidColorBrush x:Key="ToolbarBackground" Color="#1A1D23" />
+          <SolidColorBrush x:Key="SubtleText" Color="#9BA3AF" />
+          <SolidColorBrush x:Key="StrongText" Color="#F2F4F7" />
+          <SolidColorBrush x:Key="RowHover" Color="#262A32" />
+          <SolidColorBrush x:Key="ChipBackground" Color="#282D36" />
+          <SolidColorBrush x:Key="ChipBorder" Color="#3A404B" />
+          <SolidColorBrush x:Key="AccentSoft" Color="#1E2A44" />
+          <SolidColorBrush x:Key="OkColor" Color="#4ADE80" />
+          <SolidColorBrush x:Key="WarnColor" Color="#FBBF24" />
+          <SolidColorBrush x:Key="ErrorColor" Color="#F87171" />
+          <SolidColorBrush x:Key="InfoColor" Color="#60A5FA" />
+          <SolidColorBrush x:Key="IdleColor" Color="#6B7280" />
+          <SolidColorBrush x:Key="PosterPlaceholder" Color="#2A2F38" />
+        </ResourceDictionary>
+
+      </ResourceDictionary.ThemeDictionaries>
+    </ResourceDictionary>
+  </Styles.Resources>
+
+  <!-- A panel: the card that the file list and the preview live in. -->
+  <Style Selector="Border.panel">
+    <Setter Property="Background" Value="{DynamicResource PanelBackground}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource PanelBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="8" />
+  </Style>
+
+  <Style Selector="Border.toolbar">
+    <Setter Property="Background" Value="{DynamicResource ToolbarBackground}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource PanelBorder}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+  </Style>
+
+  <!-- Text roles -->
+  <Style Selector="TextBlock.h1">
+    <Setter Property="FontSize" Value="19" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource StrongText}" />
+  </Style>
+
+  <Style Selector="TextBlock.h2">
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource StrongText}" />
+  </Style>
+
+  <Style Selector="TextBlock.sectionLabel">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource SubtleText}" />
+    <Setter Property="Margin" Value="0,0,0,6" />
+  </Style>
+
+  <Style Selector="TextBlock.subtle">
+    <Setter Property="Foreground" Value="{DynamicResource SubtleText}" />
+    <Setter Property="FontSize" Value="12" />
+  </Style>
+
+  <Style Selector="TextBlock.fieldLabel">
+    <Setter Property="Foreground" Value="{DynamicResource SubtleText}" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Margin" Value="0,0,0,3" />
+  </Style>
+
+  <Style Selector="TextBlock.mono">
+    <Setter Property="FontFamily" Value="Consolas,Menlo,DejaVu Sans Mono,monospace" />
+  </Style>
+
+  <Style Selector="TextBox.mono">
+    <Setter Property="FontFamily" Value="Consolas,Menlo,DejaVu Sans Mono,monospace" />
+  </Style>
+
+  <!-- File rows -->
+  <Style Selector="ListBox.fileList">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="4" />
+  </Style>
+
+  <Style Selector="ListBox.fileList ListBoxItem">
+    <Setter Property="Padding" Value="8,6" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Margin" Value="0,1" />
+  </Style>
+
+  <!-- Token chips in the rename template editor -->
+  <Style Selector="Button.chip">
+    <Setter Property="Background" Value="{DynamicResource ChipBackground}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ChipBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="11" />
+    <Setter Property="Padding" Value="9,3" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Margin" Value="0,0,4,4" />
+    <Setter Property="FontFamily" Value="Consolas,Menlo,DejaVu Sans Mono,monospace" />
+  </Style>
+
+  <Style Selector="Button.chip:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource AccentSoft}" />
+  </Style>
+
+  <!-- A tinted read-only box used for previews -->
+  <Style Selector="Border.preview">
+    <Setter Property="Background" Value="{DynamicResource ChipBackground}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ChipBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Padding" Value="8,6" />
+  </Style>
+
+  <Style Selector="Border.candidate">
+    <Setter Property="Background" Value="{DynamicResource PanelBackground}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource PanelBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Padding" Value="8" />
+    <Setter Property="Margin" Value="0,0,0,6" />
+  </Style>
+
+  <Style Selector="Border.candidate:pointerover">
+    <Setter Property="Background" Value="{DynamicResource RowHover}" />
+  </Style>
+
+  <!-- A banner used for the "needs a choice" and error notices -->
+  <Style Selector="Border.notice">
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Padding" Value="10,8" />
+    <Setter Property="Margin" Value="0,0,0,10" />
+    <Setter Property="Background" Value="{DynamicResource AccentSoft}" />
+  </Style>
+
+  <Style Selector="TextBox">
+    <Setter Property="CornerRadius" Value="6" />
+  </Style>
+
+  <Style Selector="ComboBox">
+    <Setter Property="CornerRadius" Value="6" />
+  </Style>
+
+  <Style Selector="Button">
+    <Setter Property="CornerRadius" Value="6" />
+  </Style>
+
+</Styles>

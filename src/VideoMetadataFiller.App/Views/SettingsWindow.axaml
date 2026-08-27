@@ -1,0 +1,137 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:VideoMetadataFiller.App.ViewModels"
+        x:Class="VideoMetadataFiller.App.Views.SettingsWindow"
+        x:DataType="vm:SettingsViewModel"
+        Title="Settings"
+        Width="840" Height="780"
+        MinWidth="700" MinHeight="520"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource AppBackground}">
+
+  <Grid RowDefinitions="*,Auto">
+
+    <ScrollViewer Padding="20,16,28,16">
+      <StackPanel Spacing="20">
+
+        <!-- TMDB access -->
+        <StackPanel Spacing="6">
+          <TextBlock Text="THE MOVIE DATABASE" Classes="sectionLabel" />
+          <TextBlock Classes="subtle" TextWrapping="Wrap"
+                     Text="Create a free TMDB account, then copy the v3 API key from your account settings under API." />
+          <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+            <TextBox Text="{Binding ApiKey}" PasswordChar="•"
+                     Watermark="Your TMDB API key (v3 auth)" />
+            <Button Grid.Column="1" Content="Test key" Margin="6,0,0,0"
+                    Command="{Binding TestKeyCommand}" IsEnabled="{Binding !IsTestingKey}" />
+          </Grid>
+          <TextBlock Text="{Binding KeyStatus}" Classes="subtle" TextWrapping="Wrap"
+                     IsVisible="{Binding HasKeyStatus}" />
+
+          <TextBlock Text="Metadata language" Classes="fieldLabel" Margin="0,10,0,3" />
+          <ComboBox ItemsSource="{Binding Languages}" SelectedItem="{Binding Language}"
+                    HorizontalAlignment="Left" MinWidth="240" />
+          <TextBlock Classes="subtle" FontSize="11" TextWrapping="Wrap" Margin="2,3,0,0"
+                     Text="Used for every file by default. Any single file can be switched to another language in the preview pane, which is useful when a title has no translation." />
+        </StackPanel>
+
+        <!-- Artwork and safety -->
+        <StackPanel Spacing="6">
+          <TextBlock Text="ARTWORK AND SAFETY" Classes="sectionLabel" />
+          <TextBlock Text="Embedded artwork size" Classes="fieldLabel" />
+          <ComboBox ItemsSource="{Binding ArtworkSizes}" SelectedItem="{Binding ArtworkSize}"
+                    HorizontalAlignment="Left" MinWidth="160" />
+          <CheckBox Content="Keep a .bak copy of each file before writing tags"
+                    IsChecked="{Binding CreateBackup}" Margin="0,6,0,0" />
+        </StackPanel>
+
+        <!-- Renaming -->
+        <StackPanel Spacing="6">
+          <TextBlock Text="RENAMING" Classes="sectionLabel" />
+          <CheckBox Content="Rename files when applying metadata" IsChecked="{Binding RenameEnabled}" />
+
+          <TextBlock Text="Word separator" Classes="fieldLabel" Margin="0,8,0,3" />
+          <ComboBox ItemsSource="{Binding Separators}" SelectedItem="{Binding Separator}"
+                    HorizontalAlignment="Left" MinWidth="330" />
+        </StackPanel>
+
+        <!-- The two template editors -->
+        <ContentControl Content="{Binding MovieTemplate}" ContentTemplate="{StaticResource TemplateEditor}" />
+        <ContentControl Content="{Binding TvTemplate}" ContentTemplate="{StaticResource TemplateEditor}" />
+
+        <TextBlock Text="{Binding SettingsFileNote}" Classes="subtle" FontSize="11"
+                   TextWrapping="Wrap" />
+      </StackPanel>
+    </ScrollViewer>
+
+    <Border Grid.Row="1" Classes="toolbar" BorderThickness="0,1,0,0" Padding="18,12">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+        <Button Content="Cancel" Click="OnCancel" IsCancel="True" />
+        <Button Content="Save" Click="OnSave" Classes="accent" IsDefault="True"
+                IsEnabled="{Binding CanSave}" />
+      </StackPanel>
+    </Border>
+  </Grid>
+
+  <Window.Resources>
+    <!--
+      One editor, used for both the movie and the TV template. The token palette and the digit
+      spinners exist so the everyday adjustments never need knowledge of the syntax.
+    -->
+    <DataTemplate x:Key="TemplateEditor" x:DataType="vm:RenameTemplateEditorViewModel">
+      <StackPanel Spacing="6">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Text="{Binding Title}" Classes="h2" />
+          <Button Grid.Column="1" Content="Reset to default" Classes="chip" FontFamily="{x:Null}"
+                  Command="{Binding ResetToDefaultCommand}" />
+        </Grid>
+
+        <TextBox Text="{Binding Template}" Classes="mono" Name="TemplateBox"
+                 AttachedToVisualTree="OnTemplateBoxAttached" />
+
+        <TextBlock Text="{Binding Errors}" Foreground="{DynamicResource ErrorColor}"
+                   FontSize="11" TextWrapping="Wrap" IsVisible="{Binding HasErrors}" />
+
+        <!-- Digit spinners: the common "how many digits for the season" case -->
+        <StackPanel Orientation="Horizontal" Spacing="14" IsVisible="{Binding ShowsDigitSpinners}">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <TextBlock Text="Season digits" Classes="subtle" VerticalAlignment="Center" />
+            <ComboBox ItemsSource="{Binding DigitOptions}" SelectedItem="{Binding SeasonDigits}"
+                      MinWidth="64" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <TextBlock Text="Episode digits" Classes="subtle" VerticalAlignment="Center" />
+            <ComboBox ItemsSource="{Binding DigitOptions}" SelectedItem="{Binding EpisodeDigits}"
+                      MinWidth="64" />
+          </StackPanel>
+        </StackPanel>
+
+        <TextBlock Text="Click a field to insert it" Classes="subtle" FontSize="11" Margin="0,4,0,0" />
+        <ItemsControl ItemsSource="{Binding Tokens}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:TokenChip">
+              <Button Classes="chip" Content="{Binding Caption}"
+                      ToolTip.Tip="{Binding Tooltip}"
+                      Command="{Binding $parent[ItemsControl].((vm:RenameTemplateEditorViewModel)DataContext).InsertTokenCommand}"
+                      CommandParameter="{Binding}" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <TextBlock Text="Preview" Classes="fieldLabel" Margin="0,4,0,0" />
+        <Border Classes="preview">
+          <TextBlock Text="{Binding Preview}" Classes="mono" FontSize="12"
+                     TextWrapping="Wrap" />
+        </Border>
+
+        <TextBlock Classes="subtle" FontSize="11" TextWrapping="Wrap"
+                   Text="Numbers take digit padding: {season:00} gives 01. Dates take formats like {airDate:yyyy-MM-dd}. Text takes :upper, :lower or :title. Wrap a part in angle brackets to drop it when empty, as in &lt; - {episodeTitle}&gt;. Square brackets are literal." />
+      </StackPanel>
+    </DataTemplate>
+  </Window.Resources>
+</Window>

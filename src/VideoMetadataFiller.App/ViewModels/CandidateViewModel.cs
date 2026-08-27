@@ -1,0 +1,38 @@
+using Avalonia.Media.Imaging;
+using CommunityToolkit.Mvvm.ComponentModel;
+using VideoMetadataFiller.Core.Model;
+
+namespace VideoMetadataFiller.App.ViewModels;
+
+/// <summary>One entry in the candidate chooser: a title the user can pick for the selected file.</summary>
+public sealed partial class CandidateViewModel(Candidate candidate) : ObservableObject
+{
+    [ObservableProperty]
+    private Bitmap? _poster;
+
+    public Candidate Candidate { get; } = candidate;
+
+    public string Title => Candidate.Title;
+
+    public string Year => Candidate.Year?.ToString() ?? "—";
+
+    public string Kind => Candidate.Kind == MediaKind.TvEpisode ? "TV show" : "Movie";
+
+    /// <summary>Original title, shown only when it differs from the displayed one.</summary>
+    public string? OriginalTitle =>
+        string.IsNullOrWhiteSpace(Candidate.OriginalTitle)
+        || string.Equals(Candidate.OriginalTitle, Candidate.Title, StringComparison.Ordinal)
+            ? null
+            : Candidate.OriginalTitle;
+
+    public bool HasOriginalTitle => OriginalTitle is not null;
+
+    public string Overview => string.IsNullOrWhiteSpace(Candidate.Overview)
+        ? "No overview available."
+        : Candidate.Overview;
+
+    /// <summary>Match confidence as a percentage, so the user can see why this was ambiguous.</summary>
+    public string ConfidenceText => $"{Candidate.Score * 100:0}% match";
+
+    public string TmdbReference => $"TMDB {Candidate.TmdbId}";
+}
