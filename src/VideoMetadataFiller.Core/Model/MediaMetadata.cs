@@ -59,6 +59,12 @@ public sealed class MediaMetadata
     /// <summary>Language the TMDB text fields were fetched in, e.g. <c>fr-FR</c>.</summary>
     public string? Language { get; set; }
 
+    /// <summary>
+    /// Names of fields TMDB had no translation for, which were filled from the original language
+    /// instead. The preview pane hints at these so a blank-looking translation is explained.
+    /// </summary>
+    public List<string> FallbackFields { get; set; } = [];
+
     public int? FirstEpisode => Episodes.Count > 0 ? Episodes[0] : null;
 
     /// <summary>Best available year: the explicit one, else the year of the release date.</summary>
@@ -88,5 +94,6 @@ public sealed class MediaMetadata
         ArtworkData = ArtworkData,
         Resolution = Resolution,
         Language = Language,
+        FallbackFields = [.. FallbackFields],
     };
 }
