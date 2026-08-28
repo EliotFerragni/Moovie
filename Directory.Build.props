@@ -6,5 +6,11 @@
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <AvaloniaVersion>11.3.20</AvaloniaVersion>
     <InvariantGlobalization>false</InvariantGlobalization>
+
+    <!--
+      The one place the version is written. The About box reads it back off the assembly, and
+      build/publish.sh stamps it into the macOS bundle's Info.plist.
+    -->
+    <Version>1.0.0</Version>
   </PropertyGroup>
 </Project>

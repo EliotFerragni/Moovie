@@ -39,6 +39,7 @@ public partial class MainWindow : Window
         viewModel.PickFilesAsync = PickFilesAsync;
         viewModel.PickFolderAsync = PickFolderAsync;
         viewModel.ShowSettingsAsync = ShowSettingsAsync;
+        viewModel.ShowAboutAsync = ShowAboutAsync;
     }
 
     private async Task<IReadOnlyList<string>> PickFilesAsync()
@@ -68,6 +69,12 @@ public partial class MainWindow : Window
     {
         var dialog = new SettingsWindow { DataContext = editor };
         return await dialog.ShowDialog<bool>(this);
+    }
+
+    private async Task ShowAboutAsync(AboutViewModel about)
+    {
+        var dialog = new AboutWindow { DataContext = about };
+        await dialog.ShowDialog(this);
     }
 
     /// <summary>

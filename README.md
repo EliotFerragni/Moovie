@@ -331,6 +331,10 @@ With a dev environment set up as above, producing a self-contained executable is
 
 On Windows use `build/publish.ps1` instead. Output lands in `artifacts/<runtime>/`.
 
+The version lives in one place, `<Version>` in `Directory.Build.props`. The About box reads it
+back off the assembly and `publish.sh` stamps it into the macOS bundle's `Info.plist`, so
+bumping it there is the whole job.
+
 Targets: `win-x64` `win-arm64` `osx-x64` `osx-arm64` `linux-x64` `linux-arm64`.
 Builds are roughly 45–80 MB because they bundle the runtime.
 

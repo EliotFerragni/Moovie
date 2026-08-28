@@ -19,6 +19,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 PROJECT="src/VideoMetadataFiller.App/VideoMetadataFiller.App.csproj"
+
+# Directory.Build.props is the one place the version lives; the bundle borrows it from there.
+VERSION="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props | head -1)"
+VERSION="${VERSION:-0.0.0}"
 ALL_TARGETS=(win-x64 win-arm64 osx-x64 osx-arm64 linux-x64 linux-arm64)
 
 detect_host() {
@@ -64,7 +68,8 @@ for runtime in "${TARGETS[@]}"; do
     # moved anywhere on its own.
     find "$output" -maxdepth 1 -type f -exec mv {} "$bundle/Contents/MacOS/" \;
     chmod +x "$bundle/Contents/MacOS/VideoMetadataFiller"
-    sed "s/__RUNTIME__/$runtime/" build/Info.plist.template > "$bundle/Contents/Info.plist"
+    sed -e "s/__RUNTIME__/$runtime/" -e "s/__VERSION__/$VERSION/" \
+      build/Info.plist.template > "$bundle/Contents/Info.plist"
     echo "    bundled as $bundle"
   fi
 

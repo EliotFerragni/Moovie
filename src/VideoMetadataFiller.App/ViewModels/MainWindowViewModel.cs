@@ -71,6 +71,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     /// <summary>Set by the view. Shows the settings dialog and returns true when it was saved.</summary>
     public Func<SettingsViewModel, Task<bool>>? ShowSettingsAsync { get; set; }
 
+    /// <summary>Set by the view. Shows the About box.</summary>
+    public Func<AboutViewModel, Task>? ShowAboutAsync { get; set; }
+
     public ITmdbService? Tmdb => _tmdb;
 
     public string ArtworkSize => Settings.ArtworkSize;
@@ -737,6 +740,13 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
             file.Metadata.ArtworkData = null;
             file.ClearFieldEdit(nameof(MediaMetadata.ArtworkPath));
         }
+    }
+
+    [RelayCommand]
+    private async Task OpenAboutAsync()
+    {
+        if (ShowAboutAsync is not null)
+            await ShowAboutAsync(new AboutViewModel());
     }
 
     private void RebuildTmdbClient()

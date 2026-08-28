@@ -50,7 +50,10 @@
         <TextBlock Grid.Column="1" Text="Video Metadata Filler" Classes="h1"
                    HorizontalAlignment="Center" VerticalAlignment="Center" />
 
-        <Button Grid.Column="2" Content="Settings…" Command="{Binding OpenSettingsCommand}" />
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+          <Button Content="About" Command="{Binding OpenAboutCommand}" />
+          <Button Content="Settings…" Command="{Binding OpenSettingsCommand}" />
+        </StackPanel>
       </Grid>
     </Border>
 

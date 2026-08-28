@@ -1,0 +1,40 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:VideoMetadataFiller.App.ViewModels"
+        x:Class="VideoMetadataFiller.App.Views.AboutWindow"
+        x:DataType="vm:AboutViewModel"
+        Title="About Video Metadata Filler"
+        Width="440" SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource AppBackground}">
+
+  <StackPanel Margin="24,20" Spacing="14">
+
+    <StackPanel Spacing="3">
+      <TextBlock Text="{Binding AppName}" Classes="h1" />
+      <TextBlock Text="{Binding Version}" Classes="subtle" />
+    </StackPanel>
+
+    <TextBlock Text="{Binding Tagline}" TextWrapping="Wrap" />
+
+    <Border Classes="notice">
+      <StackPanel Spacing="4">
+        <TextBlock Text="{Binding TmdbAttribution}" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding TmdbUrl}" Classes="subtle" FontSize="11" />
+      </StackPanel>
+    </Border>
+
+    <StackPanel Spacing="4">
+      <TextBlock Text="RUNTIME" Classes="sectionLabel" />
+      <TextBlock Text="{Binding Runtime}" Classes="subtle" FontSize="11" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <StackPanel Spacing="4">
+      <TextBlock Text="SETTINGS FILE" Classes="sectionLabel" />
+      <TextBlock Text="{Binding SettingsPath}" Classes="subtle" FontSize="11" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <Button Content="Close" HorizontalAlignment="Right" Click="OnClose" IsDefault="True" />
+  </StackPanel>
+</Window>
