@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
+using VideoMetadataFiller.Core.Localization;
 using VideoMetadataFiller.Core.Settings;
 
 namespace VideoMetadataFiller.App.ViewModels;
@@ -12,11 +13,11 @@ public sealed class AboutViewModel
     public string Version { get; } = ReadVersion();
 
     public string Tagline =>
-        "Fills the metadata of movie and TV files from The Movie Database.";
+        Strings.Get("about.tagline");
 
     /// <summary>TMDB's terms require this wording on anything built against their API.</summary>
     public string TmdbAttribution =>
-        "This product uses the TMDB API but is not endorsed or certified by TMDB.";
+        Strings.Get("about.tmdbAttribution");
 
     public string Runtime =>
         $"{RuntimeInformation.FrameworkDescription} on {RuntimeInformation.OSDescription.Trim()} " +

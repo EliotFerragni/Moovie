@@ -4,6 +4,7 @@ using TMDbLib.Objects.Movies;
 using TMDbLib.Objects.Search;
 using TMDbLib.Objects.TvShows;
 using VideoMetadataFiller.Core.Model;
+using VideoMetadataFiller.Core.Localization;
 
 namespace VideoMetadataFiller.Core.Tmdb;
 
@@ -47,7 +48,7 @@ public sealed class TmdbService : ITmdbService, IDisposable
     public TmdbService(string apiKey, HttpClient? httpClient = null)
     {
         if (string.IsNullOrWhiteSpace(apiKey))
-            throw new TmdbException("No TMDB API key is configured. Add one in Settings.");
+            throw new TmdbException(Strings.Get("tmdb.noKey"));
 
         _client = new TMDbClient(apiKey);
         _http = httpClient ?? new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
@@ -351,7 +352,7 @@ public sealed class TmdbService : ITmdbService, IDisposable
                 try
                 {
                     return await call().ConfigureAwait(false)
-                           ?? throw new TmdbException("TMDB returned an empty response.");
+                           ?? throw new TmdbException(Strings.Get("tmdb.emptyResponse"));
                 }
                 catch (RequestLimitExceededException) when (attempt < MaxRetries)
                 {
@@ -363,23 +364,23 @@ public sealed class TmdbService : ITmdbService, IDisposable
                 }
                 catch (RequestLimitExceededException e)
                 {
-                    throw new TmdbException("TMDB is rate-limiting these requests. Try again shortly.", e);
+                    throw new TmdbException(Strings.Get("tmdb.rateLimited"), e);
                 }
                 catch (UnauthorizedAccessException e)
                 {
-                    throw new TmdbException("TMDB rejected the API key. Check it in Settings.", e);
+                    throw new TmdbException(Strings.Get("tmdb.rejectedKey"), e);
                 }
                 catch (TMDbException e)
                 {
-                    throw new TmdbException($"TMDB refused the request: {e.Message}", e);
+                    throw new TmdbException(Strings.Format("tmdb.refused", e.Message), e);
                 }
                 catch (HttpRequestException e)
                 {
-                    throw new TmdbException($"TMDB could not be reached: {e.Message}", e);
+                    throw new TmdbException(Strings.Format("tmdb.unreachable", e.Message), e);
                 }
                 catch (TaskCanceledException e) when (!cancellationToken.IsCancellationRequested)
                 {
-                    throw new TmdbException("The request to TMDB timed out.", e);
+                    throw new TmdbException(Strings.Get("tmdb.timedOut"), e);
                 }
             }
         }

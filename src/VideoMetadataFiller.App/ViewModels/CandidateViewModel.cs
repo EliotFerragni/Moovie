@@ -1,5 +1,6 @@
 using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
+using VideoMetadataFiller.Core.Localization;
 using VideoMetadataFiller.Core.Model;
 
 namespace VideoMetadataFiller.App.ViewModels;
@@ -16,7 +17,7 @@ public sealed partial class CandidateViewModel(Candidate candidate) : Observable
 
     public string Year => Candidate.Year?.ToString() ?? "—";
 
-    public string Kind => Candidate.Kind == MediaKind.TvEpisode ? "TV show" : "Movie";
+    public string Kind => Candidate.Kind == MediaKind.TvEpisode ? Strings.Get("pane.tvShow") : Strings.Get("pane.movie");
 
     /// <summary>Original title, shown only when it differs from the displayed one.</summary>
     public string? OriginalTitle =>
@@ -28,7 +29,7 @@ public sealed partial class CandidateViewModel(Candidate candidate) : Observable
     public bool HasOriginalTitle => OriginalTitle is not null;
 
     public string Overview => string.IsNullOrWhiteSpace(Candidate.Overview)
-        ? "No overview available."
+        ? Strings.Get("pane.noOverview")
         : Candidate.Overview;
 
     /// <summary>Match confidence as a percentage, so the user can see why this was ambiguous.</summary>

@@ -4,6 +4,7 @@ using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using VideoMetadataFiller.App.Services;
+using VideoMetadataFiller.Core.Localization;
 using VideoMetadataFiller.Core.Model;
 
 namespace VideoMetadataFiller.App.ViewModels;
@@ -34,10 +35,10 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
     private int _selectionCount;
 
     [ObservableProperty]
-    private string _headerTitle = "Nothing selected";
+    private string _headerTitle = Strings.Get("pane.nothingSelected");
 
     [ObservableProperty]
-    private string _headerSubtitle = "Pick a file on the left to see and edit its metadata.";
+    private string _headerSubtitle = Strings.Get("pane.pickAFile");
 
     [ObservableProperty]
     private Bitmap? _poster;
@@ -196,8 +197,8 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
         switch (_selection.Count)
         {
             case 0:
-                HeaderTitle = "Nothing selected";
-                HeaderSubtitle = "Pick a file on the left to see and edit its metadata.";
+                HeaderTitle = Strings.Get("pane.nothingSelected");
+                HeaderSubtitle = Strings.Get("pane.pickAFile");
                 break;
 
             case 1:
@@ -206,9 +207,8 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
                 break;
 
             default:
-                HeaderTitle = $"{_selection.Count} files selected";
-                HeaderSubtitle = "Fields showing a value are the same across all of them. "
-                                 + "Editing one applies it to every selected file.";
+                HeaderTitle = Strings.Format("pane.filesSelected", _selection.Count);
+                HeaderSubtitle = Strings.Get("pane.sharedFields");
                 break;
         }
     }
@@ -223,7 +223,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
             // across a selection: one title, applied to all of them.
             var needing = _selection.Count(f => f.Status == FileStatus.NeedsChoice);
             Notice = needing > 0
-                ? $"{needing} of these files still need a title chosen. Search below to put one title on all of them."
+                ? Strings.Format("pane.needsChoice", needing)
                 : null;
             OnPropertyChanged(nameof(HasCandidates));
             return;
@@ -339,13 +339,13 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
         var file = _selection[0];
         if (_lookup.Tmdb is null)
         {
-            ArtworkMessage = "Add a TMDB API key in Settings first.";
+            ArtworkMessage = Strings.Get("pane.addKeyFirst");
             return;
         }
 
         if (file.Metadata.TmdbId is not { } tmdbId)
         {
-            ArtworkMessage = "Match this file to a title first.";
+            ArtworkMessage = Strings.Get("pane.matchFirst");
             return;
         }
 
@@ -358,7 +358,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
 
             if (options.Count == 0)
             {
-                ArtworkMessage = "TMDB has no artwork for this title.";
+                ArtworkMessage = Strings.Get("artwork.none");
                 return;
             }
 
@@ -441,14 +441,14 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
             return;
 
         IsSearching = true;
-        SearchMessage = targets.Count > 1 ? $"Applying to {targets.Count} files…" : null;
+        SearchMessage = targets.Count > 1 ? Strings.Format("pane.applyingTo", targets.Count) : null;
         try
         {
             foreach (var file in targets)
                 await _lookup.ChooseCandidateAsync(file, candidate);
 
             if (targets.Count > 1)
-                SearchMessage = $"Applied to {targets.Count} files.";
+                SearchMessage = Strings.Format("pane.appliedTo", targets.Count);
         }
         catch (Exception e)
         {
@@ -475,7 +475,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
     {
         if (_lookup.Tmdb is null)
         {
-            SearchMessage = "Add a TMDB API key in Settings first.";
+            SearchMessage = Strings.Get("pane.addKeyFirst");
             return;
         }
 
@@ -497,7 +497,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
                 Candidates.Add(new CandidateViewModel(candidate));
 
             OnPropertyChanged(nameof(HasCandidates));
-            SearchMessage = results.Count == 0 ? "No results." : $"{results.Count} result(s).";
+            SearchMessage = results.Count == 0 ? Strings.Get("pane.noResults") : Strings.Format("pane.resultCount", results.Count);
             _ = LoadCandidatePostersAsync();
         }
         catch (Exception e)
@@ -519,13 +519,13 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
 
         if (!int.TryParse(TmdbIdText, out var id) || id <= 0)
         {
-            SearchMessage = "Enter a numeric TMDB id.";
+            SearchMessage = Strings.Get("pane.enterNumericId");
             return;
         }
 
         var targets = _selection.ToList();
         IsSearching = true;
-        SearchMessage = targets.Count > 1 ? $"Applying to {targets.Count} files…" : null;
+        SearchMessage = targets.Count > 1 ? Strings.Format("pane.applyingTo", targets.Count) : null;
         try
         {
             var kind = KindIndex == 1 ? MediaKind.TvEpisode : MediaKind.Movie;
@@ -533,7 +533,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
                 await _lookup.ApplyTmdbIdAsync(file, id, kind);
 
             if (targets.Count > 1)
-                SearchMessage = $"Applied to {targets.Count} files.";
+                SearchMessage = Strings.Format("pane.appliedTo", targets.Count);
         }
         catch (Exception e)
         {
@@ -592,63 +592,63 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
 
         return
         [
-            new FieldEditor(nameof(MediaMetadata.ShowName), "Show",
+            new FieldEditor(nameof(MediaMetadata.ShowName), Strings.Get("field.show"),
                 m => m.ShowName, (m, v) => m.ShowName = v, Edited, FieldScope.ShowsOnly),
 
-            new FieldEditor(nameof(MediaMetadata.Title), "Title",
+            new FieldEditor(nameof(MediaMetadata.Title), Strings.Get("field.title"),
                 m => m.Title, (m, v) => m.Title = v, Edited,
-                hint: "For an episode this is the episode title."),
+                hint: Strings.Get("field.titleHint")),
 
-            new FieldEditor(nameof(MediaMetadata.OriginalTitle), "Original title",
+            new FieldEditor(nameof(MediaMetadata.OriginalTitle), Strings.Get("field.originalTitle"),
                 m => m.OriginalTitle, (m, v) => m.OriginalTitle = v, Edited),
 
-            new FieldEditor(nameof(MediaMetadata.Season), "Season",
+            new FieldEditor(nameof(MediaMetadata.Season), Strings.Get("field.season"),
                 m => Number(m.Season), (m, v) => m.Season = ParseNumber(v), Edited, FieldScope.ShowsOnly),
 
-            new FieldEditor(nameof(MediaMetadata.Episodes), "Episode",
+            new FieldEditor(nameof(MediaMetadata.Episodes), Strings.Get("field.episode"),
                 m => FormatEpisodes(m.Episodes), (m, v) => m.Episodes = ParseEpisodes(v), Edited,
                 FieldScope.ShowsOnly, perFileOnly: true,
-                hint: "Use 1-2 for a file holding two episodes."),
+                hint: Strings.Get("field.episodeHint")),
 
-            new FieldEditor(nameof(MediaMetadata.Year), "Year",
+            new FieldEditor(nameof(MediaMetadata.Year), Strings.Get("field.year"),
                 m => Number(m.EffectiveYear), (m, v) => m.Year = ParseNumber(v), Edited),
 
-            new FieldEditor(nameof(MediaMetadata.ReleaseDate), "Release / air date",
+            new FieldEditor(nameof(MediaMetadata.ReleaseDate), Strings.Get("field.releaseDate"),
                 m => FormatDate(m.ReleaseDate), (m, v) => m.ReleaseDate = ParseDate(v), Edited,
                 hint: "yyyy-mm-dd"),
 
-            new FieldEditor(nameof(MediaMetadata.Overview), "Overview",
+            new FieldEditor(nameof(MediaMetadata.Overview), Strings.Get("field.overview"),
                 m => m.Overview, (m, v) => m.Overview = v, Edited, isMultiline: true),
 
-            new FieldEditor(nameof(MediaMetadata.Genres), "Genres",
-                m => Join(m.Genres), (m, v) => m.Genres = SplitList(v), Edited, hint: "Comma-separated."),
+            new FieldEditor(nameof(MediaMetadata.Genres), Strings.Get("field.genres"),
+                m => Join(m.Genres), (m, v) => m.Genres = SplitList(v), Edited, hint: Strings.Get("field.commaSeparated")),
 
-            new FieldEditor(nameof(MediaMetadata.Cast), "Cast",
-                m => Join(m.Cast), (m, v) => m.Cast = SplitList(v), Edited, hint: "Comma-separated."),
+            new FieldEditor(nameof(MediaMetadata.Cast), Strings.Get("field.cast"),
+                m => Join(m.Cast), (m, v) => m.Cast = SplitList(v), Edited, hint: Strings.Get("field.commaSeparated")),
 
-            new FieldEditor(nameof(MediaMetadata.Directors), "Director(s)",
+            new FieldEditor(nameof(MediaMetadata.Directors), Strings.Get("field.directors"),
                 m => Join(m.Directors), (m, v) => m.Directors = SplitList(v), Edited),
 
-            new FieldEditor(nameof(MediaMetadata.Writers), "Writer(s)",
+            new FieldEditor(nameof(MediaMetadata.Writers), Strings.Get("field.writers"),
                 m => Join(m.Writers), (m, v) => m.Writers = SplitList(v), Edited),
 
-            new FieldEditor(nameof(MediaMetadata.Studio), "Studio",
+            new FieldEditor(nameof(MediaMetadata.Studio), Strings.Get("field.studio"),
                 m => m.Studio, (m, v) => m.Studio = v, Edited),
 
-            new FieldEditor(nameof(MediaMetadata.Network), "Network",
+            new FieldEditor(nameof(MediaMetadata.Network), Strings.Get("field.network"),
                 m => m.Network, (m, v) => m.Network = v, Edited, FieldScope.ShowsOnly),
 
-            new FieldEditor(nameof(MediaMetadata.ContentRating), "Content rating",
-                m => m.ContentRating, (m, v) => m.ContentRating = v, Edited, hint: "e.g. PG-13 or TV-MA."),
+            new FieldEditor(nameof(MediaMetadata.ContentRating), Strings.Get("field.contentRating"),
+                m => m.ContentRating, (m, v) => m.ContentRating = v, Edited, hint: Strings.Get("field.contentRatingHint")),
 
-            new FieldEditor(nameof(MediaMetadata.Resolution), "Resolution",
+            new FieldEditor(nameof(MediaMetadata.Resolution), Strings.Get("field.resolution"),
                 m => m.Resolution, (m, v) => m.Resolution = v, Edited,
-                hint: "Used by the {resolution} rename token and the HD flag."),
+                hint: Strings.Get("field.resolutionHint")),
 
-            new FieldEditor(nameof(MediaMetadata.TmdbId), "TMDB id",
+            new FieldEditor(nameof(MediaMetadata.TmdbId), Strings.Get("field.tmdbId"),
                 m => Number(m.TmdbId), (m, v) => m.TmdbId = ParseNumber(v), Edited, perFileOnly: true),
 
-            new FieldEditor(nameof(MediaMetadata.ImdbId), "IMDb id",
+            new FieldEditor(nameof(MediaMetadata.ImdbId), Strings.Get("field.imdbId"),
                 m => m.ImdbId, (m, v) => m.ImdbId = v, Edited, perFileOnly: true),
         ];
     }

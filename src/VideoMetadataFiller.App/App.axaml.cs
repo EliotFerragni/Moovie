@@ -3,6 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using VideoMetadataFiller.App.ViewModels;
 using VideoMetadataFiller.App.Views;
+using VideoMetadataFiller.Core.Localization;
 using VideoMetadataFiller.Core.Settings;
 
 namespace VideoMetadataFiller.App;
@@ -16,6 +17,11 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var store = new SettingsStore();
+
+            // Before anything is constructed: the windows resolve their text as they load, so a
+            // language chosen after that point would only show up on the next run anyway.
+            Strings.Use(store.Load().AppLanguage);
+
             var viewModel = new MainWindowViewModel(store);
             var window = new MainWindow { DataContext = viewModel };
             desktop.MainWindow = window;

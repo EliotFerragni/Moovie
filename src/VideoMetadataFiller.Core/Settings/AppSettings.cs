@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using VideoMetadataFiller.Core.Localization;
 using VideoMetadataFiller.Core.Model;
 
 namespace VideoMetadataFiller.Core.Settings;
@@ -25,6 +26,13 @@ public sealed class AppSettings
 
     /// <summary>Default TMDB language tag, e.g. <c>en-US</c>. Overridable per file.</summary>
     public string Language { get; set; } = "en-US";
+
+    /// <summary>
+    /// Language of the app's own interface: a two-letter tag, or <c>system</c> to follow the
+    /// operating system. Deliberately separate from <see cref="Language"/> — wanting a French
+    /// interface and English metadata is a perfectly reasonable combination.
+    /// </summary>
+    public string AppLanguage { get; set; } = Strings.SystemTag;
 
     public string MovieRenameTemplate { get; set; } = DefaultMovieTemplate;
 

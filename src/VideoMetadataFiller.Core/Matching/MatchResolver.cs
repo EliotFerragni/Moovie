@@ -1,5 +1,6 @@
 using VideoMetadataFiller.Core.Model;
 using VideoMetadataFiller.Core.Tmdb;
+using VideoMetadataFiller.Core.Localization;
 
 namespace VideoMetadataFiller.Core.Matching;
 
@@ -67,7 +68,7 @@ public sealed class MatchResolver(ITmdbService tmdb)
         ParsedName parsed, string language, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(parsed.Title))
-            return MatchOutcome.NotFound("The filename gave nothing to search for.");
+            return MatchOutcome.NotFound(Strings.Get("match.nothingToSearch"));
 
         return parsed.Kind == MediaKind.TvEpisode
             ? await ResolveEpisodeAsync(parsed, language, cancellationToken).ConfigureAwait(false)
@@ -90,7 +91,7 @@ public sealed class MatchResolver(ITmdbService tmdb)
         var metadata = await tmdb.GetMovieAsync(decision.Best.TmdbId, language, cancellationToken)
             .ConfigureAwait(false);
         if (metadata is null)
-            return MatchOutcome.NeedsChoice(decision.Ranked, "TMDB had no details for the best match.");
+            return MatchOutcome.NeedsChoice(decision.Ranked, Strings.Get("match.noDetailsForBest"));
 
         metadata.Resolution = parsed.Resolution;
         return MatchOutcome.Matched(metadata);

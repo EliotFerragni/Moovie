@@ -1,3 +1,5 @@
+using VideoMetadataFiller.Core.Localization;
+
 namespace VideoMetadataFiller.Core.Model;
 
 /// <summary>
@@ -34,14 +36,18 @@ public static class ArtworkKinds
     public static readonly IReadOnlyList<ArtworkKind> ForMovies =
         [ArtworkKind.MoviePoster, ArtworkKind.MovieBackdrop];
 
+    /// <summary>
+    /// How a kind reads on screen. Used by the Settings dropdowns, the picker's captions and the
+    /// preview pane's caption, so it has to be translated like anything else.
+    /// </summary>
     public static string Label(ArtworkKind kind) => kind switch
     {
-        ArtworkKind.EpisodeStill => "Episode still",
-        ArtworkKind.SeasonPoster => "Season poster",
-        ArtworkKind.ShowPoster => "Show poster",
-        ArtworkKind.ShowBackdrop => "Show backdrop",
-        ArtworkKind.MoviePoster => "Poster",
-        ArtworkKind.MovieBackdrop => "Backdrop",
+        ArtworkKind.EpisodeStill => Strings.Get("artwork.episodeStill"),
+        ArtworkKind.SeasonPoster => Strings.Get("artwork.seasonPoster"),
+        ArtworkKind.ShowPoster => Strings.Get("artwork.showPoster"),
+        ArtworkKind.ShowBackdrop => Strings.Get("artwork.showBackdrop"),
+        ArtworkKind.MoviePoster => Strings.Get("artwork.poster"),
+        ArtworkKind.MovieBackdrop => Strings.Get("artwork.backdrop"),
         _ => kind.ToString(),
     };
 

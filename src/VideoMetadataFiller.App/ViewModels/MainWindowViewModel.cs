@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using VideoMetadataFiller.App.Services;
+using VideoMetadataFiller.Core.Localization;
 using VideoMetadataFiller.Core.Matching;
 using VideoMetadataFiller.Core.Model;
 using VideoMetadataFiller.Core.Parsing;
@@ -47,7 +48,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     private string? _banner;
 
     [ObservableProperty]
-    private string _statusSummary = "No files loaded.";
+    private string _statusSummary = Strings.Get("main.noFiles");
 
     public MainWindowViewModel(SettingsStore settingsStore)
     {
@@ -264,7 +265,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
                 item.Parsed = FilenameParser.Parse(item.Path);
                 SeedFromParse(item);
                 item.Status = FileStatus.Pending;
-                item.Message = "Waiting on a TMDB API key. Add one in Settings, then rescan.";
+                item.Message = Strings.Get("main.waitingForKey");
             }
 
             UpdateSummary();
@@ -296,7 +297,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
                     gate.Release();
                     done++;
                     Progress = (double)done / items.Count * 100;
-                    ProgressText = $"Looked up {done} of {items.Count}";
+                    ProgressText = Strings.Format("main.lookedUp", done, items.Count);
                     UpdateSummary();
                 }
             });
@@ -305,7 +306,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
         }
         catch (OperationCanceledException)
         {
-            ProgressText = "Cancelled.";
+            ProgressText = Strings.Get("main.cancelled");
         }
         finally
         {
@@ -490,7 +491,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
                     file.Metadata.TmdbId = candidate.TmdbId;
                     file.Metadata.ArtworkPath = candidate.PosterPath;
                     file.Status = FileStatus.NeedsChoice;
-                    file.Message = "Set the season and episode, then use Refetch.";
+                    file.Message = Strings.Get("pane.setSeasonEpisode");
                     file.RefreshSubtitle();
                     NotifyMetadataChanged(file);
                     return;
@@ -506,7 +507,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
             if (metadata is null)
             {
                 file.Status = FileStatus.NotFound;
-                file.Message = "TMDB has no details for that title.";
+                file.Message = Strings.Get("tmdb.noDetails");
                 return;
             }
 
@@ -588,7 +589,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
 
         if (Settings.RenameEnabled && (!movieTemplate.Validation.IsValid || !tvTemplate.Validation.IsValid))
         {
-            Banner = "Renaming is on but a rename template is invalid. Fix it in Settings, or turn renaming off.";
+            Banner = Strings.Get("main.badTemplate");
             return;
         }
 
@@ -604,7 +605,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
                 token.ThrowIfCancellationRequested();
                 var file = targets[index];
 
-                ProgressText = $"Writing {index + 1} of {targets.Count}: {file.FileName}";
+                ProgressText = Strings.Format("main.writingFile", index + 1, targets.Count, file.FileName);
                 Progress = (double)index / targets.Count * 100;
 
                 if (await ApplyOneAsync(file, movieTemplate, tvTemplate, token))
@@ -614,12 +615,12 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
             }
 
             ProgressText = failed == 0
-                ? $"Done — {written} file(s) written."
-                : $"Done — {written} written, {failed} failed.";
+                ? Strings.Format("main.doneWritten", written)
+                : Strings.Format("main.doneWithFailures", written, failed);
         }
         catch (OperationCanceledException)
         {
-            ProgressText = $"Cancelled after {written} file(s).";
+            ProgressText = Strings.Format("main.cancelledAfter", written);
         }
         finally
         {
@@ -772,7 +773,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     private void UpdateBanner() =>
         Banner = Settings.HasApiKey
             ? null
-            : "No TMDB API key yet. Open Settings and paste your key to start matching files.";
+            : Strings.Get("main.noApiKey");
 
     // ---------------------------------------------------------------- rename previews
 
@@ -810,7 +811,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     {
         if (Files.Count == 0)
         {
-            StatusSummary = "No files loaded.";
+            StatusSummary = Strings.Get("main.noFiles");
             OnPropertyChanged(nameof(HasFiles));
             ApplyCommand.NotifyCanExecuteChanged();
             return;
@@ -823,13 +824,13 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
         var failed = Files.Count(f => f.Status == FileStatus.Failed);
         var applied = Files.Count(f => f.Status == FileStatus.Applied);
 
-        var parts = new List<string> { $"{Files.Count} file(s)" };
-        if (matched > 0) parts.Add($"{matched} ready");
-        if (choose > 0) parts.Add($"{choose} need a choice");
-        if (missing > 0) parts.Add($"{missing} not found");
-        if (waiting > 0) parts.Add($"{waiting} not looked up yet");
-        if (failed > 0) parts.Add($"{failed} failed");
-        if (applied > 0) parts.Add($"{applied} written");
+        var parts = new List<string> { Strings.Format("summary.files", Files.Count) };
+        if (matched > 0) parts.Add(Strings.Format("summary.ready", matched));
+        if (choose > 0) parts.Add(Strings.Format("summary.needChoice", choose));
+        if (missing > 0) parts.Add(Strings.Format("summary.notFound", missing));
+        if (waiting > 0) parts.Add(Strings.Format("summary.notLookedUp", waiting));
+        if (failed > 0) parts.Add(Strings.Format("summary.failed", failed));
+        if (applied > 0) parts.Add(Strings.Format("summary.written", applied));
 
         StatusSummary = string.Join(" · ", parts);
         OnPropertyChanged(nameof(HasFiles));

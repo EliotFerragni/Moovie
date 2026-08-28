@@ -1,5 +1,6 @@
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
+using VideoMetadataFiller.Core.Localization;
 using VideoMetadataFiller.Core.Model;
 
 namespace VideoMetadataFiller.App.ViewModels;
@@ -88,7 +89,7 @@ public sealed partial class FileItemViewModel : ObservableObject
         {
             if (Metadata.Kind == MediaKind.TvEpisode)
             {
-                var show = Metadata.ShowName ?? Parsed?.Title ?? "Unknown show";
+                var show = Metadata.ShowName ?? Parsed?.Title ?? Strings.Get("pane.unknownShow");
                 var number = FormatEpisodeNumber();
                 var title = string.IsNullOrWhiteSpace(Metadata.Title) ? null : $" · {Metadata.Title}";
                 return $"{show}{number}{title}";
@@ -100,7 +101,7 @@ public sealed partial class FileItemViewModel : ObservableObject
             if (Parsed is { Title.Length: > 0 } parsed)
                 return parsed.Year is { } parsedYear ? $"{parsed.Title} ({parsedYear})?" : $"{parsed.Title}?";
 
-            return "Not recognised";
+            return Strings.Get("status.notRecognised");
         }
     }
 

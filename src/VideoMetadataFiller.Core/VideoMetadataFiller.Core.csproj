@@ -6,6 +6,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The interface text. Embedded so a single-file build carries every language with it. -->
+    <EmbeddedResource Include="Localization\*.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="TagLibSharp" Version="2.3.0" />
     <PackageReference Include="TMDbLib" Version="3.0.0" />
   </ItemGroup>

@@ -1,3 +1,4 @@
+using VideoMetadataFiller.Core.Localization;
 using VideoMetadataFiller.Core.Model;
 
 namespace VideoMetadataFiller.Core.Writing;
@@ -19,9 +20,14 @@ public enum TokenValueKind
 public sealed record RenameToken(
     string Name,
     TokenValueKind Kind,
-    string Description,
     MediaKind AppliesTo = MediaKind.Unknown)
 {
+    /// <summary>
+    /// What the token palette shows about this token. Keyed off the name rather than held here,
+    /// so the vocabulary and its translations cannot drift apart.
+    /// </summary>
+    public string Description => Strings.Get($"token.{Name}");
+
     /// <summary>True when this token is meaningful for <paramref name="kind"/>.</summary>
     public bool IsRelevantTo(MediaKind kind) => AppliesTo == MediaKind.Unknown || AppliesTo == kind;
 
@@ -39,22 +45,22 @@ public static class RenameTokens
 {
     public static readonly IReadOnlyList<RenameToken> All =
     [
-        new("title", TokenValueKind.Text, "Movie title, or the episode title for a TV file"),
-        new("originalTitle", TokenValueKind.Text, "Title in the original language"),
-        new("year", TokenValueKind.Number, "Release year"),
-        new("show", TokenValueKind.Text, "Show name", MediaKind.TvEpisode),
-        new("season", TokenValueKind.Number, "Season number", MediaKind.TvEpisode),
-        new("episode", TokenValueKind.Number, "Episode number (a range for multi-episode files)", MediaKind.TvEpisode),
-        new("episodeTitle", TokenValueKind.Text, "Episode title", MediaKind.TvEpisode),
-        new("airDate", TokenValueKind.Date, "Episode air date", MediaKind.TvEpisode),
-        new("releaseDate", TokenValueKind.Date, "Release date"),
-        new("genre", TokenValueKind.Text, "First genre"),
-        new("studio", TokenValueKind.Text, "Production company", MediaKind.Movie),
-        new("network", TokenValueKind.Text, "Broadcast network", MediaKind.TvEpisode),
-        new("resolution", TokenValueKind.Text, "Resolution taken from the original filename"),
-        new("tmdbId", TokenValueKind.Number, "TMDB id"),
-        new("imdbId", TokenValueKind.Text, "IMDb id"),
-        new("ext", TokenValueKind.Text, "File extension (added automatically if you leave it out)"),
+        new("title", TokenValueKind.Text),
+        new("originalTitle", TokenValueKind.Text),
+        new("year", TokenValueKind.Number),
+        new("show", TokenValueKind.Text, MediaKind.TvEpisode),
+        new("season", TokenValueKind.Number, MediaKind.TvEpisode),
+        new("episode", TokenValueKind.Number, MediaKind.TvEpisode),
+        new("episodeTitle", TokenValueKind.Text, MediaKind.TvEpisode),
+        new("airDate", TokenValueKind.Date, MediaKind.TvEpisode),
+        new("releaseDate", TokenValueKind.Date),
+        new("genre", TokenValueKind.Text),
+        new("studio", TokenValueKind.Text, MediaKind.Movie),
+        new("network", TokenValueKind.Text, MediaKind.TvEpisode),
+        new("resolution", TokenValueKind.Text),
+        new("tmdbId", TokenValueKind.Number),
+        new("imdbId", TokenValueKind.Text),
+        new("ext", TokenValueKind.Text),
     ];
 
     private static readonly Dictionary<string, RenameToken> ByName =

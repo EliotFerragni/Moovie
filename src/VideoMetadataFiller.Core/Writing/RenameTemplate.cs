@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using VideoMetadataFiller.Core.Model;
+using VideoMetadataFiller.Core.Localization;
 
 namespace VideoMetadataFiller.Core.Writing;
 
@@ -75,9 +76,9 @@ public sealed class RenameTemplate
         var errors = new List<string>();
 
         if (string.IsNullOrWhiteSpace(text))
-            errors.Add("The template is empty.");
+            errors.Add(Strings.Get("template.empty"));
         if (text.Contains('/') || text.Contains('\\'))
-            errors.Add("The template must not contain a path separator — files are renamed in place.");
+            errors.Add(Strings.Get("template.pathSeparator"));
 
         var nodes = ParseNodes(text, errors);
         return new RenameTemplate(text, nodes, new TemplateValidation(errors));
@@ -185,7 +186,7 @@ public sealed class RenameTemplate
         var token = RenameTokens.Find(name);
         if (token is null)
         {
-            errors.Add($"Unknown token '{{{name}}}'.");
+            errors.Add(Strings.Format("template.unknownToken", "{" + name + "}"));
             return new TextNode(string.Empty);
         }
 

@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:VideoMetadataFiller.App.Localization"
              xmlns:vm="using:VideoMetadataFiller.App.ViewModels"
              x:Class="VideoMetadataFiller.App.Views.PreviewPane"
              x:DataType="vm:PreviewPaneViewModel">
@@ -19,7 +20,7 @@
         <StackPanel VerticalAlignment="Top" Margin="0,0,12,0" IsVisible="{Binding IsSingleSelection}">
           <Button x:Name="ArtworkButton" Classes="artwork"
                   Command="{Binding OpenArtworkPickerCommand}"
-                  ToolTip.Tip="Click to choose different artwork">
+                  ToolTip.Tip="{loc:T artwork.clickToChange}">
             <Border Height="132" MinWidth="88" MaxWidth="220" CornerRadius="5" ClipToBounds="True"
                     Background="{DynamicResource PosterPlaceholder}">
               <Image Source="{Binding Poster}" Stretch="Uniform" />
@@ -31,7 +32,7 @@
             <Ellipse Width="5" Height="5" VerticalAlignment="Center"
                      Fill="{DynamicResource InfoColor}"
                      IsVisible="{Binding IsArtworkUserEdited}"
-                     ToolTip.Tip="You picked this artwork. A refetch goes back to the automatic choice." />
+                     ToolTip.Tip="{loc:T artwork.editedTip}" />
             <TextBlock Text="{Binding ArtworkCaption}" Classes="subtle" FontSize="10"
                        TextWrapping="Wrap" MaxWidth="200" />
           </StackPanel>
@@ -45,11 +46,11 @@
                     CornerRadius="8" Padding="12" Width="520" MaxHeight="430"
                     BoxShadow="0 8 24 0 #40000000">
               <DockPanel>
-                <TextBlock DockPanel.Dock="Top" Text="CHOOSE ARTWORK" Classes="sectionLabel" />
+                <TextBlock DockPanel.Dock="Top" Text="{loc:T artwork.chooseTitle}" Classes="sectionLabel" />
                 <TextBlock DockPanel.Dock="Top" Classes="subtle" FontSize="11" TextWrapping="Wrap"
                            Margin="0,0,0,8"
-                           Text="This is the image embedded into the file when you apply. It is downloaded at the size set in Settings." />
-                <TextBlock DockPanel.Dock="Top" Classes="subtle" Margin="0,4" Text="Loading artwork…"
+                           Text="{loc:T artwork.chooseBlurb}" />
+                <TextBlock DockPanel.Dock="Top" Classes="subtle" Margin="0,4" Text="{loc:T artwork.loading}"
                            IsVisible="{Binding IsLoadingArtwork}" />
                 <TextBlock DockPanel.Dock="Top" Classes="subtle" Margin="0,4" TextWrapping="Wrap"
                            Text="{Binding ArtworkMessage}" IsVisible="{Binding HasArtworkMessage}" />
@@ -104,18 +105,18 @@
           <!-- Wraps rather than stacks: three controls and a label overflow a narrow pane. -->
           <WrapPanel Orientation="Horizontal" Margin="0,6,0,0"
                      IsVisible="{Binding HasSelection}">
-            <TextBlock Text="Language" Classes="subtle" VerticalAlignment="Center"
+            <TextBlock Text="{loc:T pane.language}" Classes="subtle" VerticalAlignment="Center"
                        Margin="0,0,8,4" />
             <ComboBox ItemsSource="{Binding Languages}"
                       SelectedItem="{Binding SelectedLanguage}"
                       PlaceholderText="{Binding LanguagePlaceholder}"
                       MinWidth="150" Margin="0,0,8,4"
-                      ToolTip.Tip="The language to fetch in. Applies to every selected file; press Refetch to pull the metadata again in it." />
-            <Button Content="Refetch" Command="{Binding RefetchCommand}" Margin="0,0,8,4"
-                    ToolTip.Tip="Fetch the selected files' metadata again, keeping anything you have edited by hand." />
-            <Button Content="Discard edits" Command="{Binding DiscardEditsCommand}" Margin="0,0,0,4"
+                      ToolTip.Tip="{loc:T pane.languageTip}" />
+            <Button Content="{loc:T pane.refetch}" Command="{Binding RefetchCommand}" Margin="0,0,8,4"
+                    ToolTip.Tip="{loc:T pane.refetchTip}" />
+            <Button Content="{loc:T pane.discard}" Command="{Binding DiscardEditsCommand}" Margin="0,0,0,4"
                     IsEnabled="{Binding HasManualChanges}"
-                    ToolTip.Tip="Put everything back to what TMDB returned, including the type and the artwork. Nothing is downloaded again." />
+                    ToolTip.Tip="{loc:T pane.discardTip}" />
           </WrapPanel>
         </StackPanel>
       </Grid>
@@ -126,7 +127,7 @@
                HorizontalAlignment="Center" VerticalAlignment="Center"
                TextAlignment="Center" TextWrapping="Wrap"
                IsVisible="{Binding !HasSelection}"
-               Text="Select a file to review its metadata.&#x0a;&#x0a;Select several to edit the fields they have in common." />
+               Text="{loc:T pane.selectToReview}" />
 
     <!--
       The inset is a margin on the content, not padding on the ScrollViewer: padding is left out
@@ -143,7 +144,7 @@
 
         <!-- Candidate chooser: resolves an ambiguous match -->
         <StackPanel IsVisible="{Binding HasCandidates}" Margin="0,0,0,12">
-          <TextBlock Text="CHOOSE A TITLE" Classes="sectionLabel" />
+          <TextBlock Text="{loc:T pane.chooseTitle}" Classes="sectionLabel" />
           <ItemsControl ItemsSource="{Binding Candidates}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:CandidateViewModel">
@@ -171,7 +172,7 @@
                       </StackPanel>
                     </StackPanel>
 
-                    <Button Grid.Column="2" Content="Use this" VerticalAlignment="Center"
+                    <Button Grid.Column="2" Content="{loc:T pane.useThis}" VerticalAlignment="Center"
                             Margin="10,0,0,0"
                             Command="{Binding $parent[ItemsControl].((vm:PreviewPaneViewModel)DataContext).ChooseCommand}"
                             CommandParameter="{Binding}" />
@@ -183,18 +184,18 @@
         </StackPanel>
 
         <!-- Manual search, for names the parser could not make sense of -->
-        <Expander Header="Search TMDB by hand" Margin="0,0,0,12"
+        <Expander Header="{loc:T pane.searchByHand}" Margin="0,0,0,12"
                   IsVisible="{Binding HasSelection}"
-                  ToolTip.Tip="With several files selected, the title you pick is applied to all of them. Each keeps its own season and episode.">
+                  ToolTip.Tip="{loc:T pane.searchByHandTip}">
           <StackPanel Spacing="8" Margin="0,6,0,0">
             <Grid ColumnDefinitions="*,Auto">
-              <TextBox Text="{Binding SearchText}" Watermark="Title to search for" />
-              <Button Grid.Column="1" Content="Search" Margin="6,0,0,0"
+              <TextBox Text="{Binding SearchText}" Watermark="{loc:T pane.searchWatermark}" />
+              <Button Grid.Column="1" Content="{loc:T pane.search}" Margin="6,0,0,0"
                       Command="{Binding SearchCommand}" IsEnabled="{Binding !IsSearching}" />
             </Grid>
             <Grid ColumnDefinitions="*,Auto">
-              <TextBox Text="{Binding TmdbIdText}" Watermark="…or paste a TMDB id" />
-              <Button Grid.Column="1" Content="Use id" Margin="6,0,0,0"
+              <TextBox Text="{Binding TmdbIdText}" Watermark="{loc:T pane.idWatermark}" />
+              <Button Grid.Column="1" Content="{loc:T pane.useId}" Margin="6,0,0,0"
                       Command="{Binding ApplyTmdbIdCommand}" IsEnabled="{Binding !IsSearching}" />
             </Grid>
             <TextBlock Text="{Binding SearchMessage}" Classes="subtle" TextWrapping="Wrap" />
@@ -203,11 +204,11 @@
 
         <!-- Movie / TV toggle -->
         <StackPanel Orientation="Horizontal" Spacing="5">
-          <TextBlock Text="TYPE" Classes="sectionLabel" />
+          <TextBlock Text="{loc:T pane.type}" Classes="sectionLabel" />
           <Ellipse Width="5" Height="5" VerticalAlignment="Center" Margin="0,0,0,4"
                    Fill="{DynamicResource InfoColor}"
                    IsVisible="{Binding IsKindUserEdited}"
-                   ToolTip.Tip="You set the type by hand. A refetch will keep it." />
+                   ToolTip.Tip="{loc:T pane.typeEditedTip}" />
         </StackPanel>
         <ListBox SelectedIndex="{Binding KindIndex}" Margin="0,0,0,14"
                  HorizontalAlignment="Left">
@@ -216,12 +217,12 @@
               <StackPanel Orientation="Horizontal" />
             </ItemsPanelTemplate>
           </ListBox.ItemsPanel>
-          <ListBoxItem Content="Movie" />
-          <ListBoxItem Content="TV episode" />
+          <ListBoxItem Content="{loc:T pane.movie}" />
+          <ListBoxItem Content="{loc:T pane.tvEpisode}" />
         </ListBox>
 
         <!-- The metadata form. One template drives every field; see FieldEditor. -->
-        <TextBlock Text="METADATA" Classes="sectionLabel" />
+        <TextBlock Text="{loc:T pane.metadata}" Classes="sectionLabel" />
         <ItemsControl ItemsSource="{Binding Fields}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:FieldEditor">
@@ -234,12 +235,12 @@
                            VerticalAlignment="Center"
                            Fill="{DynamicResource InfoColor}"
                            IsVisible="{Binding IsUserEdited}"
-                           ToolTip.Tip="You edited this field. A refetch will keep it." />
+                           ToolTip.Tip="{loc:T pane.fieldEditedTip}" />
 
-                  <TextBlock Grid.Column="2" Text="filled in from English" Classes="subtle"
+                  <TextBlock Grid.Column="2" Text="{loc:T pane.filledFromEnglish}" Classes="subtle"
                              FontSize="11" HorizontalAlignment="Right"
                              IsVisible="{Binding IsFallback}"
-                             ToolTip.Tip="TMDB has no translation for this field in the chosen language." />
+                             ToolTip.Tip="{loc:T pane.filledFromEnglishTip}" />
                 </Grid>
 
                 <TextBox Text="{Binding Value}" Watermark="{Binding Watermark}"

@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using VideoMetadataFiller.Core.Localization;
 using VideoMetadataFiller.Core.Model;
 using VideoMetadataFiller.Core.Settings;
 using VideoMetadataFiller.Core.Tmdb;
@@ -45,6 +46,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     private string _artworkSize;
 
     [ObservableProperty]
+    private LanguageChoice _appLanguage;
+
+    [ObservableProperty]
     private ArtworkKindChoice _tvArtwork;
 
     [ObservableProperty]
@@ -53,7 +57,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private bool _createBackup;
 
-    /// <summary>Result of the "Test key" button.</summary>
+    /// <summary>Result of the Strings.Get("settings.testKey") button.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasKeyStatus))]
     private string? _keyStatus;
@@ -72,16 +76,17 @@ public sealed partial class SettingsViewModel : ObservableObject
         _renameEnabled = settings.RenameEnabled;
         _artworkSize = settings.ArtworkSize;
         _createBackup = settings.CreateBackup;
+        _appLanguage = AppLanguages.FirstOrDefault(l => l.Tag == settings.AppLanguage) ?? AppLanguages[0];
         _tvArtwork = TvArtworkKinds.First(c => c.Kind == settings.TvArtwork);
         _movieArtwork = MovieArtworkKinds.First(c => c.Kind == settings.MovieArtwork);
         _separator = Separators.FirstOrDefault(s => s.Style == settings.Separator) ?? Separators[0];
 
         MovieTemplate = new RenameTemplateEditorViewModel(
-            "Movies", MediaKind.Movie, settings.MovieRenameTemplate, AppSettings.DefaultMovieTemplate,
+            Strings.Get("settings.movies"), MediaKind.Movie, settings.MovieRenameTemplate, AppSettings.DefaultMovieTemplate,
             RenameEngine.SampleMovie, settings.Separator);
 
         TvTemplate = new RenameTemplateEditorViewModel(
-            "TV shows", MediaKind.TvEpisode, settings.TvRenameTemplate, AppSettings.DefaultTvTemplate,
+            Strings.Get("settings.tvShows"), MediaKind.TvEpisode, settings.TvRenameTemplate, AppSettings.DefaultTvTemplate,
             RenameEngine.SampleEpisode, settings.Separator);
     }
 
@@ -93,14 +98,17 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     public IReadOnlyList<SeparatorChoice> Separators { get; } =
     [
-        new(SeparatorStyle.Space, "Spaces  —  Blade Runner (2017).mp4"),
-        new(SeparatorStyle.Dot, "Dots  —  Blade.Runner.(2017).mp4"),
-        new(SeparatorStyle.Underscore, "Underscores  —  Blade_Runner_(2017).mp4"),
-        new(SeparatorStyle.Dash, "Dashes  —  Blade-Runner-(2017).mp4"),
+        new(SeparatorStyle.Space, Strings.Get("settings.sepSpace")),
+        new(SeparatorStyle.Dot, Strings.Get("settings.sepDot")),
+        new(SeparatorStyle.Underscore, Strings.Get("settings.sepUnderscore")),
+        new(SeparatorStyle.Dash, Strings.Get("settings.sepDash")),
     ];
 
     /// <summary>TMDB image widths, largest first. Bigger artwork means bigger files.</summary>
     public IReadOnlyList<string> ArtworkSizes { get; } = ["original", "w780", "w500", "w342", "w185"];
+
+    /// <summary>Languages this window and the rest of the interface can be shown in.</summary>
+    public IReadOnlyList<LanguageChoice> AppLanguages { get; } = Strings.Available;
 
     public IReadOnlyList<ArtworkKindChoice> TvArtworkKinds { get; } =
         [.. ArtworkKinds.ForTv.Select(ArtworkKindChoice.For)];
@@ -113,7 +121,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// <summary>Templates must parse before the dialog can be saved.</summary>
     public bool CanSave => !MovieTemplate.HasErrors && !TvTemplate.HasErrors;
 
-    public string SettingsFileNote { get; } = $"Settings are stored in {SettingsStore.DefaultFilePath()}";
+    public string SettingsFileNote { get; } = Strings.Format("settings.storedIn", SettingsStore.DefaultFilePath());
 
     /// <summary>Checks the key against TMDB so a typo is caught here rather than on every file.</summary>
     [RelayCommand]
@@ -121,7 +129,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(ApiKey))
         {
-            KeyStatus = "Enter a key first.";
+            KeyStatus = Strings.Get("settings.enterKeyFirst");
             KeyIsValid = false;
             return;
         }
@@ -133,7 +141,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             using var probe = new TmdbService(ApiKey.Trim());
             var failure = await probe.ValidateApiKeyAsync();
             KeyIsValid = failure is null;
-            KeyStatus = failure ?? "That key works.";
+            KeyStatus = failure ?? Strings.Get("settings.keyWorks");
         }
         catch (Exception e)
         {
@@ -161,6 +169,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         settings.Language = Language.Tag;
         settings.RenameEnabled = RenameEnabled;
         settings.Separator = Separator.Style;
+        settings.AppLanguage = AppLanguage.Tag;
         settings.ArtworkSize = ArtworkSize;
         settings.TvArtwork = TvArtwork.Kind;
         settings.MovieArtwork = MovieArtwork.Kind;

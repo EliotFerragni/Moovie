@@ -3,6 +3,7 @@ using TagLib;
 using TagLib.Mpeg4;
 using VideoMetadataFiller.Core.Model;
 using File = TagLib.File;
+using VideoMetadataFiller.Core.Localization;
 
 namespace VideoMetadataFiller.Core.Writing;
 
@@ -30,7 +31,7 @@ public sealed class Mp4TagWriter
     public void Write(string path, MediaMetadata metadata, bool createBackup = false)
     {
         if (!System.IO.File.Exists(path))
-            throw new TagWriteException("The file no longer exists.");
+            throw new TagWriteException(Strings.Get("write.missing"));
         if (!IsSupported(path))
             throw new TagWriteException($"{Path.GetExtension(path)} files are not supported — only MP4 and M4V.");
 
@@ -41,7 +42,7 @@ public sealed class Mp4TagWriter
         {
             using var file = File.Create(path);
             if (file.GetTag(TagTypes.Apple, create: true) is not AppleTag tag)
-                throw new TagWriteException("The file has no MP4 metadata section and one could not be created.");
+                throw new TagWriteException(Strings.Get("write.noMetadataSection"));
 
             Apply(tag, metadata);
             file.Save();
@@ -52,15 +53,15 @@ public sealed class Mp4TagWriter
         }
         catch (CorruptFileException e)
         {
-            throw new TagWriteException("The file's structure is damaged and cannot be tagged.", e);
+            throw new TagWriteException(Strings.Get("write.damaged"), e);
         }
         catch (UnsupportedFormatException e)
         {
-            throw new TagWriteException("The file is not a container this app can tag.", e);
+            throw new TagWriteException(Strings.Get("write.notTaggable"), e);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            throw new TagWriteException($"The file could not be written: {e.Message}", e);
+            throw new TagWriteException(Strings.Format("write.failed", e.Message), e);
         }
 
         Verify(path, metadata);
@@ -90,7 +91,7 @@ public sealed class Mp4TagWriter
         }
         catch (Exception e)
         {
-            throw new TagWriteException($"The file could not be re-read after tagging: {e.Message}", e);
+            throw new TagWriteException(Strings.Format("write.rereadFailed", e.Message), e);
         }
     }
 

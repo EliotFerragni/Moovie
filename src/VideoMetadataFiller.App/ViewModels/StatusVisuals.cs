@@ -1,4 +1,5 @@
 using Avalonia.Media;
+using VideoMetadataFiller.Core.Localization;
 using VideoMetadataFiller.Core.Model;
 
 namespace VideoMetadataFiller.App.ViewModels;
@@ -79,15 +80,15 @@ public static class StatusVisuals
     /// <summary>Tooltip text for a status.</summary>
     public static string DescriptionFor(FileStatus status) => status switch
     {
-        FileStatus.Pending => "Waiting to be looked up",
-        FileStatus.Searching => "Looking this up on TMDB",
-        FileStatus.Matched => "Matched automatically",
-        FileStatus.NeedsChoice => "Needs you to choose",
-        FileStatus.NotFound => "Nothing on TMDB matches",
-        FileStatus.Edited => "Edited by you, ready to apply",
-        FileStatus.Applying => "Writing tags",
-        FileStatus.Applied => "Tags written",
-        FileStatus.Failed => "Something went wrong",
+        FileStatus.Pending => Strings.Get("status.pending"),
+        FileStatus.Searching => Strings.Get("status.searching"),
+        FileStatus.Matched => Strings.Get("status.matched"),
+        FileStatus.NeedsChoice => Strings.Get("status.needsChoice"),
+        FileStatus.NotFound => Strings.Get("status.notFound"),
+        FileStatus.Edited => Strings.Get("status.edited"),
+        FileStatus.Applying => Strings.Get("status.applying"),
+        FileStatus.Applied => Strings.Get("status.applied"),
+        FileStatus.Failed => Strings.Get("status.failed"),
         _ => string.Empty,
     };
 }

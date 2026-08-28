@@ -116,7 +116,15 @@ season is one search rather than 24.
 
 ## Languages
 
-Set a default metadata language in Settings. Any single file can be switched to a different
+Two separate languages, and deliberately so: wanting a French interface with English metadata,
+or the reverse, is a perfectly ordinary thing to want.
+
+**The interface** is English, French, German or Italian, set in Settings, and follows the
+operating system by default. It is applied at startup, so changing it asks for a restart —
+the setting says as much. A translation missing a phrase falls back to English rather than
+leaving a hole.
+
+**The metadata** language is what gets fetched from TMDB. Set a default in Settings. Any single file can be switched to a different
 language in the preview pane and refetched — useful when a title has no translation in your
 usual language.
 
@@ -126,6 +134,11 @@ Two things make this safe:
   dot, and a refetch writes over everything except those.
 - When TMDB has no translation for a field, it is filled from English and labelled
   *filled in from English*, so a blank-looking translation is never a mystery.
+
+Adding a language means dropping a `<tag>.json` next to
+`src/VideoMetadataFiller.Core/Localization/en.json`, translating the values and listing the tag
+in `Strings.Available`. A test fails if any translation drifts from the English key set or
+loses a `{0}` placeholder. The TMDB language names in the metadata dropdown stay in English.
 
 ---
 

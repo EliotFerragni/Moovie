@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:VideoMetadataFiller.App.Localization"
         xmlns:vm="using:VideoMetadataFiller.App.ViewModels"
         xmlns:views="using:VideoMetadataFiller.App.Views"
         x:Class="VideoMetadataFiller.App.Views.MainWindow"
@@ -37,22 +38,22 @@
     <Border Grid.Row="0" Classes="toolbar" Padding="12,9">
       <Grid ColumnDefinitions="Auto,*,Auto">
         <StackPanel Orientation="Horizontal" Spacing="6">
-          <Button Content="Add files…" Command="{Binding AddFilesCommand}" />
-          <Button Content="Add folder…" Command="{Binding AddFolderCommand}" />
+          <Button Content="{loc:T main.addFiles}" Command="{Binding AddFilesCommand}" />
+          <Button Content="{loc:T main.addFolder}" Command="{Binding AddFolderCommand}" />
           <Rectangle Width="1" Margin="4,3" Fill="{DynamicResource PanelBorder}" />
-          <Button Content="Rescan selected" Command="{Binding RescanSelectedCommand}" />
-          <Button Content="Rescan all" Command="{Binding RescanAllCommand}" />
+          <Button Content="{loc:T main.rescanSelected}" Command="{Binding RescanSelectedCommand}" />
+          <Button Content="{loc:T main.rescanAll}" Command="{Binding RescanAllCommand}" />
           <Rectangle Width="1" Margin="4,3" Fill="{DynamicResource PanelBorder}" />
-          <Button Content="Remove" Command="{Binding RemoveSelectedCommand}" />
-          <Button Content="Clear" Command="{Binding ClearAllCommand}" />
+          <Button Content="{loc:T main.remove}" Command="{Binding RemoveSelectedCommand}" />
+          <Button Content="{loc:T main.clear}" Command="{Binding ClearAllCommand}" />
         </StackPanel>
 
         <TextBlock Grid.Column="1" Text="Video Metadata Filler" Classes="h1"
                    HorizontalAlignment="Center" VerticalAlignment="Center" />
 
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
-          <Button Content="About" Command="{Binding OpenAboutCommand}" />
-          <Button Content="Settings…" Command="{Binding OpenSettingsCommand}" />
+          <Button Content="{loc:T main.about}" Command="{Binding OpenAboutCommand}" />
+          <Button Content="{loc:T main.settings}" Command="{Binding OpenSettingsCommand}" />
         </StackPanel>
       </Grid>
     </Border>
@@ -62,7 +63,7 @@
             Padding="12,9">
       <Grid ColumnDefinitions="*,Auto">
         <TextBlock Text="{Binding Banner}" TextWrapping="Wrap" VerticalAlignment="Center" />
-        <Button Grid.Column="1" Content="Open Settings" Margin="12,0,0,0"
+        <Button Grid.Column="1" Content="{loc:T main.openSettings}" Margin="12,0,0,0"
                 Command="{Binding OpenSettingsCommand}" />
       </Grid>
     </Border>
@@ -75,7 +76,7 @@
           <Border Padding="12,10" BorderThickness="0,0,0,1"
                   BorderBrush="{DynamicResource PanelBorder}">
             <Grid ColumnDefinitions="*,Auto">
-              <TextBlock Text="FILES" Classes="sectionLabel" Margin="0" VerticalAlignment="Center" />
+              <TextBlock Text="{loc:T main.files}" Classes="sectionLabel" Margin="0" VerticalAlignment="Center" />
               <TextBlock Grid.Column="1" Text="{Binding StatusSummary}" Classes="subtle"
                          VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
             </Grid>
@@ -118,7 +119,7 @@
                      HorizontalAlignment="Center" VerticalAlignment="Center"
                      TextAlignment="Center" TextWrapping="Wrap"
                      IsVisible="{Binding !HasFiles}"
-                     Text="Drop MP4 or M4V files here.&#x0a;&#x0a;Folders are searched through, so you can drop a whole season at once." />
+                     Text="{loc:T main.dropHint}" />
         </Grid>
       </Border>
 
@@ -133,7 +134,7 @@
     <!-- Bottom bar -->
     <Border Grid.Row="3" Classes="toolbar" BorderThickness="0,1,0,0" Padding="12,10">
       <Grid ColumnDefinitions="Auto,*,Auto">
-        <CheckBox Content="Rename files as well" IsChecked="{Binding RenameEnabled}"
+        <CheckBox Content="{loc:T main.renameToo}" IsChecked="{Binding RenameEnabled}"
                   VerticalAlignment="Center" />
 
         <StackPanel Grid.Column="1" Margin="16,0" VerticalAlignment="Center"
@@ -143,9 +144,9 @@
         </StackPanel>
 
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
-          <Button Content="Cancel" Command="{Binding CancelCommand}"
+          <Button Content="{loc:T main.cancel}" Command="{Binding CancelCommand}"
                   IsVisible="{Binding IsBusy}" />
-          <Button Content="Apply to all ready files" Command="{Binding ApplyCommand}"
+          <Button Content="{loc:T main.applyAll}" Command="{Binding ApplyCommand}"
                   Classes="accent" IsDefault="True" />
         </StackPanel>
       </Grid>

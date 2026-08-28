@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using VideoMetadataFiller.Core.Localization;
 using VideoMetadataFiller.Core.Model;
 
 namespace VideoMetadataFiller.App.ViewModels;
@@ -27,7 +28,7 @@ public enum FieldScope
 public sealed partial class FieldEditor : ObservableObject
 {
     /// <summary>Shown instead of a value when the selected files disagree.</summary>
-    public const string MultipleValuesWatermark = "— multiple values —";
+    public static string MultipleValuesWatermark => Strings.Get("pane.multipleValues");
 
     private readonly Func<MediaMetadata, string?> _read;
     private readonly Action<MediaMetadata, string?> _write;
