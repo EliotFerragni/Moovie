@@ -167,6 +167,16 @@
     <Setter Property="BorderBrush" Value="{DynamicResource InfoColor}" />
   </Style>
 
+  <!--
+    A field the user typed into. The dot beside the label is easy to miss on a long form, so the
+    box itself is outlined too. Targets the template part because the Fluent TextBox paints its
+    own border and would otherwise win.
+  -->
+  <Style Selector="TextBox.edited /template/ Border#PART_BorderElement">
+    <Setter Property="BorderBrush" Value="{DynamicResource InfoColor}" />
+    <Setter Property="BorderThickness" Value="1.5" />
+  </Style>
+
   <Style Selector="Border.candidate">
     <Setter Property="Background" Value="{DynamicResource PanelBackground}" />
     <Setter Property="BorderBrush" Value="{DynamicResource PanelBorder}" />

@@ -88,6 +88,20 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
 
         file.Metadata.ArtworkPath = artworkPath;
         file.Metadata.ArtworkData = null;
+        file.MarkFieldEdited(nameof(MediaMetadata.ArtworkPath));
+        NotifyMetadataChanged(file);
+    }
+
+    /// <summary>
+    /// Puts a file back to exactly what TMDB returned, from the copy kept at fetch time, so this
+    /// costs no request and works offline.
+    /// </summary>
+    public void DiscardManualChanges(FileItemViewModel file)
+    {
+        if (!file.DiscardManualChanges())
+            return;
+
+        file.Status = FileStatus.Matched;
         NotifyMetadataChanged(file);
     }
 
@@ -375,6 +389,10 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
         if (outcome.Metadata is not null)
         {
             ApplyArtworkPreference(outcome.Metadata);
+            item.RememberFetched(outcome.Metadata);
+
+            // A hand-picked image does not survive a fetch, so it stops counting as an edit.
+            item.ClearFieldEdit(nameof(MediaMetadata.ArtworkPath));
 
             // Anything the user typed by hand outranks what TMDB just returned.
             item.Metadata = MergeKeepingUserEdits(item, outcome.Metadata);
@@ -491,6 +509,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
 
             metadata.Resolution = file.Metadata.Resolution ?? file.Parsed?.Resolution;
             ApplyArtworkPreference(metadata);
+            file.RememberFetched(metadata);
+            file.ClearFieldEdit(nameof(MediaMetadata.ArtworkPath));
             file.Metadata = MergeKeepingUserEdits(file, metadata);
             file.Status = file.UserEditedFields.Count > 0 ? FileStatus.Edited : FileStatus.Matched;
             file.Message = null;
@@ -715,6 +735,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
 
             file.Metadata.ArtworkPath = resolved;
             file.Metadata.ArtworkData = null;
+            file.ClearFieldEdit(nameof(MediaMetadata.ArtworkPath));
         }
     }
 

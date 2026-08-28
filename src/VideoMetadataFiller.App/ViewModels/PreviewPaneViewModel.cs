@@ -54,6 +54,17 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasArtworkCaption))]
     private string? _artworkCaption;
 
+    /// <summary>The Type toggle and the artwork are not fields, so they carry their own markers.</summary>
+    [ObservableProperty]
+    private bool _isKindUserEdited;
+
+    [ObservableProperty]
+    private bool _isArtworkUserEdited;
+
+    /// <summary>Whether anything in the selection was changed by hand, enabling Discard.</summary>
+    [ObservableProperty]
+    private bool _hasManualChanges;
+
     [ObservableProperty]
     private bool _isArtworkPickerOpen;
 
@@ -152,6 +163,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
         ArtworkChoices.Clear();
         ArtworkMessage = null;
 
+        UpdateEditMarkers();
         _ = LoadPosterAsync();
     }
 
@@ -354,6 +366,26 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
             choice.Thumbnail = await _artwork.LoadAsync(_lookup.Tmdb, choice.Path, ArtworkLoader.ThumbnailSize);
     }
 
+    private void UpdateEditMarkers()
+    {
+        IsKindUserEdited = _selection.Any(f => f.IsFieldUserEdited(nameof(MediaMetadata.Kind)));
+        IsArtworkUserEdited = _selection.Any(f => f.IsFieldUserEdited(nameof(MediaMetadata.ArtworkPath)));
+        HasManualChanges = _selection.Any(f => f.HasManualChanges);
+    }
+
+    /// <summary>
+    /// Puts the selection back to what TMDB returned. Restores from the copy taken at fetch time
+    /// rather than fetching again, so it is instant and works with no network.
+    /// </summary>
+    [RelayCommand]
+    private void DiscardEdits()
+    {
+        foreach (var file in _selection.ToList())
+            _lookup.DiscardManualChanges(file);
+
+        Refresh();
+    }
+
     [RelayCommand]
     private void CloseArtworkPicker() => IsArtworkPickerOpen = false;
 
@@ -368,6 +400,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
         foreach (var other in ArtworkChoices)
             other.IsCurrent = ReferenceEquals(other, choice);
 
+        UpdateEditMarkers();
         IsArtworkPickerOpen = false;
         _ = LoadPosterAsync();
     }
@@ -497,6 +530,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
         {
             file.MarkFieldEdited(key);
             _lookup.NotifyMetadataChanged(file);
+            UpdateEditMarkers();
         }
 
         return

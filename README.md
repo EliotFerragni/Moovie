@@ -36,6 +36,12 @@ The left pane lists your files, each with a status icon:
 
 The right pane previews and edits the metadata for whatever is selected.
 
+Anything you change by hand is marked: the field is outlined and gets a dot beside its label,
+and the same dot appears next to **Type** and the artwork, neither of which is a form field.
+**Discard edits** puts the whole selection back to what TMDB returned — fields, type and
+artwork alike. It restores a copy kept from the last fetch, so it is instant and needs no
+network, unlike **Refetch**, which goes back to TMDB and deliberately *keeps* your edits.
+
 **Selecting several files at once** shows the fields they have in common: a field where they
 all agree shows that value, and one where they differ shows `— multiple values —`. Typing
 into any field applies it to every selected file. Fields that are inherently per-file — the

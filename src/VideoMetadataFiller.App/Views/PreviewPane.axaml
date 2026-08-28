@@ -26,9 +26,15 @@
             </Border>
           </Button>
 
-          <TextBlock Text="{Binding ArtworkCaption}" Classes="subtle" FontSize="10"
-                     Margin="0,4,0,0" TextWrapping="Wrap" MaxWidth="220"
-                     IsVisible="{Binding HasArtworkCaption}" />
+          <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,4,0,0"
+                      IsVisible="{Binding HasArtworkCaption}">
+            <Ellipse Width="5" Height="5" VerticalAlignment="Center"
+                     Fill="{DynamicResource InfoColor}"
+                     IsVisible="{Binding IsArtworkUserEdited}"
+                     ToolTip.Tip="You picked this artwork. A refetch goes back to the automatic choice." />
+            <TextBlock Text="{Binding ArtworkCaption}" Classes="subtle" FontSize="10"
+                       TextWrapping="Wrap" MaxWidth="200" />
+          </StackPanel>
 
           <Popup IsOpen="{Binding IsArtworkPickerOpen, Mode=TwoWay}"
                  PlacementTarget="{Binding #ArtworkButton}"
@@ -95,16 +101,21 @@
           <TextBlock Text="{Binding HeaderTitle}" Classes="h2" TextWrapping="Wrap" />
           <TextBlock Text="{Binding HeaderSubtitle}" Classes="subtle" TextWrapping="Wrap" />
 
-          <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,0"
-                      IsVisible="{Binding HasSelection}">
-            <TextBlock Text="Language" Classes="subtle" VerticalAlignment="Center" />
+          <!-- Wraps rather than stacks: three controls and a label overflow a narrow pane. -->
+          <WrapPanel Orientation="Horizontal" Margin="0,6,0,0"
+                     IsVisible="{Binding HasSelection}">
+            <TextBlock Text="Language" Classes="subtle" VerticalAlignment="Center"
+                       Margin="0,0,8,4" />
             <ComboBox ItemsSource="{Binding Languages}"
                       SelectedItem="{Binding SelectedLanguage}"
                       IsEnabled="{Binding IsSingleSelection}"
-                      MinWidth="180" />
-            <Button Content="Refetch" Command="{Binding RefetchCommand}"
+                      MinWidth="150" Margin="0,0,8,4" />
+            <Button Content="Refetch" Command="{Binding RefetchCommand}" Margin="0,0,8,4"
                     ToolTip.Tip="Fetch this file's metadata again, keeping anything you have edited by hand." />
-          </StackPanel>
+            <Button Content="Discard edits" Command="{Binding DiscardEditsCommand}" Margin="0,0,0,4"
+                    IsEnabled="{Binding HasManualChanges}"
+                    ToolTip.Tip="Put everything back to what TMDB returned, including the type and the artwork. Nothing is downloaded again." />
+          </WrapPanel>
         </StackPanel>
       </Grid>
     </Border>
@@ -184,7 +195,13 @@
         </Expander>
 
         <!-- Movie / TV toggle -->
-        <TextBlock Text="TYPE" Classes="sectionLabel" />
+        <StackPanel Orientation="Horizontal" Spacing="5">
+          <TextBlock Text="TYPE" Classes="sectionLabel" />
+          <Ellipse Width="5" Height="5" VerticalAlignment="Center" Margin="0,0,0,4"
+                   Fill="{DynamicResource InfoColor}"
+                   IsVisible="{Binding IsKindUserEdited}"
+                   ToolTip.Tip="You set the type by hand. A refetch will keep it." />
+        </StackPanel>
         <ListBox SelectedIndex="{Binding KindIndex}" Margin="0,0,0,14"
                  HorizontalAlignment="Left">
           <ListBox.ItemsPanel>
@@ -220,10 +237,12 @@
 
                 <TextBox Text="{Binding Value}" Watermark="{Binding Watermark}"
                          IsReadOnly="{Binding !IsEditable}"
+                         Classes.edited="{Binding IsUserEdited}"
                          IsVisible="{Binding !IsMultiline}" />
 
                 <TextBox Text="{Binding Value}" Watermark="{Binding Watermark}"
                          IsReadOnly="{Binding !IsEditable}"
+                         Classes.edited="{Binding IsUserEdited}"
                          IsVisible="{Binding IsMultiline}"
                          AcceptsReturn="True" TextWrapping="Wrap" Height="96" />
 

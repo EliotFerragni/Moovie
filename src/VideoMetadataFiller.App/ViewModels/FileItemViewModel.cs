@@ -125,14 +125,58 @@ public sealed partial class FileItemViewModel : ObservableObject
             Status = FileStatus.Edited;
         Message = null;
         RefreshSubtitle();
+        OnPropertyChanged(nameof(HasManualChanges));
     }
 
     public bool IsFieldUserEdited(string fieldName) => _userEditedFields.Contains(fieldName);
 
     public IReadOnlyCollection<string> UserEditedFields => _userEditedFields;
 
+    /// <summary>Whether anything on this file was changed by hand and could be discarded.</summary>
+    public bool HasManualChanges => _userEditedFields.Count > 0;
+
+    /// <summary>
+    /// Forgets one hand-edit, for a change that a fresh fetch has already undone. Artwork is the
+    /// case that matters: a hand-picked image is deliberately not carried across a refetch, so
+    /// leaving it marked would show the file as edited when nothing of the user's survives.
+    /// </summary>
+    public void ClearFieldEdit(string fieldName)
+    {
+        if (_userEditedFields.Remove(fieldName))
+            OnPropertyChanged(nameof(HasManualChanges));
+    }
+
     /// <summary>Forgets the hand-edit history, e.g. after the user picks a different title outright.</summary>
-    public void ClearUserEdits() => _userEditedFields.Clear();
+    public void ClearUserEdits()
+    {
+        _userEditedFields.Clear();
+        OnPropertyChanged(nameof(HasManualChanges));
+    }
+
+    /// <summary>
+    /// The metadata exactly as TMDB last returned it, before any hand edits were laid over the
+    /// top. Kept so those edits can be discarded without going back to the network.
+    /// </summary>
+    public MediaMetadata? FetchedMetadata { get; private set; }
+
+    /// <summary>Takes a fresh TMDB result, remembering it as the thing edits can be undone back to.</summary>
+    public void RememberFetched(MediaMetadata fetched) => FetchedMetadata = fetched.Clone();
+
+    /// <summary>
+    /// Throws away every hand edit and goes back to what TMDB returned. Returns false when there
+    /// is nothing to go back to, which is the case for a file that never matched.
+    /// </summary>
+    public bool DiscardManualChanges()
+    {
+        if (FetchedMetadata is null)
+            return false;
+
+        Metadata = FetchedMetadata.Clone();
+        ClearUserEdits();
+        Message = null;
+        RefreshSubtitle();
+        return true;
+    }
 
     /// <summary>The metadata object changed in place, so tell the UI to re-read the derived text.</summary>
     public void RefreshSubtitle() => OnPropertyChanged(nameof(Subtitle));

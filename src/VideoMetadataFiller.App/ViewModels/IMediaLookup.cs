@@ -30,6 +30,9 @@ public interface IMediaLookup
     /// <summary>Applies an artwork the user picked by hand, replacing whatever was chosen for them.</summary>
     void SetArtwork(FileItemViewModel file, string artworkPath);
 
+    /// <summary>Puts a file back to what TMDB returned, throwing away every hand edit.</summary>
+    void DiscardManualChanges(FileItemViewModel file);
+
     /// <summary>Applies a user-chosen title to a file and fetches its full metadata.</summary>
     Task ChooseCandidateAsync(FileItemViewModel file, Candidate candidate);
 
