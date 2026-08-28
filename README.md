@@ -1,6 +1,7 @@
 # Video Metadata Filler
 
 [![build](https://github.com/EliotFerragni/Video-metadata-filler/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/EliotFerragni/Video-metadata-filler/actions/workflows/build.yml)
+![Claude Code](https://img.shields.io/badge/Claude%20Code-%23D97757.svg?style=for-the-badge&logo=claudecode&logoColor=white)
 
 A desktop app that fills the metadata of movie and TV files from
 [The Movie Database](https://www.themoviedb.org). Drop files in, review what was matched,
@@ -395,6 +396,18 @@ or an API key. The parser's test corpus is the place to add a filename that gets
 
 Settings live in `%APPDATA%\VideoMetadataFiller\settings.json` on Windows and
 `~/Library/Application Support/VideoMetadataFiller/settings.json` on macOS.
+
+---
+
+## Built with Claude Code
+
+This project was written by [Claude Code](https://claude.com/claude-code), across a series of
+sessions: the filename parser, the TMDB client, the MP4 tag writer, the Avalonia UI, the tests,
+the packaging scripts and the CI workflow. What to build, which trade-offs to take, and what
+counted as broken came from the human side.
+
+Every commit but the very first carries a `Co-Authored-By: Claude` trailer, so the history says
+which is which.
 
 ---
 
