@@ -118,12 +118,22 @@ public static class VideoResolution
     /// filename parser recognises so both sources can feed the same field.
     /// </summary>
     /// <remarks>
-    /// Height decides, but width may promote it, because widescreen film is cropped in height
-    /// rather than letterboxed: a 2.39:1 transfer is 1920×800, which is 1080p by every other
-    /// reckoning. Going the other way would demote 4:3 and anamorphic material, where the height
-    /// is the honest number — 720×576 is 576p, not 720p — so width only ever raises the answer.
+    /// Height and width are read as two separate opinions and the larger wins, because either
+    /// one alone is wrong for material that is common.
     /// <para>
-    /// The bands sit below their nominal heights on purpose: encodes rounded to a multiple of
+    /// Height alone under-reports widescreen film, which is cropped rather than letterboxed: a
+    /// 2.39:1 transfer is 1920×800, and 800 is not 720p. Width alone under-reports 4:3 and
+    /// anamorphic material, where the height is the honest number — 720×576 is 576p, not 480p.
+    /// </para>
+    /// <para>
+    /// The two tables are separate rather than one converted into the other because the aspect
+    /// ratio to convert by is not a constant. HD is square-pixel 16:9, so a width does divide
+    /// cleanly into a height there; SD is not, and a DVD frame is 720 wide whether it holds
+    /// 480 lines, 576, or the 406 of a cropped widescreen transfer. Scaling 720 by 9/16 gives
+    /// 405, which is short of the 480p it plainly is.
+    /// </para>
+    /// <para>
+    /// Both tables sit below their nominal figures on purpose: encodes rounded to a multiple of
     /// eight, like 1920×1072, are the same thing as the round number.
     /// </para>
     /// </remarks>
@@ -132,19 +142,37 @@ public static class VideoResolution
         if (width <= 0 || height <= 0)
             return null;
 
-        var effective = Math.Max(height, (int)Math.Round(width * 9.0 / 16.0));
-        return effective switch
-        {
-            >= 4000 => "4320p",
-            >= 1900 => "2160p",
-            >= 1300 => "1440p",
-            >= 900 => "1080p",
-            >= 620 => "720p",
-            >= 520 => "576p",
-            >= 420 => "480p",
-            >= 300 => "360p",
-            // Smaller than any label would mean anything: a thumbnail or a broken header.
-            _ => null,
-        };
+        var byHeight = ByHeight(height);
+        var byWidth = ByWidth(width);
+        return Rank(byWidth) > Rank(byHeight) ? byWidth : byHeight;
     }
+
+    private static string? ByHeight(int height) => height switch
+    {
+        >= 4000 => "4320p",
+        >= 1900 => "2160p",
+        >= 1300 => "1440p",
+        >= 900 => "1080p",
+        >= 620 => "720p",
+        >= 520 => "576p",
+        >= 420 => "480p",
+        >= 300 => "360p",
+        _ => null,
+    };
+
+    /// <summary>
+    /// The standard frame widths. 720 is where NTSC and PAL DVD share a width and differ in
+    /// height, so it claims only the lower of the two and lets the height promote it to 576p.
+    /// </summary>
+    private static string? ByWidth(int width) => width switch
+    {
+        >= 7000 => "4320p",
+        >= 3400 => "2160p",
+        >= 2300 => "1440p",
+        >= 1700 => "1080p",
+        >= 1100 => "720p",
+        >= 700 => "480p",
+        >= 600 => "360p",
+        _ => null,
+    };
 }

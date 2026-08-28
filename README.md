@@ -250,9 +250,13 @@ write an SD HD flag over a 4K film. The container is asked instead, so the answe
 renaming and mislabelled releases alike; the name is still the fallback for a file whose video
 track cannot be read.
 
-Height decides the label, but width may promote it: widescreen film is cropped rather than
-letterboxed, so a 2.39:1 transfer is 1920×800 and is still `1080p`. Width never demotes, or
-4:3 and anamorphic material would be misnamed — 720×576 is `576p`, not `720p`.
+Height and width are read as two separate opinions and the larger wins, because either alone
+is wrong for material that is common. Height under-reports widescreen film, which is cropped
+rather than letterboxed: a 2.39:1 transfer is 1920×800, and 800 is not 720p. Width under-reports
+4:3 and anamorphic material, where the height is the honest number — 720×576 is `576p`, not
+`480p`. Reading both and taking the larger gets each of them right, and a DVD-class frame stays
+SD however far it is cropped: 720×406 is `480p`, not the `360p` that scaling 720 by 9/16 would
+suggest.
 
 **Not every resolution is worth naming.** Most libraries have a baseline that goes without
 saying and only mark what beats it. Settings has **Leave the resolution out**: pick
@@ -409,7 +413,7 @@ embeds Inter.
 
 ```bash
 dotnet --info                                    # should report 10.0.x
-dotnet test                                      # 283 tests
+dotnet test                                      # 287 tests
 dotnet run --project src/VideoMetadataFiller.App
 ```
 

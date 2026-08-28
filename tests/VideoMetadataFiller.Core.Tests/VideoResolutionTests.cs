@@ -25,6 +25,12 @@ public class VideoResolutionTests : IDisposable
     [InlineData(1920, 804, "1080p")]
     [InlineData(3840, 1600, "2160p")]
     [InlineData(1280, 536, "720p")]
+    // A DVD frame is 720 wide whatever it holds, so a cropped widescreen transfer is still
+    // SD-class and not the 360p that scaling 720 by 9/16 would suggest.
+    [InlineData(720, 406, "480p")]
+    [InlineData(720, 302, "480p")]
+    [InlineData(704, 396, "480p")]
+    [InlineData(1024, 576, "576p")]
     // …but width must never demote, or 4:3 and anamorphic material is mislabelled.
     [InlineData(720, 576, "576p")]
     [InlineData(720, 480, "480p")]
