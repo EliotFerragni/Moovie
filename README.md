@@ -333,7 +333,10 @@ On Windows use `build/publish.ps1` instead. Output lands in `artifacts/<runtime>
 
 The version lives in one place, `<Version>` in `Directory.Build.props`. The About box reads it
 back off the assembly and `publish.sh` stamps it into the macOS bundle's `Info.plist`, so
-bumping it there is the whole job.
+bumping it there is the whole job. Releasing is then: bump it, commit, tag that commit, and
+publish a release from the tag. CI refuses to build a release whose tag disagrees with
+`<Version>` — `build/check-version.sh` — because otherwise the release name and the binaries
+inside it would drift apart silently.
 
 Targets: `win-x64` `win-arm64` `osx-x64` `osx-arm64` `linux-x64` `linux-arm64`.
 Builds are roughly 45–80 MB because they bundle the runtime.

@@ -104,6 +104,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Nothing else ties the tag to <Version>: the tag is only an upload target. A release cut
+      # from a tree that was never bumped would ship binaries labelled with the old version and
+      # say nothing about it, so refuse before building rather than after uploading.
+      - name: Check the tag matches the declared version
+        if: github.event_name == 'release'
+        run: ./build/check-version.sh "${{ github.event.release.tag_name }}"
+
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "9.0.x"
