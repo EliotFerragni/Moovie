@@ -127,8 +127,13 @@
                IsVisible="{Binding !HasSelection}"
                Text="Select a file to review its metadata.&#x0a;&#x0a;Select several to edit the fields they have in common." />
 
-    <ScrollViewer Grid.Row="1" IsVisible="{Binding HasSelection}" Padding="14,12">
-      <StackPanel Spacing="2">
+    <!--
+      The inset is a margin on the content, not padding on the ScrollViewer: padding is left out
+      of the scrollable extent, so the bottom of it is unreachable and the last field stays
+      clipped however far you scroll.
+    -->
+    <ScrollViewer Grid.Row="1" IsVisible="{Binding HasSelection}">
+      <StackPanel Spacing="2" Margin="14,12,14,18">
 
         <!-- Why this file needs attention -->
         <Border Classes="notice" IsVisible="{Binding HasNotice}">
