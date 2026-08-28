@@ -191,16 +191,101 @@ There is an optional "keep a `.bak` copy" setting for the cautious.
 
 ---
 
-## Building it
+## Setting up a dev environment
 
-You need the [.NET 9 SDK](https://dotnet.microsoft.com/download) and nothing else.
+The only hard requirement is the [.NET 9 SDK](https://dotnet.microsoft.com/download). There
+is no `global.json`, so any 9.0.x will do. Everything below is either that, optional editor
+tooling, or — on Linux only — desktop libraries a normal desktop install already has.
+
+### Windows
+
+```powershell
+winget install Microsoft.DotNet.SDK.9
+```
+
+Or run the installer from the [download page](https://dotnet.microsoft.com/download). Open a
+new terminal afterwards so `dotnet` is on `PATH`. Nothing else is needed: the Windows build
+has no native dependencies beyond what ships with the OS.
+
+### macOS
 
 ```bash
-dotnet test                     # 152 tests
+brew install --cask dotnet-sdk
+```
+
+Or use the `.pkg` from the download page — take the **Arm64** one on Apple Silicon and the
+**x64** one on Intel. Xcode is not required; the command line tools are only needed if you
+ever want to codesign a build, which the project does not do.
+
+### Linux
+
+Where your distro packages .NET 9, use it:
+
+```bash
+sudo apt install dotnet-sdk-9.0      # Debian 12+, Ubuntu 22.04+
+sudo dnf install dotnet-sdk-9.0      # Fedora
+sudo pacman -S dotnet-sdk            # Arch
+```
+
+On anything older or unpackaged (Ubuntu 20.04, for instance) the official script works
+everywhere. Note that it installs into `~/.dotnet` and deliberately does not touch your
+`PATH`, so you have to do that yourself:
+
+```bash
+curl -sSL https://dot.net/v1/dotnet-install.sh | bash -s -- --channel 9.0
+export DOTNET_ROOT="$HOME/.dotnet"
+export PATH="$DOTNET_ROOT:$PATH"
+```
+
+Put those two exports in your `~/.bashrc` or `~/.zshrc` to make them stick.
+
+Running the GUI also needs the usual X11 and font libraries. Avalonia loads `libX11`,
+`libICE`, `libSM`, `libXext`, `libXi`, `libXrandr`, `libXcursor`, `libXfixes` and `libGL`,
+Skia needs `fontconfig`, `freetype`, `expat`, `libpng` and `zlib`, and GTK3 is what backs the
+native file dialogs:
+
+```bash
+# Debian / Ubuntu
+sudo apt install libx11-6 libice6 libsm6 libxext6 libxi6 libxrandr2 libxcursor1 libxfixes3                  libgl1 libfontconfig1 libfreetype6 libexpat1 libpng16-16 zlib1g libgtk-3-0
+
+# Fedora
+sudo dnf install libX11 libICE libSM libXext libXi libXrandr libXcursor libXfixes                  mesa-libGL fontconfig freetype expat libpng zlib gtk3
+
+# Arch
+sudo pacman -S libx11 libice libsm libxext libxi libxrandr libxcursor libxfixes                libglvnd fontconfig freetype2 expat libpng zlib gtk3
+```
+
+A desktop machine will have all of these already — the list matters for containers, CI images
+and bare WSL. WSL2 with WSLg runs the app fine. You do not need a font package: the app
+embeds Inter.
+
+### Checking it works
+
+```bash
+dotnet --info                                    # should report 9.0.x
+dotnet test                                      # 152 tests
 dotnet run --project src/VideoMetadataFiller.App
 ```
 
-To produce a self-contained executable:
+The tests are headless and run fine over SSH or in a container. `dotnet run` opens a window,
+so it needs a display. To actually match anything you will need a TMDB API key — see
+[Getting started](#getting-started).
+
+### An editor
+
+Any of these work; none is required.
+
+- **VS Code** with the [C# Dev Kit](https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csdevkit)
+  extension, plus [Avalonia for VS Code](https://marketplace.visualstudio.com/items?itemName=AvaloniaTeam.vscode-avalonia)
+  if you want the XAML previewer.
+- **Rider**, which understands Avalonia XAML out of the box.
+- **Visual Studio 2022** (17.12 or newer for .NET 9), Windows only.
+
+---
+
+## Building it
+
+With a dev environment set up as above, producing a self-contained executable is one command:
 
 ```bash
 ./build/publish.sh              # for the machine you are on
