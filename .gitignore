@@ -8,3 +8,8 @@ artifacts/
 bin/
 obj/
 publish/
+
+# A global gitignore commonly excludes "build" as an output directory. Here it is source: the
+# packaging scripts live there, and without this a new file in build/ is silently skipped by
+# git add, with only an easily missed notice.
+!/build/
