@@ -137,6 +137,7 @@
   "settings.seasonDigits": "Stellen für die Staffel",
   "settings.episodeDigits": "Stellen für die Episode",
   "settings.clickToInsert": "Auf ein Feld klicken, um es einzufügen",
+  "settings.anyDatePattern": "…oder ein beliebiges Datumsmuster",
   "settings.preview": "Vorschau",
   "settings.previewAtThreshold": "Bei {0}: {1}",
   "settings.templateHelp": "Zahlen nehmen eine Stellenauffüllung: {season:00} ergibt 01. Datumsangaben nehmen Formate wie {airDate:yyyy-MM-dd}. Text nimmt :upper, :lower oder :title, und {resolution:short} schreibt 2160p als 4k. Setzen Sie einen Teil in spitze Klammern, damit er bei leerem Wert entfällt, etwa < - {episodeTitle}>. Eckige Klammern sind wörtlich.",

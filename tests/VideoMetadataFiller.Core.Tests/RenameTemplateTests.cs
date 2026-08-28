@@ -202,4 +202,46 @@ public class RenameTemplateTests
     {
         Assert.True(RenameTemplate.Validate("{resolution:upper}").IsValid);
     }
+
+    /// <summary>
+    /// The palette shows every form of a token with a worked example, so the two lists have to
+    /// agree: anything offered there and refused here would be advertised and then rejected.
+    /// </summary>
+    [Fact]
+    public void Every_format_the_palette_offers_is_one_the_validator_accepts()
+    {
+        foreach (var token in RenameTokens.All)
+        {
+            foreach (var written in token.OfferedFormats.Select(token.Written))
+                Assert.True(RenameTemplate.Validate(written).IsValid, written);
+        }
+    }
+
+    /// <summary>
+    /// A worked example only teaches when there is something in the field, so the samples have
+    /// to carry a value for every token their template kind offers.
+    /// </summary>
+    [Theory]
+    [InlineData(MediaKind.Movie)]
+    [InlineData(MediaKind.TvEpisode)]
+    public void The_palette_sample_has_a_value_for_every_token_it_offers(MediaKind kind)
+    {
+        var sample = kind == MediaKind.Movie ? RenameEngine.SampleMovie : RenameEngine.SampleEpisode;
+
+        // {ext} is the exception: it comes from the file, not the metadata.
+        foreach (var token in RenameTokens.All.Where(t => t.IsRelevantTo(kind) && t.Name != "ext"))
+        {
+            var rendered = RenameTemplate.Parse(token.Written(null)).Render(sample);
+            Assert.False(string.IsNullOrEmpty(rendered), $"{{{token.Name}}} renders nothing for the {kind} sample");
+        }
+    }
+
+    [Fact]
+    public void A_token_is_written_with_and_without_a_format()
+    {
+        var season = RenameTokens.Find("season")!;
+
+        Assert.Equal("{season}", season.Written(null));
+        Assert.Equal("{season:00}", season.Written("00"));
+    }
 }

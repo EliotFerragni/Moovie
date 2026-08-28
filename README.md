@@ -223,6 +223,23 @@ brackets free for the common style:
 
 Write `{{` and `}}` for literal braces.
 
+**You do not have to remember any of this.** Each field in the palette under a template carries
+its whole vocabulary: hover one and it lists every form it can be written in, against what each
+would produce for the sample shown below the box.
+
+```
+{resolution}         2160p
+{resolution:upper}   2160P
+{resolution:lower}   2160p
+{resolution:title}   2160P
+{resolution:short}   4k
+```
+
+The examples are rendered rather than written down, so they follow the template's own sample —
+a movie template's `{title}` shows a film, a TV one's shows an episode — and a test fails if a
+sample ever loses a field the palette offers, or if the palette offers a format the validator
+would reject.
+
 **Multi-episode files** repeat the episode marker, so `E{episode:00}` renders as `E01-E02` —
 the form media servers recognise.
 
@@ -392,7 +409,7 @@ embeds Inter.
 
 ```bash
 dotnet --info                                    # should report 10.0.x
-dotnet test                                      # 279 tests
+dotnet test                                      # 283 tests
 dotnet run --project src/VideoMetadataFiller.App
 ```
 

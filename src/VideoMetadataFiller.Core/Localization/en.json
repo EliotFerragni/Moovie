@@ -137,6 +137,7 @@
   "settings.seasonDigits": "Season digits",
   "settings.episodeDigits": "Episode digits",
   "settings.clickToInsert": "Click a field to insert it",
+  "settings.anyDatePattern": "…or any date pattern",
   "settings.preview": "Preview",
   "settings.previewAtThreshold": "At {0}: {1}",
   "settings.templateHelp": "Numbers take digit padding: {season:00} gives 01. Dates take formats like {airDate:yyyy-MM-dd}. Text takes :upper, :lower or :title, and {resolution:short} writes 2160p as 4k. Wrap a part in angle brackets to drop it when empty, as in < - {episodeTitle}>. Square brackets are literal.",

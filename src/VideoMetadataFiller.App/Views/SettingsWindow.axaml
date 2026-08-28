@@ -141,9 +141,20 @@
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:TokenChip">
               <Button Classes="chip" Content="{Binding Caption}"
-                      ToolTip.Tip="{Binding Tooltip}"
                       Command="{Binding $parent[ItemsControl].((vm:RenameTemplateEditorViewModel)DataContext).InsertTokenCommand}"
-                      CommandParameter="{Binding}" />
+                      CommandParameter="{Binding}">
+                <!--
+                  Every form the token takes, against what each would produce for the sample
+                  above. Monospace because the two columns are padded into the string rather
+                  than laid out here.
+                -->
+                <ToolTip.Tip>
+                  <StackPanel Spacing="6" MaxWidth="460">
+                    <TextBlock Text="{Binding Description}" TextWrapping="Wrap" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding Forms}" Classes="mono" FontSize="11" />
+                  </StackPanel>
+                </ToolTip.Tip>
+              </Button>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>

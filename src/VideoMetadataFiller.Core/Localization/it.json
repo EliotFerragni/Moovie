@@ -137,6 +137,7 @@
   "settings.seasonDigits": "Cifre della stagione",
   "settings.episodeDigits": "Cifre dell'episodio",
   "settings.clickToInsert": "Fai clic su un campo per inserirlo",
+  "settings.anyDatePattern": "…o qualunque altro schema di data",
   "settings.preview": "Anteprima",
   "settings.previewAtThreshold": "A {0}: {1}",
   "settings.templateHelp": "I numeri accettano il riempimento di cifre: {season:00} dà 01. Le date accettano formati come {airDate:yyyy-MM-dd}. Il testo accetta :upper, :lower o :title, e {resolution:short} scrive 2160p come 4k. Racchiudi una parte fra parentesi angolari per ometterla quando è vuota, come in < - {episodeTitle}>. Le parentesi quadre sono letterali.",

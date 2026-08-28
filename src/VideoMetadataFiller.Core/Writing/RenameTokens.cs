@@ -45,6 +45,34 @@ public sealed record RenameToken(
         TokenValueKind.Date => $"{{{Name}:yyyy-MM-dd}}",
         _ => $"{{{Name}}}",
     };
+
+    /// <summary>
+    /// Every form of this token worth showing in the palette, bare first: what the user may
+    /// write after the colon. Null means the token with no format at all.
+    /// </summary>
+    /// <remarks>
+    /// Exhaustive for numbers and text, and for the extra formats a token adds; dates are an
+    /// open set, so those are a representative handful rather than a complete list, and the
+    /// palette says as much.
+    /// </remarks>
+    public IReadOnlyList<string?> OfferedFormats =>
+    [
+        null,
+        .. Kind switch
+        {
+            TokenValueKind.Number => (string[])["0", "00", "000"],
+            TokenValueKind.Date => ["yyyy-MM-dd", "yyyy", "MMMM yyyy"],
+            _ => ["upper", "lower", "title"],
+        },
+        .. ExtraFormats,
+    ];
+
+    /// <summary>Whether the palette should say the formats shown are only a sample.</summary>
+    public bool HasOpenEndedFormats => Kind == TokenValueKind.Date;
+
+    /// <summary>This token written with one of its formats, e.g. <c>{season:00}</c>.</summary>
+    public string Written(string? format) =>
+        format is null ? $"{{{Name}}}" : $"{{{Name}:{format}}}";
 }
 
 /// <summary>The token vocabulary, shared by the renderer, the validator and the Settings palette.</summary>

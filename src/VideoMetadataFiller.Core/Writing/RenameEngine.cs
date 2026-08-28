@@ -178,6 +178,7 @@ public static class RenameEngine
         Kind = MediaKind.TvEpisode,
         ShowName = "Severance",
         Title = "Good News About Hell",
+        OriginalTitle = "Good News About Hell",
         Season = 1,
         Episodes = [1],
         Year = 2022,
@@ -186,5 +187,6 @@ public static class RenameEngine
         Network = "Apple TV+",
         Resolution = "2160p",
         TmdbId = 95396,
+        ImdbId = "tt11280740",
     };
 }

@@ -9,8 +9,15 @@ using VideoMetadataFiller.Core.Writing;
 
 namespace VideoMetadataFiller.App.ViewModels;
 
-/// <summary>A clickable token in the palette under a template box.</summary>
-public sealed record TokenChip(string Caption, string Insertion, string Tooltip);
+/// <summary>
+/// A clickable token in the palette under a template box, and the reference for it: every form
+/// it can be written in, each shown against what it would produce for this template's sample.
+/// </summary>
+/// <param name="Forms">
+/// Pre-aligned into two columns and shown in a monospace tooltip, so the formats a token takes
+/// can be read off the palette instead of guessed at or looked up.
+/// </param>
+public sealed record TokenChip(string Caption, string Insertion, string Description, string Forms);
 
 /// <summary>
 /// Editor for one rename template, with a token palette, digit spinners and a live preview.
@@ -23,6 +30,9 @@ public sealed record TokenChip(string Caption, string Insertion, string Tooltip)
 public sealed partial class RenameTemplateEditorViewModel : ObservableObject
 {
     private readonly MediaKind _kind;
+
+    /// <summary>The tokens the palette shows, in the order <see cref="Tokens"/> holds them.</summary>
+    private readonly IReadOnlyList<RenameToken> _paletteTokens;
     private readonly MediaMetadata _sample;
     private readonly string _defaultTemplate;
 
@@ -74,15 +84,46 @@ public sealed partial class RenameTemplateEditorViewModel : ObservableObject
         _separator = separator;
         _omitResolutionAtOrBelow = omitResolutionAtOrBelow;
 
+        // {ext} is added automatically when a template leaves it out, so the palette does not
+        // offer it.
+        _paletteTokens = [.. RenameTokens.All.Where(t => t.IsRelevantTo(kind) && t.Name != "ext")];
         Tokens =
         [
-            .. RenameTokens.All
-                .Where(t => t.IsRelevantTo(kind) && t.Name != "ext")
-                .Select(t => new TokenChip($"{{{t.Name}}}", t.Insertion, t.Description)),
+            .. _paletteTokens.Select(t =>
+                new TokenChip($"{{{t.Name}}}", t.Insertion, t.Description, DescribeForms(t))),
         ];
 
         ReadDigitsFromTemplate();
         Revalidate();
+    }
+
+    /// <summary>
+    /// Lists every form of <paramref name="token"/> beside what it renders for the sample, so
+    /// the difference between <c>:upper</c> and <c>:title</c> is shown rather than described.
+    /// </summary>
+    private string DescribeForms(RenameToken token)
+    {
+        var forms = token.OfferedFormats
+            .Select(format => (Written: token.Written(format), Value: RenderSample(token, format)))
+            .ToList();
+
+        // Padded here rather than laid out in the view: a monospace tooltip lines the columns up
+        // with no measuring, and the tooltip stays a plain string.
+        var width = forms.Max(f => f.Written.Length);
+        var lines = forms.Select(f => $"{f.Written.PadRight(width)}   {f.Value}");
+
+        return token.HasOpenEndedFormats
+            ? string.Join('\n', lines) + "\n" + Strings.Get("settings.anyDatePattern")
+            : string.Join('\n', lines);
+    }
+
+    private string RenderSample(RenameToken token, string? format)
+    {
+        var rendered = RenameTemplate.Parse(token.Written(format))
+            .Render(_sample, ".mp4", OmitResolutionAtOrBelow);
+
+        // A sample with nothing in that field says so, rather than trailing off into blank space.
+        return string.IsNullOrEmpty(rendered) ? "—" : rendered;
     }
 
     public string Title { get; }
@@ -122,7 +163,18 @@ public sealed partial class RenameTemplateEditorViewModel : ObservableObject
 
     partial void OnSeparatorChanged(SeparatorStyle value) => Revalidate();
 
-    partial void OnOmitResolutionAtOrBelowChanged(string? value) => Revalidate();
+    partial void OnOmitResolutionAtOrBelowChanged(string? value)
+    {
+        RefreshTokenForms();
+        Revalidate();
+    }
+
+    /// <summary>Re-renders the palette's examples, which show the threshold at work too.</summary>
+    private void RefreshTokenForms()
+    {
+        for (var i = 0; i < Tokens.Count; i++)
+            Tokens[i] = Tokens[i] with { Forms = DescribeForms(_paletteTokens[i]) };
+    }
 
     partial void OnSeasonDigitsChanged(int value) => ApplyDigits("season", value);
 
