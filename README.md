@@ -328,8 +328,10 @@ real Mac is codesigning, which is why the macOS builds are unsigned.
 
 `build/package.sh` turns `artifacts/` into one archive per target under `dist/` — `.tar.gz`
 for Linux, `.zip` elsewhere, both of which keep the executable bit that a CI artifact's own
-rezipping would drop. Publishing a GitHub release runs it and attaches the results, so the
-binaries on a release are the ones to download.
+rezipping would drop. CI runs it for every build it hands out, so a binary downloaded from a
+manual run or from a release is runnable as it arrives, with no `chmod` needed and the macOS
+`.app` still able to open. Release archives are attached to the release itself; a manual run
+keeps its archive as a build artifact for three days.
 
 macOS builds are assembled into a `Video Metadata Filler.app` bundle. They are unsigned, so
 Gatekeeper needs persuading once:

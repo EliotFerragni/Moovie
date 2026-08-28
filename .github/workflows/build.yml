@@ -120,6 +120,13 @@ jobs:
       - name: Publish
         run: ./build/publish.sh "${{ github.event_name == 'release' && 'all' || inputs.target }}"
 
+      # Archive before handing the build to anyone: upload-artifact rebuilds a zip of
+      # its own without Unix permissions, so a binary uploaded straight from
+      # artifacts/ downloads with no executable bit and a macOS .app will not open.
+      # tar and Info-ZIP both keep the bit, so what travels is always one of these.
+      - name: Package archives
+        run: ./build/package.sh
+
       # Manual runs keep their output as an artifact, briefly: it is a build to go
       # and try, not something to hold for a fortnight.
       - name: Upload build
@@ -127,16 +134,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: VideoMetadataFiller-${{ inputs.target }}
-          path: artifacts/
+          path: dist/
           if-no-files-found: error
           retention-days: 3
 
-      # Release binaries go onto the release itself. Release assets do not count
-      # against the artifact quota, they never expire, and unlike a CI artifact the
-      # archives keep their executable bit, so the macOS .app stays launchable.
-      - name: Package release archives
-        if: github.event_name == 'release'
-        run: ./build/package.sh
+      # Release binaries go onto the release itself, where assets do not count
+      # against the artifact quota and never expire.
 
       - name: Attach archives to the release
         if: github.event_name == 'release'
