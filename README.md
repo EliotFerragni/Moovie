@@ -1,5 +1,7 @@
 # Video Metadata Filler
 
+[![build](https://github.com/EliotFerragni/Video-metadata-filler/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/EliotFerragni/Video-metadata-filler/actions/workflows/build.yml)
+
 A desktop app that fills the metadata of movie and TV files from
 [The Movie Database](https://www.themoviedb.org). Drop files in, review what was matched,
 correct anything that is wrong, then write it all in one go.
