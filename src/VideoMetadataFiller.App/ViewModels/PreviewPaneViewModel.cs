@@ -92,6 +92,11 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
     [ObservableProperty]
     private LanguageOption? _selectedLanguage;
 
+    /// <summary>True when the selected files are not all in the same language.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(LanguagePlaceholder))]
+    private bool _languagesDiffer;
+
     /// <summary>Free-text TMDB search, for when the filename was too mangled to match.</summary>
     [ObservableProperty]
     private string? _searchText;
@@ -131,6 +136,9 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
     public bool HasArtworkMessage => !string.IsNullOrWhiteSpace(ArtworkMessage);
 
     public bool HasArtworkCaption => !string.IsNullOrWhiteSpace(ArtworkCaption);
+
+    /// <summary>Mirrors how a field reads when the selected files disagree.</summary>
+    public string? LanguagePlaceholder => LanguagesDiffer ? FieldEditor.MultipleValuesWatermark : null;
 
     /// <summary>
     /// Refills the whole pane for a new selection. Called on every selection change.
@@ -232,14 +240,22 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
 
     private void UpdateLanguageSelection()
     {
-        if (_selection.Count != 1)
+        if (_selection.Count == 0)
         {
+            LanguagesDiffer = false;
             SelectedLanguage = null;
             return;
         }
 
-        var tag = _selection[0].EffectiveLanguage(_lookup.Language);
-        SelectedLanguage = Languages.FirstOrDefault(l => l.Tag == tag) ?? Languages.FirstOrDefault();
+        var tags = _selection
+            .Select(f => f.EffectiveLanguage(_lookup.Language))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        LanguagesDiffer = tags.Count > 1;
+        SelectedLanguage = LanguagesDiffer
+            ? null
+            : Languages.FirstOrDefault(l => l.Tag == tags[0]) ?? Languages.FirstOrDefault();
     }
 
     private async Task LoadPosterAsync()
@@ -512,11 +528,16 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
 
     partial void OnSelectedLanguageChanged(LanguageOption? value)
     {
-        if (_rebinding || value is null || _selection.Count != 1)
+        if (_rebinding || value is null || _selection.Count == 0)
             return;
 
         // Only store an override when it actually differs from the global setting.
-        _selection[0].LanguageOverride = value.Tag == _lookup.Language ? null : value.Tag;
+        var tag = value.Tag == _lookup.Language ? null : value.Tag;
+        foreach (var file in _selection)
+            file.LanguageOverride = tag;
+
+        // Picking one for the batch settles the disagreement; Refetch then applies it.
+        LanguagesDiffer = false;
     }
 
     /// <summary>

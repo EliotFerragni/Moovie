@@ -46,7 +46,8 @@ network, unlike **Refetch**, which goes back to TMDB and deliberately *keeps* yo
 all agree shows that value, and one where they differ shows `— multiple values —`. Typing
 into any field applies it to every selected file. Fields that are inherently per-file — the
 episode number, the TMDB id — go read-only rather than stamping one value across a whole
-season.
+season. The language applies to the whole selection too, reading `— multiple values —` when the
+files are not all in the same one.
 
 ---
 

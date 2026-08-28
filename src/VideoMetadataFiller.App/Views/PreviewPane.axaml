@@ -108,10 +108,11 @@
                        Margin="0,0,8,4" />
             <ComboBox ItemsSource="{Binding Languages}"
                       SelectedItem="{Binding SelectedLanguage}"
-                      IsEnabled="{Binding IsSingleSelection}"
-                      MinWidth="150" Margin="0,0,8,4" />
+                      PlaceholderText="{Binding LanguagePlaceholder}"
+                      MinWidth="150" Margin="0,0,8,4"
+                      ToolTip.Tip="The language to fetch in. Applies to every selected file; press Refetch to pull the metadata again in it." />
             <Button Content="Refetch" Command="{Binding RefetchCommand}" Margin="0,0,8,4"
-                    ToolTip.Tip="Fetch this file's metadata again, keeping anything you have edited by hand." />
+                    ToolTip.Tip="Fetch the selected files' metadata again, keeping anything you have edited by hand." />
             <Button Content="Discard edits" Command="{Binding DiscardEditsCommand}" Margin="0,0,0,4"
                     IsEnabled="{Binding HasManualChanges}"
                     ToolTip.Tip="Put everything back to what TMDB returned, including the type and the artwork. Nothing is downloaded again." />
