@@ -107,6 +107,11 @@ Some deliberate details:
 If a name still defeats the parser, the preview pane has a free-text TMDB search and a box
 for pasting a TMDB id directly.
 
+Both work across a selection. When a whole show has matched the wrong series, select every
+episode, search for the right one, and the title you pick is applied to all of them at once —
+each file keeps its own season and episode numbers and fetches its own entry, so a 24-episode
+season is one search rather than 24.
+
 ---
 
 ## Languages

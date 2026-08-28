@@ -219,10 +219,11 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
 
         if (_selection.Count != 1)
         {
-            // Choosing a title is a per-file decision, so the chooser only appears for one file.
+            // Per-file suggestions differ from one another, so only a hand search makes sense
+            // across a selection: one title, applied to all of them.
             var needing = _selection.Count(f => f.Status == FileStatus.NeedsChoice);
             Notice = needing > 0
-                ? $"{needing} of these files still need a title chosen. Select one on its own to choose."
+                ? $"{needing} of these files still need a title chosen. Search below to put one title on all of them."
                 : null;
             OnPropertyChanged(nameof(HasCandidates));
             return;
@@ -424,11 +425,40 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
     [RelayCommand]
     private async Task ChooseAsync(CandidateViewModel? candidate)
     {
-        if (candidate is null || _selection.Count != 1)
+        if (candidate is not null)
+            await ApplyCandidateAsync(candidate.Candidate);
+    }
+
+    /// <summary>
+    /// Puts one title onto every selected file. Each keeps its own season and episode numbers
+    /// and fetches its own entry, so this is how a whole show that matched the wrong series is
+    /// corrected in one go rather than a file at a time.
+    /// </summary>
+    private async Task ApplyCandidateAsync(Candidate candidate)
+    {
+        var targets = _selection.ToList();
+        if (targets.Count == 0)
             return;
 
-        await _lookup.ChooseCandidateAsync(_selection[0], candidate.Candidate);
-        Refresh();
+        IsSearching = true;
+        SearchMessage = targets.Count > 1 ? $"Applying to {targets.Count} files…" : null;
+        try
+        {
+            foreach (var file in targets)
+                await _lookup.ChooseCandidateAsync(file, candidate);
+
+            if (targets.Count > 1)
+                SearchMessage = $"Applied to {targets.Count} files.";
+        }
+        catch (Exception e)
+        {
+            SearchMessage = e.Message;
+        }
+        finally
+        {
+            IsSearching = false;
+            Refresh();
+        }
     }
 
     [RelayCommand]
@@ -449,14 +479,15 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(SearchText) || _selection.Count != 1)
+        if (string.IsNullOrWhiteSpace(SearchText) || _selection.Count == 0)
             return;
 
         IsSearching = true;
         SearchMessage = null;
         try
         {
-            var language = _selection[0].EffectiveLanguage(_lookup.Language);
+            // The language the dropdown is showing, which is null when the files disagree.
+            var language = SelectedLanguage?.Tag ?? _lookup.Language;
             var results = KindIndex == 1
                 ? await _lookup.Tmdb.SearchShowsAsync(SearchText, null, language)
                 : await _lookup.Tmdb.SearchMoviesAsync(SearchText, null, language);
@@ -483,7 +514,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
     [RelayCommand]
     private async Task ApplyTmdbIdAsync()
     {
-        if (_selection.Count != 1)
+        if (_selection.Count == 0)
             return;
 
         if (!int.TryParse(TmdbIdText, out var id) || id <= 0)
@@ -492,13 +523,17 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
             return;
         }
 
+        var targets = _selection.ToList();
         IsSearching = true;
-        SearchMessage = null;
+        SearchMessage = targets.Count > 1 ? $"Applying to {targets.Count} files…" : null;
         try
         {
             var kind = KindIndex == 1 ? MediaKind.TvEpisode : MediaKind.Movie;
-            await _lookup.ApplyTmdbIdAsync(_selection[0], id, kind);
-            Refresh();
+            foreach (var file in targets)
+                await _lookup.ApplyTmdbIdAsync(file, id, kind);
+
+            if (targets.Count > 1)
+                SearchMessage = $"Applied to {targets.Count} files.";
         }
         catch (Exception e)
         {
@@ -507,6 +542,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
         finally
         {
             IsSearching = false;
+            Refresh();
         }
     }
 

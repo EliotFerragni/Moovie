@@ -184,7 +184,8 @@
 
         <!-- Manual search, for names the parser could not make sense of -->
         <Expander Header="Search TMDB by hand" Margin="0,0,0,12"
-                  IsVisible="{Binding IsSingleSelection}">
+                  IsVisible="{Binding HasSelection}"
+                  ToolTip.Tip="With several files selected, the title you pick is applied to all of them. Each keeps its own season and episode.">
           <StackPanel Spacing="8" Margin="0,6,0,0">
             <Grid ColumnDefinitions="*,Auto">
               <TextBox Text="{Binding SearchText}" Watermark="Title to search for" />
