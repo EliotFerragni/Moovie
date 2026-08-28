@@ -360,10 +360,22 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
         item.Candidates = [];
     }
 
+    /// <summary>
+    /// Points freshly fetched metadata at the artwork kind the user asked for, since TMDB hands
+    /// back its own default. Every path that takes metadata from TMDB has to go through this, or
+    /// the preference applies to some files and not others depending on how they were matched.
+    /// </summary>
+    private void ApplyArtworkPreference(MediaMetadata metadata) =>
+        metadata.ArtworkPath =
+            ArtworkSelector.Resolve(metadata, Settings.PreferredArtwork(metadata.Kind))
+            ?? metadata.ArtworkPath;
+
     private void ApplyOutcome(FileItemViewModel item, MatchOutcome outcome)
     {
         if (outcome.Metadata is not null)
         {
+            ApplyArtworkPreference(outcome.Metadata);
+
             // Anything the user typed by hand outranks what TMDB just returned.
             item.Metadata = MergeKeepingUserEdits(item, outcome.Metadata);
         }
@@ -478,9 +490,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
             }
 
             metadata.Resolution = file.Metadata.Resolution ?? file.Parsed?.Resolution;
-            metadata.ArtworkPath =
-                ArtworkSelector.Resolve(metadata, Settings.PreferredArtwork(metadata.Kind))
-                ?? metadata.ArtworkPath;
+            ApplyArtworkPreference(metadata);
             file.Metadata = MergeKeepingUserEdits(file, metadata);
             file.Status = file.UserEditedFields.Count > 0 ? FileStatus.Edited : FileStatus.Matched;
             file.Message = null;
