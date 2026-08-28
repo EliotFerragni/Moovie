@@ -41,6 +41,18 @@
           <TextBlock Text="Embedded artwork size" Classes="fieldLabel" />
           <ComboBox ItemsSource="{Binding ArtworkSizes}" SelectedItem="{Binding ArtworkSize}"
                     HorizontalAlignment="Left" MinWidth="160" />
+          <TextBlock Classes="subtle" FontSize="11" TextWrapping="Wrap" Margin="2,3,0,0"
+                     Text="The preview pane downloads this same size, so what you see there is what gets written." />
+
+          <TextBlock Text="Artwork for TV episodes" Classes="fieldLabel" Margin="0,10,0,3" />
+          <ComboBox ItemsSource="{Binding TvArtworkKinds}" SelectedItem="{Binding TvArtwork}"
+                    HorizontalAlignment="Left" MinWidth="200" />
+
+          <TextBlock Text="Artwork for movies" Classes="fieldLabel" Margin="0,10,0,3" />
+          <ComboBox ItemsSource="{Binding MovieArtworkKinds}" SelectedItem="{Binding MovieArtwork}"
+                    HorizontalAlignment="Left" MinWidth="200" />
+          <TextBlock Classes="subtle" FontSize="11" TextWrapping="Wrap" Margin="2,3,0,0"
+                     Text="Picked automatically for every file. Not every title has every kind, so a missing one falls back to the next best. Any single file can be overridden by clicking its artwork in the preview pane." />
           <CheckBox Content="Keep a .bak copy of each file before writing tags"
                     IsChecked="{Binding CreateBackup}" Margin="0,6,0,0" />
         </StackPanel>

@@ -34,6 +34,15 @@ public interface ITmdbService
     Task<EpisodeCoordinate?> FindEpisodeByAirDateAsync(
         int showId, DateTime airDate, string language, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Every image TMDB holds for a title, across all the kinds that apply to it, so the user can
+    /// pick one by hand. Unlike the paths carried on <see cref="MediaMetadata"/> this costs extra
+    /// requests, so it is only called when the picker is actually opened.
+    /// </summary>
+    Task<IReadOnlyList<ArtworkOption>> GetArtworkOptionsAsync(
+        MediaKind kind, int tmdbId, int? season, int? episode, string language,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Downloads artwork for a TMDB-relative path, or null when there is none.</summary>
     Task<byte[]?> GetArtworkAsync(
         string? artworkPath, string size, CancellationToken cancellationToken = default);

@@ -170,6 +170,29 @@ name collisions get a ` (2)` suffix.
 
 ---
 
+## Artwork
+
+The image at the top of the preview pane is the one that will be embedded, downloaded at the
+size set in Settings, so nothing is a stand-in. Episode stills are 16:9 and posters are 2:3;
+both are shown whole rather than cropped to a fixed box. The caption underneath names what you
+are looking at, e.g. `Season poster · w780`.
+
+**Click the artwork to pick a different one.** That lists everything TMDB has for the title —
+episode stills, season posters, show posters and backdrops — with the one in use outlined.
+Artwork in your metadata language comes first, then textless art, then whatever TMDB rates
+highest. A hand-picked image lasts until the file is refetched or you choose a different match,
+at which point the automatic choice takes over again.
+
+Which artwork gets chosen for you is a setting, separately for TV episodes (episode still,
+season poster, show poster or show backdrop) and for movies (poster or backdrop). Not every
+title has every kind — plenty of older episodes have no still — so a missing kind falls back to
+the next best one for that medium rather than leaving the file bare.
+
+Only the picker costs extra TMDB requests, and only when you open it. The kinds offered by the
+setting all arrive with the metadata lookup itself.
+
+---
+
 ## What gets written into the file
 
 The iTunes-style MP4 atoms that Plex, Jellyfin, Emby, Infuse and the Apple TV app read:

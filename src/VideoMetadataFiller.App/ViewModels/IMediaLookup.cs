@@ -18,6 +18,18 @@ public interface IMediaLookup
     /// <summary>Languages offered in the per-file dropdown.</summary>
     IReadOnlyList<LanguageOption> Languages { get; }
 
+    /// <summary>
+    /// TMDB image size for artwork. The preview pane downloads this same size, so the pane shows
+    /// the image that will actually be embedded rather than a stand-in.
+    /// </summary>
+    string ArtworkSize { get; }
+
+    /// <summary>The preferred artwork kind for a medium, used to mark the current pick.</summary>
+    ArtworkKind PreferredArtwork(MediaKind kind);
+
+    /// <summary>Applies an artwork the user picked by hand, replacing whatever was chosen for them.</summary>
+    void SetArtwork(FileItemViewModel file, string artworkPath);
+
     /// <summary>Applies a user-chosen title to a file and fetches its full metadata.</summary>
     Task ChooseCandidateAsync(FileItemViewModel file, Candidate candidate);
 

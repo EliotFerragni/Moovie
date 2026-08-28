@@ -140,6 +140,33 @@
     <Setter Property="Padding" Value="8,6" />
   </Style>
 
+  <!--
+    Artwork doubles as a button, in the preview header and in the picker grid, so it has to stay
+    looking like a plain image. These live here rather than on the pane because the picker's
+    content is hosted in a popup of its own.
+  -->
+  <Style Selector="Button.artwork">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+
+  <Style Selector="Button.artwork:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+
+  <Style Selector="Border.artworkCell">
+    <Setter Property="BorderThickness" Value="2" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="CornerRadius" Value="6" />
+  </Style>
+
+  <!-- The image this file is using now. -->
+  <Style Selector="Border.artworkCell.current">
+    <Setter Property="BorderBrush" Value="{DynamicResource InfoColor}" />
+  </Style>
+
   <Style Selector="Border.candidate">
     <Setter Property="Background" Value="{DynamicResource PanelBackground}" />
     <Setter Property="BorderBrush" Value="{DynamicResource PanelBorder}" />
