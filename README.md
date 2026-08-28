@@ -188,6 +188,12 @@ season poster, show poster or show backdrop) and for movies (poster or backdrop)
 title has every kind — plenty of older episodes have no still — so a missing kind falls back to
 the next best one for that medium rather than leaving the file bare.
 
+Artwork is not a translation, so a kind missing in your language is taken from the original
+language instead of being given up on: a season with a French entry but no French poster still
+gets the English poster rather than quietly turning into a show poster. Artwork that did come
+back in your language always wins, and unlike untranslated text this is not flagged in the
+pane, because a poster with no words on it is not a translation gap.
+
 Only the picker costs extra TMDB requests, and only when you open it. The kinds offered by the
 setting all arrive with the metadata lookup itself.
 

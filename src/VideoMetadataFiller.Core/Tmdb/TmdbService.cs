@@ -104,7 +104,7 @@ public sealed class TmdbService : ITmdbService, IDisposable
 
         var metadata = MapMovie(movie, language);
 
-        if (NeedsTranslationFallback(metadata, language))
+        if (NeedsFallback(metadata, language))
         {
             var fallback = await GetMovieRecordAsync(movieId, FallbackLanguage, cancellationToken)
                 .ConfigureAwait(false);
@@ -132,7 +132,7 @@ public sealed class TmdbService : ITmdbService, IDisposable
 
         var metadata = MapEpisode(show, seasonRecord, episode, season, episodes, language);
 
-        if (NeedsTranslationFallback(metadata, language))
+        if (NeedsFallback(metadata, language))
         {
             var fallbackShow = await GetShowRecordAsync(showId, FallbackLanguage, cancellationToken)
                 .ConfigureAwait(false);
@@ -593,9 +593,18 @@ public sealed class TmdbService : ITmdbService, IDisposable
     }
 
     /// <summary>True when the requested language left the text fields that matter empty.</summary>
-    private static bool NeedsTranslationFallback(MediaMetadata metadata, string language) =>
+    /// <summary>
+    /// Whether the original-language record is worth fetching as well. Two independent reasons:
+    /// text TMDB has no translation for, and artwork that exists only under the original
+    /// language. The second is easy to overlook — a fully translated season can still have no
+    /// poster of its own — and without it the preferred artwork kind silently downgrades.
+    /// The extra fetch is cached per show and season, so a whole season costs it once.
+    /// </summary>
+    private static bool NeedsFallback(MediaMetadata metadata, string language) =>
         !language.StartsWith("en", StringComparison.OrdinalIgnoreCase)
-        && (string.IsNullOrWhiteSpace(metadata.Title) || string.IsNullOrWhiteSpace(metadata.Overview));
+        && (string.IsNullOrWhiteSpace(metadata.Title)
+            || string.IsNullOrWhiteSpace(metadata.Overview)
+            || !ArtworkSelector.HasEveryKind(metadata));
 
     /// <summary>
     /// Fills fields the requested language had nothing for, recording which ones fell back so the
@@ -626,6 +635,10 @@ public sealed class TmdbService : ITmdbService, IDisposable
             target.ShowName = source.ShowName;
             target.FallbackFields.Add(nameof(target.ShowName));
         }
+
+        // Artwork is deliberately not recorded as a fallback field: the pane uses those to
+        // explain untranslated text, and a poster with no words on it is not a translation gap.
+        ArtworkSelector.FillMissingKinds(target, source);
     }
 
     private static string CacheKey(string kind, string? a, string? b, string? c) =>

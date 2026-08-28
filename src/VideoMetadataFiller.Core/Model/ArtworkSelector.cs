@@ -19,6 +19,36 @@ public static class ArtworkSelector
         return metadata.ArtworkByKind.Values.FirstOrDefault(p => !string.IsNullOrWhiteSpace(p));
     }
 
+    /// <summary>
+    /// Whether TMDB gave every artwork kind this medium can have. Artwork is not a translation:
+    /// a season can have a full French entry and no French poster, in which case the kind is
+    /// simply absent and <see cref="Resolve"/> would quietly drop to a different one. A caller
+    /// looking things up in another language uses this to decide whether the original-language
+    /// record is worth fetching too.
+    /// </summary>
+    public static bool HasEveryKind(MediaMetadata metadata)
+    {
+        var expected = metadata.Kind == MediaKind.Movie ? ArtworkKinds.ForMovies : ArtworkKinds.ForTv;
+        return expected.All(metadata.ArtworkByKind.ContainsKey);
+    }
+
+    /// <summary>
+    /// Adds the kinds <paramref name="target"/> is missing from <paramref name="source"/>.
+    /// Whatever the requested language did supply always wins, so a French poster is never
+    /// replaced by an English one.
+    /// </summary>
+    public static void FillMissingKinds(MediaMetadata target, MediaMetadata source)
+    {
+        foreach (var (kind, path) in source.ArtworkByKind)
+        {
+            if (!string.IsNullOrWhiteSpace(path))
+                target.ArtworkByKind.TryAdd(kind, path);
+        }
+
+        if (string.IsNullOrWhiteSpace(target.ArtworkPath) && !string.IsNullOrWhiteSpace(source.ArtworkPath))
+            target.ArtworkPath = source.ArtworkPath;
+    }
+
     private static IEnumerable<ArtworkKind> Order(MediaKind media, ArtworkKind preferred)
     {
         yield return preferred;
