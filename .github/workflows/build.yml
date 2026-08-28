@@ -7,6 +7,16 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      target:
+        description: "Which target to build"
+        type: choice
+        default: linux-x64
+        options: [linux-x64, linux-arm64, win-x64, win-arm64, osx-x64, osx-arm64, all]
+      cross_platform_tests:
+        description: "Also run the tests on Windows and macOS (slow: bills at 2x and 10x)"
+        type: boolean
+        default: false
   release:
     types: [published]
 
@@ -45,12 +55,13 @@ jobs:
       - name: Test
         run: dotnet test --configuration Release --no-build --verbosity normal
 
-  # Windows and macOS runners bill at 2x and 10x Linux, so they are not worth
-  # spending on every push. They exist to prove the app still runs on those
-  # platforms, which is a periodic check: trunk, a release, or asked for by hand.
+  # Windows and macOS runners bill at 2x and 10x Linux, roughly 36 billed minutes
+  # a go, so they are not worth spending on every push. They exist to prove the app
+  # still runs on those platforms: trunk, a release, or a manual run that asks.
+  # Publishing a build to try out should not drag them along.
   test-all-os:
     name: test (${{ matrix.os }})
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'push' || github.event_name == 'release' || inputs.cross_platform_tests
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -84,10 +95,12 @@ jobs:
   # mkdir/sed/mv. See build/publish.sh. Signing would need a Mac; these builds
   # are deliberately unsigned.
   publish:
-    name: publish (all targets)
+    name: publish (${{ github.event_name == 'release' && 'all' || inputs.target }})
     needs: test
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'release'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -102,14 +115,31 @@ jobs:
           key: ${{ runner.os }}-nuget-publish-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
           restore-keys: ${{ runner.os }}-nuget-publish-
 
+      # A release always ships every target. A manual run defaults to one, because
+      # iterating on all six costs 233 MB of a 500 MB artifact quota per run.
       - name: Publish
-        run: ./build/publish.sh all
+        run: ./build/publish.sh "${{ github.event_name == 'release' && 'all' || inputs.target }}"
 
-      # One artifact for all targets: it expires as a single unit, which keeps a
-      # free account's 500 MB of artifact storage from filling up.
-      - uses: actions/upload-artifact@v4
+      # Manual runs keep their output as an artifact, briefly: it is a build to go
+      # and try, not something to hold for a fortnight.
+      - name: Upload build
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
         with:
-          name: VideoMetadataFiller-all-targets
+          name: VideoMetadataFiller-${{ inputs.target }}
           path: artifacts/
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 3
+
+      # Release binaries go onto the release itself. Release assets do not count
+      # against the artifact quota, they never expire, and unlike a CI artifact the
+      # archives keep their executable bit, so the macOS .app stays launchable.
+      - name: Package release archives
+        if: github.event_name == 'release'
+        run: ./build/package.sh
+
+      - name: Attach archives to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" dist/* --clobber

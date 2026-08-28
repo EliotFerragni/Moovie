@@ -326,6 +326,11 @@ restored, so a Mac build works fine from Linux. Release builds come from CI, whe
 targets are produced on a single `ubuntu-latest` runner. The one thing that would need a
 real Mac is codesigning, which is why the macOS builds are unsigned.
 
+`build/package.sh` turns `artifacts/` into one archive per target under `dist/` — `.tar.gz`
+for Linux, `.zip` elsewhere, both of which keep the executable bit that a CI artifact's own
+rezipping would drop. Publishing a GitHub release runs it and attaches the results, so the
+binaries on a release are the ones to download.
+
 macOS builds are assembled into a `Video Metadata Filler.app` bundle. They are unsigned, so
 Gatekeeper needs persuading once:
 
