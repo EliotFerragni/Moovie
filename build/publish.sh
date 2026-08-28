@@ -62,10 +62,9 @@ for runtime in "${TARGETS[@]}"; do
   if [[ "$runtime" == osx-* ]]; then
     bundle="$output/Video Metadata Filler.app"
     mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources"
-    # Skia, HarfBuzz and the Avalonia natives are published next to the executable
-    # instead of being embedded in it, unlike on Windows and Linux. They have to
-    # travel into Contents/MacOS/ too, or the bundle is broken the moment it is
-    # moved anywhere on its own.
+    # Move everything, not just the executable. .NET 10 embeds the Skia, HarfBuzz and
+    # Avalonia natives into the single file, but .NET 9 published them beside it, and
+    # a bundle that leaves them behind breaks the moment it is moved on its own.
     find "$output" -maxdepth 1 -type f -exec mv {} "$bundle/Contents/MacOS/" \;
     chmod +x "$bundle/Contents/MacOS/VideoMetadataFiller"
     sed -e "s/__RUNTIME__/$runtime/" -e "s/__VERSION__/$VERSION/" \

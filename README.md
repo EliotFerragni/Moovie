@@ -237,8 +237,8 @@ There is an optional "keep a `.bak` copy" setting for the cautious.
 
 ## Setting up a dev environment
 
-The only hard requirement is the [.NET 9 SDK](https://dotnet.microsoft.com/download). There
-is no `global.json`, so any 9.0.x will do. Everything below is either that, optional editor
+The only hard requirement is the [.NET 10 SDK](https://dotnet.microsoft.com/download). There
+is no `global.json`, so any 10.0.x will do. Everything below is either that, optional editor
 tooling, or — on Linux only — desktop libraries a normal desktop install already has.
 
 ### Windows
@@ -263,20 +263,20 @@ ever want to codesign a build, which the project does not do.
 
 ### Linux
 
-Where your distro packages .NET 9, use it:
+Where your distro packages .NET 10, use it:
 
 ```bash
-sudo apt install dotnet-sdk-9.0      # Debian 12+, Ubuntu 22.04+
-sudo dnf install dotnet-sdk-9.0      # Fedora
+sudo apt install dotnet-sdk-10.0     # Debian / Ubuntu, where packaged
+sudo dnf install dotnet-sdk-10.0     # Fedora
 sudo pacman -S dotnet-sdk            # Arch
 ```
 
-On anything older or unpackaged (Ubuntu 20.04, for instance) the official script works
-everywhere. Note that it installs into `~/.dotnet` and deliberately does not touch your
+Distro packages lag a release or two, so on anything that does not have it yet the official
+script works everywhere. Note that it installs into `~/.dotnet` and deliberately does not touch your
 `PATH`, so you have to do that yourself:
 
 ```bash
-curl -sSL https://dot.net/v1/dotnet-install.sh | bash -s -- --channel 9.0
+curl -sSL https://dot.net/v1/dotnet-install.sh | bash -s -- --channel 10.0
 export DOTNET_ROOT="$HOME/.dotnet"
 export PATH="$DOTNET_ROOT:$PATH"
 ```
@@ -306,7 +306,7 @@ embeds Inter.
 ### Checking it works
 
 ```bash
-dotnet --info                                    # should report 9.0.x
+dotnet --info                                    # should report 10.0.x
 dotnet test                                      # 152 tests
 dotnet run --project src/VideoMetadataFiller.App
 ```
@@ -323,7 +323,7 @@ Any of these work; none is required.
   extension, plus [Avalonia for VS Code](https://marketplace.visualstudio.com/items?itemName=AvaloniaTeam.vscode-avalonia)
   if you want the XAML previewer.
 - **Rider**, which understands Avalonia XAML out of the box.
-- **Visual Studio 2022** (17.12 or newer for .NET 9), Windows only.
+- **Visual Studio**, a release new enough to carry the .NET 10 SDK. Windows only.
 
 ---
 
