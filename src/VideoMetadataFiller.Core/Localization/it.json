@@ -93,7 +93,7 @@
   "field.contentRating": "Classificazione",
   "field.contentRatingHint": "ad esempio PG-13 o TV-MA.",
   "field.resolution": "Risoluzione",
-  "field.resolutionHint": "Usata dal token di rinomina {resolution} e dal contrassegno HD.",
+  "field.resolutionHint": "Letta dal video stesso. Usata dal token di rinomina {resolution} e dal contrassegno HD.",
   "field.tmdbId": "Id TMDB",
   "field.imdbId": "Id IMDb",
   "field.commaSeparated": "Separati da virgole.",
@@ -213,7 +213,7 @@
   "token.genre": "Primo genere",
   "token.studio": "Casa di produzione",
   "token.network": "Rete di trasmissione",
-  "token.resolution": "Risoluzione ricavata dal nome di file originale",
+  "token.resolution": "Risoluzione del video stesso",
   "token.tmdbId": "Id TMDB",
   "token.imdbId": "Id IMDb",
   "token.ext": "Estensione del file (aggiunta automaticamente se la ometti)"

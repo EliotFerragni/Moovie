@@ -93,7 +93,7 @@
   "field.contentRating": "Content rating",
   "field.contentRatingHint": "e.g. PG-13 or TV-MA.",
   "field.resolution": "Resolution",
-  "field.resolutionHint": "Used by the {resolution} rename token and the HD flag.",
+  "field.resolutionHint": "Read from the video itself. Used by the {resolution} rename token and the HD flag.",
   "field.tmdbId": "TMDB id",
   "field.imdbId": "IMDb id",
   "field.commaSeparated": "Comma-separated.",
@@ -213,7 +213,7 @@
   "token.genre": "First genre",
   "token.studio": "Production company",
   "token.network": "Broadcast network",
-  "token.resolution": "Resolution taken from the original filename",
+  "token.resolution": "Resolution of the video itself",
   "token.tmdbId": "TMDB id",
   "token.imdbId": "IMDb id",
   "token.ext": "File extension (added automatically if you leave it out)"

@@ -93,7 +93,7 @@
   "field.contentRating": "Altersfreigabe",
   "field.contentRatingHint": "z. B. PG-13 oder TV-MA.",
   "field.resolution": "Auflösung",
-  "field.resolutionHint": "Wird vom Umbenennungs-Token {resolution} und vom HD-Kennzeichen verwendet.",
+  "field.resolutionHint": "Aus dem Video selbst gelesen. Wird vom Umbenennungs-Token {resolution} und vom HD-Kennzeichen verwendet.",
   "field.tmdbId": "TMDB-ID",
   "field.imdbId": "IMDb-ID",
   "field.commaSeparated": "Durch Kommas getrennt.",
@@ -213,7 +213,7 @@
   "token.genre": "Erstes Genre",
   "token.studio": "Produktionsfirma",
   "token.network": "Sendernetz",
-  "token.resolution": "Auflösung aus dem ursprünglichen Dateinamen",
+  "token.resolution": "Auflösung des Videos selbst",
   "token.tmdbId": "TMDB-ID",
   "token.imdbId": "IMDb-ID",
   "token.ext": "Dateiendung (wird automatisch ergänzt, wenn sie fehlt)"

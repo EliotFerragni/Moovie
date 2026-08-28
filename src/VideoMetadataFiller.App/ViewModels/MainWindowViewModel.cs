@@ -260,9 +260,15 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
 
         if (_resolver is null)
         {
+            // Parsing is cheap but the probe opens every file, so it does not run on the UI thread.
+            await Task.Run(() =>
+            {
+                foreach (var item in items)
+                    item.Parsed = Examine(item.Path);
+            });
+
             foreach (var item in items)
             {
-                item.Parsed = FilenameParser.Parse(item.Path);
                 SeedFromParse(item);
                 item.Status = FileStatus.Pending;
                 item.Message = Strings.Get("main.waitingForKey");
@@ -324,7 +330,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
         if (!force && item.Status is FileStatus.Matched or FileStatus.Edited or FileStatus.Applied)
             return;
 
-        item.Parsed = FilenameParser.Parse(item.Path);
+        item.Parsed = await Task.Run(() => Examine(item.Path), token);
         if (force)
             item.ClearUserEdits();
         SeedFromParse(item);
@@ -348,6 +354,25 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
             item.Status = FileStatus.Failed;
             item.Message = e.Message;
         }
+    }
+
+    /// <summary>
+    /// What the path says about a file, corrected by what the file itself says.
+    /// </summary>
+    /// <remarks>
+    /// The resolution is the one field the container knows better than the name. A name only
+    /// claims a resolution, and stops claiming it the moment the file is renamed by a template
+    /// without <c>{resolution}</c> — after which the next pass would find nothing and write an SD
+    /// HD flag over a 4K film. Taking it from the video track fixes that, and mislabelled
+    /// releases along with it. The name is still the fallback, for a file whose video track
+    /// cannot be read.
+    /// </remarks>
+    private static ParsedName Examine(string path)
+    {
+        var parsed = FilenameParser.Parse(path);
+        return VideoResolution.Read(path) is { } resolution
+            ? parsed with { Resolution = resolution }
+            : parsed;
     }
 
     /// <summary>

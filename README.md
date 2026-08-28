@@ -225,6 +225,17 @@ Write `{{` and `}}` for literal braces.
 **Multi-episode files** repeat the episode marker, so `E{episode:00}` renders as `E01-E02` —
 the form media servers recognise.
 
+**Resolution** is read from the video track rather than from the name. A name only *claims* a
+resolution, and stops claiming it the moment the file is renamed by a template that leaves
+`{resolution}` out — after which the next pass over the same library would find nothing and
+write an SD HD flag over a 4K film. The container is asked instead, so the answer survives
+renaming and mislabelled releases alike; the name is still the fallback for a file whose video
+track cannot be read.
+
+Height decides the label, but width may promote it: widescreen film is cropped rather than
+letterboxed, so a 2.39:1 transfer is 1920×800 and is still `1080p`. Width never demotes, or
+4:3 and anamorphic material would be misnamed — 720×576 is `576p`, not `720p`.
+
 Renaming happens in place: only the filename changes, never the folder. Characters that are
 illegal on Windows are stripped whatever platform you are on, so a library stays portable, and
 name collisions get a ` (2)` suffix.
@@ -269,7 +280,7 @@ The iTunes-style MP4 atoms that Plex, Jellyfin, Emby, Infuse and the Apple TV ap
 - `©nam` title · `©day` date · `©gen` genres · `desc` and `ldes` descriptions · `covr` cover art
 - `tvsh` show · `tvsn` season · `tves` episode · `tven` episode id · `tvnn` network
 - `©ART` / `aART` artist · `©alb` album (`Show, Season 1` for episodes) · `©wrt` writer
-- `hdvd` HD flag, from the resolution in the filename
+- `hdvd` HD flag, from the frame size of the video itself
 - `iTunMOVI` — an Apple property list holding cast, directors and screenwriters
 - `iTunEXTC` — the certification string Apple devices display
 
@@ -353,7 +364,7 @@ embeds Inter.
 
 ```bash
 dotnet --info                                    # should report 10.0.x
-dotnet test                                      # 213 tests
+dotnet test                                      # 240 tests
 dotnet run --project src/VideoMetadataFiller.App
 ```
 
@@ -431,7 +442,8 @@ src/VideoMetadataFiller.Core/     no UI dependencies, fully unit-tested
   Parsing/     FilenameParser, JunkTokens
   Tmdb/        ITmdbService, TmdbService
   Matching/    TitleScorer, MatchResolver
-  Writing/     Mp4TagWriter, Mp4TagReader, MetadataDiff, RenameTemplate, RenameEngine
+  Writing/     Mp4TagWriter, Mp4TagReader, MetadataDiff, VideoResolution,
+               RenameTemplate, RenameEngine
   Settings/    AppSettings, SettingsStore
 
 src/VideoMetadataFiller.App/      Avalonia UI
