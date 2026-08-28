@@ -73,6 +73,24 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
 
     public ITmdbService? Tmdb => _tmdb;
 
+    public string ArtworkSize => Settings.ArtworkSize;
+
+    public ArtworkKind PreferredArtwork(MediaKind kind) => Settings.PreferredArtwork(kind);
+
+    /// <summary>
+    /// A hand-picked image wins over the preferred kind until the file is refetched. Any artwork
+    /// already downloaded is dropped so the new path is fetched on the next Apply.
+    /// </summary>
+    public void SetArtwork(FileItemViewModel file, string artworkPath)
+    {
+        if (file.Metadata.ArtworkPath == artworkPath)
+            return;
+
+        file.Metadata.ArtworkPath = artworkPath;
+        file.Metadata.ArtworkData = null;
+        NotifyMetadataChanged(file);
+    }
+
     public string Language => Settings.Language;
 
     public IReadOnlyList<LanguageOption> Languages => LanguageCatalog.All;
@@ -460,6 +478,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
             }
 
             metadata.Resolution = file.Metadata.Resolution ?? file.Parsed?.Resolution;
+            metadata.ArtworkPath =
+                ArtworkSelector.Resolve(metadata, Settings.PreferredArtwork(metadata.Kind))
+                ?? metadata.ArtworkPath;
             file.Metadata = MergeKeepingUserEdits(file, metadata);
             file.Status = file.UserEditedFields.Count > 0 ? FileStatus.Edited : FileStatus.Matched;
             file.Message = null;
@@ -635,6 +656,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
 
         var previousKey = Settings.TmdbApiKey;
         var previousLanguage = Settings.Language;
+        var previousArtworkSize = Settings.ArtworkSize;
+        var previousTvArtwork = Settings.TvArtwork;
+        var previousMovieArtwork = Settings.MovieArtwork;
 
         Settings = editor.ToSettings();
         _settingsStore.Save(Settings);
@@ -643,6 +667,16 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
         if (Settings.TmdbApiKey != previousKey)
             RebuildTmdbClient();
 
+        // Artwork already downloaded is the wrong size now, so make Apply fetch it again.
+        if (Settings.ArtworkSize != previousArtworkSize)
+        {
+            foreach (var file in Files)
+                file.Metadata.ArtworkData = null;
+        }
+
+        if (Settings.TvArtwork != previousTvArtwork || Settings.MovieArtwork != previousMovieArtwork)
+            ReapplyArtworkPreference();
+
         UpdateBanner();
         RefreshRenamePreviews();
         Preview.Refresh();
@@ -650,6 +684,28 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
         // A different language means everything on screen is in the wrong one.
         if (Settings.Language != previousLanguage && Files.Count > 0 && _resolver is not null)
             await ScanAsync(Files.ToList(), force: true);
+    }
+
+    /// <summary>
+    /// Moves every already-matched file onto the newly preferred artwork kind. Changing the
+    /// setting is explicit enough to override an earlier hand-picked image.
+    /// </summary>
+    private void ReapplyArtworkPreference()
+    {
+        foreach (var file in Files)
+        {
+            if (file.Metadata.ArtworkByKind.Count == 0)
+                continue;
+
+            var resolved = ArtworkSelector.Resolve(
+                file.Metadata, Settings.PreferredArtwork(file.Metadata.Kind));
+
+            if (resolved is null || resolved == file.Metadata.ArtworkPath)
+                continue;
+
+            file.Metadata.ArtworkPath = resolved;
+            file.Metadata.ArtworkData = null;
+        }
     }
 
     private void RebuildTmdbClient()

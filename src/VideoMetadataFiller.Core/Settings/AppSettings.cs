@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using VideoMetadataFiller.Core.Model;
 
 namespace VideoMetadataFiller.Core.Settings;
 
@@ -34,8 +35,21 @@ public sealed class AppSettings
 
     public SeparatorStyle Separator { get; set; } = SeparatorStyle.Space;
 
-    /// <summary>TMDB image size for embedded artwork.</summary>
+    /// <summary>
+    /// TMDB image size for embedded artwork. The preview pane downloads this same size, so what
+    /// is on screen is what gets written.
+    /// </summary>
     public string ArtworkSize { get; set; } = "w780";
+
+    /// <summary>Which artwork a TV episode gets by default. Falls back when the kind is missing.</summary>
+    public ArtworkKind TvArtwork { get; set; } = ArtworkKind.EpisodeStill;
+
+    /// <summary>Which artwork a movie gets by default.</summary>
+    public ArtworkKind MovieArtwork { get; set; } = ArtworkKind.MoviePoster;
+
+    /// <summary>The preferred kind for a given medium.</summary>
+    public ArtworkKind PreferredArtwork(MediaKind kind) =>
+        kind == MediaKind.Movie ? MovieArtwork : TvArtwork;
 
     /// <summary>Keep a <c>.bak</c> copy of each file before its tags are rewritten.</summary>
     public bool CreateBackup { get; set; }

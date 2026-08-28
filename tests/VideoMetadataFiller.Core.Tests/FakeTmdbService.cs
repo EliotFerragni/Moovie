@@ -96,6 +96,20 @@ public sealed class FakeTmdbService : ITmdbService
             ? coordinate
             : (EpisodeCoordinate?)null);
 
+    /// <summary>Artwork the picker will be offered, keyed by TMDB id.</summary>
+    public Dictionary<int, List<ArtworkOption>> ArtworkOptions { get; init; } = [];
+
+    public int ArtworkOptionCalls { get; private set; }
+
+    public Task<IReadOnlyList<ArtworkOption>> GetArtworkOptionsAsync(
+        MediaKind kind, int tmdbId, int? season, int? episode, string language,
+        CancellationToken cancellationToken = default)
+    {
+        ArtworkOptionCalls++;
+        return Task.FromResult<IReadOnlyList<ArtworkOption>>(
+            ArtworkOptions.TryGetValue(tmdbId, out var options) ? [.. options] : []);
+    }
+
     public Task<byte[]?> GetArtworkAsync(
         string? artworkPath, string size, CancellationToken cancellationToken = default) =>
         Task.FromResult<byte[]?>(null);

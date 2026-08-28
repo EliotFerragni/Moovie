@@ -47,8 +47,14 @@ public sealed class MediaMetadata
 
     public string? ImdbId { get; set; }
 
-    /// <summary>TMDB-relative artwork path (poster for movies/shows, still for episodes).</summary>
+    /// <summary>TMDB-relative artwork path: whichever image is currently chosen for this file.</summary>
     public string? ArtworkPath { get; set; }
+
+    /// <summary>
+    /// Every artwork kind TMDB offered for this title, so the preferred-artwork setting can be
+    /// honoured without another round trip. Populated during the lookup.
+    /// </summary>
+    public Dictionary<ArtworkKind, string> ArtworkByKind { get; set; } = [];
 
     /// <summary>Downloaded artwork bytes, filled in just before writing.</summary>
     public byte[]? ArtworkData { get; set; }
@@ -91,6 +97,7 @@ public sealed class MediaMetadata
         TmdbId = TmdbId,
         ImdbId = ImdbId,
         ArtworkPath = ArtworkPath,
+        ArtworkByKind = new Dictionary<ArtworkKind, string>(ArtworkByKind),
         ArtworkData = ArtworkData,
         Resolution = Resolution,
         Language = Language,

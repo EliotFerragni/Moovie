@@ -39,6 +39,7 @@ public sealed class TmdbService : ITmdbService, IDisposable
     private readonly Dictionary<string, TvShow?> _showCache = [];
     private readonly Dictionary<string, TvSeason?> _seasonCache = [];
     private readonly Dictionary<string, byte[]?> _artworkCache = [];
+    private readonly Dictionary<string, IReadOnlyList<ArtworkOption>> _artworkOptionsCache = [];
     private readonly SemaphoreSlim _cacheLock = new(1, 1);
 
     private string? _imageBaseUrl;
@@ -129,7 +130,7 @@ public sealed class TmdbService : ITmdbService, IDisposable
         if (episode is null)
             return null;
 
-        var metadata = MapEpisode(show, episode, season, episodes, language);
+        var metadata = MapEpisode(show, seasonRecord, episode, season, episodes, language);
 
         if (NeedsTranslationFallback(metadata, language))
         {
@@ -139,7 +140,8 @@ public sealed class TmdbService : ITmdbService, IDisposable
                 .ConfigureAwait(false);
             var fallbackEpisode = fallbackSeason?.Episodes?.FirstOrDefault(e => e.EpisodeNumber == wanted);
             if (fallbackShow is not null && fallbackEpisode is not null)
-                FillGaps(metadata, MapEpisode(fallbackShow, fallbackEpisode, season, episodes, FallbackLanguage));
+                FillGaps(metadata, MapEpisode(
+                    fallbackShow, fallbackSeason, fallbackEpisode, season, episodes, FallbackLanguage));
         }
 
         return metadata;
@@ -171,6 +173,115 @@ public sealed class TmdbService : ITmdbService, IDisposable
         }
 
         return null;
+    }
+
+    /// <summary>Caps how many images of one kind the picker offers: a popular show has hundreds.</summary>
+    private const int MaxOptionsPerKind = 12;
+
+    public async Task<IReadOnlyList<ArtworkOption>> GetArtworkOptionsAsync(
+        MediaKind kind, int tmdbId, int? season, int? episode, string language,
+        CancellationToken cancellationToken = default)
+    {
+        var key = CacheKey("art-options", $"{kind}-{tmdbId}-{season}-{episode}", language, null);
+        if (TryGetCached(_artworkOptionsCache, key, out var cached))
+            return cached!;
+
+        var options = new List<ArtworkOption>();
+
+        if (kind == MediaKind.Movie)
+        {
+            var images = await TryFetchAsync(
+                () => _client.GetMovieImagesAsync(tmdbId, cancellationToken: cancellationToken),
+                cancellationToken).ConfigureAwait(false);
+            Collect(options, ArtworkKind.MoviePoster, images?.Posters);
+            Collect(options, ArtworkKind.MovieBackdrop, images?.Backdrops);
+        }
+        else
+        {
+            if (season is { } seasonNumber && episode is { } episodeNumber)
+            {
+                var stills = await TryFetchAsync(
+                    () => _client.GetTvEpisodeImagesAsync(
+                        tmdbId, seasonNumber, episodeNumber, cancellationToken: cancellationToken),
+                    cancellationToken).ConfigureAwait(false);
+                Collect(options, ArtworkKind.EpisodeStill, stills?.Stills);
+            }
+
+            if (season is { } posterSeason)
+            {
+                var seasonImages = await TryFetchAsync(
+                    () => _client.GetTvSeasonImagesAsync(
+                        tmdbId, posterSeason, cancellationToken: cancellationToken),
+                    cancellationToken).ConfigureAwait(false);
+                Collect(options, ArtworkKind.SeasonPoster, seasonImages?.Posters);
+            }
+
+            var showImages = await TryFetchAsync(
+                () => _client.GetTvShowImagesAsync(tmdbId, cancellationToken: cancellationToken),
+                cancellationToken).ConfigureAwait(false);
+            Collect(options, ArtworkKind.ShowPoster, showImages?.Posters);
+            Collect(options, ArtworkKind.ShowBackdrop, showImages?.Backdrops);
+        }
+
+        var ordered = OrderArtwork(options, language);
+        await StoreAsync(_artworkOptionsCache, key, ordered).ConfigureAwait(false);
+        return ordered;
+    }
+
+    /// <summary>
+    /// A title with no images of one kind answers with a 404. That is an answer, not a failure:
+    /// the picker should still show whatever other kinds did come back.
+    /// </summary>
+    private async Task<T?> TryFetchAsync<T>(Func<Task<T?>> call, CancellationToken cancellationToken)
+        where T : class
+    {
+        try
+        {
+            return await SendAsync(call, cancellationToken).ConfigureAwait(false);
+        }
+        catch (TmdbException)
+        {
+            return null;
+        }
+    }
+
+    private static void Collect(
+        List<ArtworkOption> into, ArtworkKind kind,
+        IEnumerable<TMDbLib.Objects.General.ImageData>? images)
+    {
+        foreach (var image in images ?? [])
+        {
+            if (string.IsNullOrWhiteSpace(image.FilePath))
+                continue;
+
+            into.Add(new ArtworkOption
+            {
+                Kind = kind,
+                Path = image.FilePath,
+                Width = image.Width,
+                Height = image.Height,
+                Language = string.IsNullOrWhiteSpace(image.Iso_639_1) ? null : image.Iso_639_1,
+                VoteAverage = image.VoteAverage,
+            });
+        }
+    }
+
+    /// <summary>
+    /// Groups by kind so the picker reads in a predictable order, and within a kind puts artwork
+    /// in the requested language first, then textless art, then whatever TMDB rates highest.
+    /// </summary>
+    private static IReadOnlyList<ArtworkOption> OrderArtwork(List<ArtworkOption> options, string language)
+    {
+        var wanted = language.Split('-')[0];
+
+        return options
+            .GroupBy(o => o.Kind)
+            .OrderBy(g => (int)g.Key)
+            .SelectMany(g => g
+                .OrderBy(o => o.Language == wanted ? 0 : o.Language is null ? 1 : 2)
+                .ThenByDescending(o => o.VoteAverage)
+                .Take(MaxOptionsPerKind))
+            .ToList();
     }
 
     public async Task<byte[]?> GetArtworkAsync(
@@ -379,11 +490,13 @@ public sealed class TmdbService : ITmdbService, IDisposable
         TmdbId = movie.Id,
         ImdbId = movie.ImdbId,
         ArtworkPath = movie.PosterPath,
+        ArtworkByKind = MovieArtwork(movie),
         Language = language,
     };
 
     private static MediaMetadata MapEpisode(
-        TvShow show, TvSeasonEpisode episode, int season, IReadOnlyList<int> episodes, string language) => new()
+        TvShow show, TvSeason? seasonRecord, TvSeasonEpisode episode, int season,
+        IReadOnlyList<int> episodes, string language) => new()
     {
         Kind = MediaKind.TvEpisode,
         ShowName = show.Name,
@@ -404,9 +517,36 @@ public sealed class TmdbService : ITmdbService, IDisposable
         TmdbId = show.Id,
         ImdbId = show.ExternalIds?.ImdbId,
         // An episode still is more useful than the show poster, but not every episode has one.
+        // The real choice is made later against the user's preferred kind; this is the fallback.
         ArtworkPath = episode.StillPath ?? show.PosterPath,
+        ArtworkByKind = EpisodeArtwork(show, seasonRecord, episode),
         Language = language,
     };
+
+    private static Dictionary<ArtworkKind, string> EpisodeArtwork(
+        TvShow show, TvSeason? seasonRecord, TvSeasonEpisode episode)
+    {
+        var map = new Dictionary<ArtworkKind, string>();
+        AddArtwork(map, ArtworkKind.EpisodeStill, episode.StillPath);
+        AddArtwork(map, ArtworkKind.SeasonPoster, seasonRecord?.PosterPath);
+        AddArtwork(map, ArtworkKind.ShowPoster, show.PosterPath);
+        AddArtwork(map, ArtworkKind.ShowBackdrop, show.BackdropPath);
+        return map;
+    }
+
+    private static Dictionary<ArtworkKind, string> MovieArtwork(Movie movie)
+    {
+        var map = new Dictionary<ArtworkKind, string>();
+        AddArtwork(map, ArtworkKind.MoviePoster, movie.PosterPath);
+        AddArtwork(map, ArtworkKind.MovieBackdrop, movie.BackdropPath);
+        return map;
+    }
+
+    private static void AddArtwork(Dictionary<ArtworkKind, string> map, ArtworkKind kind, string? path)
+    {
+        if (!string.IsNullOrWhiteSpace(path))
+            map[kind] = path;
+    }
 
     /// <summary>TMDB happily returns a null results array; treat it as no results.</summary>
     private static IEnumerable<T> SafeResults<T>(IEnumerable<T>? results) => results ?? [];

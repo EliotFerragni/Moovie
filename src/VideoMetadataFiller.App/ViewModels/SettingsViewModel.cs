@@ -7,6 +7,14 @@ using VideoMetadataFiller.Core.Writing;
 
 namespace VideoMetadataFiller.App.ViewModels;
 
+/// <summary>An artwork kind offered in one of the artwork dropdowns.</summary>
+public sealed record ArtworkKindChoice(ArtworkKind Kind, string DisplayName)
+{
+    public static ArtworkKindChoice For(ArtworkKind kind) => new(kind, ArtworkKinds.Label(kind));
+
+    public override string ToString() => DisplayName;
+}
+
 /// <summary>A separator choice offered in the dropdown.</summary>
 public sealed record SeparatorChoice(SeparatorStyle Style, string DisplayName)
 {
@@ -37,6 +45,12 @@ public sealed partial class SettingsViewModel : ObservableObject
     private string _artworkSize;
 
     [ObservableProperty]
+    private ArtworkKindChoice _tvArtwork;
+
+    [ObservableProperty]
+    private ArtworkKindChoice _movieArtwork;
+
+    [ObservableProperty]
     private bool _createBackup;
 
     /// <summary>Result of the "Test key" button.</summary>
@@ -58,6 +72,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         _renameEnabled = settings.RenameEnabled;
         _artworkSize = settings.ArtworkSize;
         _createBackup = settings.CreateBackup;
+        _tvArtwork = TvArtworkKinds.First(c => c.Kind == settings.TvArtwork);
+        _movieArtwork = MovieArtworkKinds.First(c => c.Kind == settings.MovieArtwork);
         _separator = Separators.FirstOrDefault(s => s.Style == settings.Separator) ?? Separators[0];
 
         MovieTemplate = new RenameTemplateEditorViewModel(
@@ -85,6 +101,12 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     /// <summary>TMDB image widths, largest first. Bigger artwork means bigger files.</summary>
     public IReadOnlyList<string> ArtworkSizes { get; } = ["original", "w780", "w500", "w342", "w185"];
+
+    public IReadOnlyList<ArtworkKindChoice> TvArtworkKinds { get; } =
+        [.. ArtworkKinds.ForTv.Select(ArtworkKindChoice.For)];
+
+    public IReadOnlyList<ArtworkKindChoice> MovieArtworkKinds { get; } =
+        [.. ArtworkKinds.ForMovies.Select(ArtworkKindChoice.For)];
 
     public bool HasKeyStatus => !string.IsNullOrWhiteSpace(KeyStatus);
 
@@ -140,6 +162,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         settings.RenameEnabled = RenameEnabled;
         settings.Separator = Separator.Style;
         settings.ArtworkSize = ArtworkSize;
+        settings.TvArtwork = TvArtwork.Kind;
+        settings.MovieArtwork = MovieArtwork.Kind;
         settings.CreateBackup = CreateBackup;
         settings.MovieRenameTemplate = MovieTemplate.Template;
         settings.TvRenameTemplate = TvTemplate.Template;

@@ -42,6 +42,29 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
     [ObservableProperty]
     private Bitmap? _poster;
 
+    /// <summary>Whether the current artwork is 16:9 rather than a 2:3 poster, so it is laid out unclipped.</summary>
+    [ObservableProperty]
+    private bool _posterIsWide;
+
+    /// <summary>
+    /// What the artwork is and what size it will be embedded at, e.g. "Episode still · w780".
+    /// Sharpness alone is a poor signal at preview size, so the size is spelled out.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasArtworkCaption))]
+    private string? _artworkCaption;
+
+    [ObservableProperty]
+    private bool _isArtworkPickerOpen;
+
+    [ObservableProperty]
+    private bool _isLoadingArtwork;
+
+    /// <summary>Why the picker is empty, when it is.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasArtworkMessage))]
+    private string? _artworkMessage;
+
     /// <summary>The "needs a choice" / "nothing found" banner, or null when there is nothing to say.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasNotice))]
@@ -91,6 +114,13 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
     /// <summary>True for a single file, where per-file controls (language, TMDB id) make sense.</summary>
     public bool IsSingleSelection => SelectionCount == 1;
 
+    /// <summary>Images offered by the picker for the selected file.</summary>
+    public ObservableCollection<ArtworkChoiceViewModel> ArtworkChoices { get; } = [];
+
+    public bool HasArtworkMessage => !string.IsNullOrWhiteSpace(ArtworkMessage);
+
+    public bool HasArtworkCaption => !string.IsNullOrWhiteSpace(ArtworkCaption);
+
     /// <summary>
     /// Refills the whole pane for a new selection. Called on every selection change.
     /// </summary>
@@ -117,6 +147,10 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
         {
             _rebinding = false;
         }
+
+        IsArtworkPickerOpen = false;
+        ArtworkChoices.Clear();
+        ArtworkMessage = null;
 
         _ = LoadPosterAsync();
     }
@@ -204,22 +238,49 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
         var token = _posterLoad.Token;
 
         var path = _selection.Count == 1 ? _selection[0].Metadata.ArtworkPath : null;
+        UpdateArtworkCaption(path);
         if (path is null)
         {
             Poster = null;
+            PosterIsWide = false;
             return;
         }
 
         try
         {
-            var bitmap = await _artwork.LoadAsync(_lookup.Tmdb, path, ArtworkLoader.PreviewSize, token);
+            // The configured size, not a preview-only one: the pane is meant to show the exact
+            // image that will be written into the file.
+            var bitmap = await _artwork.LoadAsync(_lookup.Tmdb, path, _lookup.ArtworkSize, token);
             if (!token.IsCancellationRequested)
+            {
                 Poster = bitmap;
+                PosterIsWide = bitmap is not null && bitmap.PixelSize.Width > bitmap.PixelSize.Height;
+            }
         }
         catch (OperationCanceledException)
         {
             // Superseded by a newer selection.
         }
+    }
+
+    /// <summary>
+    /// Names the kind currently in use. A hand-picked image is looked up in the picker's list,
+    /// since it need not be one of the kinds the lookup chose between.
+    /// </summary>
+    private void UpdateArtworkCaption(string? path)
+    {
+        if (path is null || _selection.Count != 1)
+        {
+            ArtworkCaption = null;
+            return;
+        }
+
+        var byKind = _selection[0].Metadata.ArtworkByKind.FirstOrDefault(p => p.Value == path);
+        var label = byKind.Value is not null
+            ? ArtworkKinds.Label(byKind.Key)
+            : ArtworkChoices.FirstOrDefault(c => c.Path == path)?.KindLabel;
+
+        ArtworkCaption = label is null ? _lookup.ArtworkSize : $"{label} · {_lookup.ArtworkSize}";
     }
 
     private async Task LoadCandidatePostersAsync()
@@ -230,6 +291,85 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
                 _lookup.Tmdb, candidate.Candidate.PosterPath, ArtworkLoader.ThumbnailSize);
             candidate.Poster = bitmap;
         }
+    }
+
+    /// <summary>
+    /// Opens the artwork picker, asking TMDB for every image it has for this title. That costs
+    /// extra requests, so it happens on demand rather than as part of the match.
+    /// </summary>
+    [RelayCommand]
+    private async Task OpenArtworkPickerAsync()
+    {
+        if (_selection.Count != 1)
+            return;
+
+        IsArtworkPickerOpen = true;
+        ArtworkMessage = null;
+        ArtworkChoices.Clear();
+
+        var file = _selection[0];
+        if (_lookup.Tmdb is null)
+        {
+            ArtworkMessage = "Add a TMDB API key in Settings first.";
+            return;
+        }
+
+        if (file.Metadata.TmdbId is not { } tmdbId)
+        {
+            ArtworkMessage = "Match this file to a title first.";
+            return;
+        }
+
+        IsLoadingArtwork = true;
+        try
+        {
+            var language = file.EffectiveLanguage(_lookup.Language);
+            var options = await _lookup.Tmdb.GetArtworkOptionsAsync(
+                file.Metadata.Kind, tmdbId, file.Metadata.Season, file.Metadata.FirstEpisode, language);
+
+            if (options.Count == 0)
+            {
+                ArtworkMessage = "TMDB has no artwork for this title.";
+                return;
+            }
+
+            foreach (var option in options)
+                ArtworkChoices.Add(new ArtworkChoiceViewModel(option, option.Path == file.Metadata.ArtworkPath));
+
+            await LoadArtworkThumbnailsAsync();
+        }
+        catch (Exception e)
+        {
+            ArtworkMessage = e.Message;
+        }
+        finally
+        {
+            IsLoadingArtwork = false;
+        }
+    }
+
+    private async Task LoadArtworkThumbnailsAsync()
+    {
+        foreach (var choice in ArtworkChoices.ToList())
+            choice.Thumbnail = await _artwork.LoadAsync(_lookup.Tmdb, choice.Path, ArtworkLoader.ThumbnailSize);
+    }
+
+    [RelayCommand]
+    private void CloseArtworkPicker() => IsArtworkPickerOpen = false;
+
+    [RelayCommand]
+    private void ChooseArtwork(ArtworkChoiceViewModel? choice)
+    {
+        if (choice is null || _selection.Count != 1)
+            return;
+
+        _lookup.SetArtwork(_selection[0], choice.Path);
+
+        foreach (var other in ArtworkChoices)
+            other.IsCurrent = ReferenceEquals(other, choice);
+
+        IsArtworkPickerOpen = false;
+        _ = LoadPosterAsync();
     }
 
     [RelayCommand]
