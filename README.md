@@ -213,6 +213,11 @@ On Windows use `build/publish.ps1` instead. Output lands in `artifacts/<runtime>
 Targets: `win-x64` `win-arm64` `osx-x64` `osx-arm64` `linux-x64` `linux-arm64`.
 Builds are roughly 45–80 MB because they bundle the runtime.
 
+Any target builds from any host — a runtime identifier only picks which runtime pack is
+restored, so a Mac build works fine from Linux. Release builds come from CI, where all six
+targets are produced on a single `ubuntu-latest` runner. The one thing that would need a
+real Mac is codesigning, which is why the macOS builds are unsigned.
+
 macOS builds are assembled into a `Video Metadata Filler.app` bundle. They are unsigned, so
 Gatekeeper needs persuading once:
 
