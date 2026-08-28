@@ -20,6 +20,8 @@ install, no .NET needed on the machine.
 - **Asks you when it is not.** Ambiguous files are flagged in the list and get a chooser
   with posters, years and overviews.
 - **Lets you edit every field**, one file at a time or many at once.
+- **Says what will change** before anything is written: the tags the file already carries are
+  read back out and shown against the new ones.
 - **Writes tags and cover art** into the MP4 container in one batch, and optionally renames
   the files to a pattern you define.
 
@@ -51,6 +53,37 @@ into any field applies it to every selected file. Fields that are inherently per
 episode number, the TMDB id — go read-only rather than stamping one value across a whole
 season. The language applies to the whole selection too, reading `— multiple values —` when the
 files are not all in the same one.
+
+### What applying will change
+
+The pane reads the tags a file already carries and compares them with what **Apply** would
+write into it, so the header line answers the two questions worth asking before overwriting
+anything — *is this one already done?* and *what exactly am I about to replace?*
+
+```
+WHAT APPLYING WILL CHANGE    9 field(s) will change
+```
+
+Expanding it lists the fields, each with what is in the file now beside what will replace it.
+A value that applying would empty is struck through and marked *(cleared)*, which is how
+switching a file from episode to movie shows the show name and season being wiped rather than
+doing it quietly. A file that already holds exactly what would be written says so instead —
+which is also what you see after applying, since the pane re-reads the file it just wrote.
+
+Four details keep it honest rather than decorative:
+
+- **Only atoms that actually get written are compared.** A TMDB id has no MP4 atom, so listing
+  it would promise a change that never happens.
+- **Each side is compared in its written form.** One `©day` atom holds either a full date or a
+  bare year, so the comparison is over the string that reaches the container, not over the two
+  fields behind it.
+- **Cover art is never reported as cleared**, because applying with no new image deliberately
+  leaves the embedded one alone.
+- **The HD flag is compared as the flag.** 1080i, 1080p and 1440p all write a 2, so showing it
+  as a resolution would invent differences that no write would make.
+
+The file is read once per selection; editing a field re-compares against it immediately, so the
+diff answers for what is on screen rather than for what TMDB last returned.
 
 ---
 
@@ -320,7 +353,7 @@ embeds Inter.
 
 ```bash
 dotnet --info                                    # should report 10.0.x
-dotnet test                                      # 152 tests
+dotnet test                                      # 213 tests
 dotnet run --project src/VideoMetadataFiller.App
 ```
 
@@ -398,7 +431,7 @@ src/VideoMetadataFiller.Core/     no UI dependencies, fully unit-tested
   Parsing/     FilenameParser, JunkTokens
   Tmdb/        ITmdbService, TmdbService
   Matching/    TitleScorer, MatchResolver
-  Writing/     Mp4TagWriter, RenameTemplate, RenameEngine
+  Writing/     Mp4TagWriter, Mp4TagReader, MetadataDiff, RenameTemplate, RenameEngine
   Settings/    AppSettings, SettingsStore
 
 src/VideoMetadataFiller.App/      Avalonia UI

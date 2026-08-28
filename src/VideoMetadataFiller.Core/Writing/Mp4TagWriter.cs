@@ -114,20 +114,20 @@ public sealed class Mp4TagWriter
         var isTv = metadata.Kind == MediaKind.TvEpisode;
 
         SetText(tag, Mp4Atoms.Title, metadata.Title);
-        SetText(tag, Mp4Atoms.Date, FormatDate(metadata));
-        SetText(tag, Mp4Atoms.Genre, metadata.Genres.Count > 0 ? string.Join(", ", metadata.Genres) : null);
-        SetText(tag, Mp4Atoms.ShortDescription, Truncate(metadata.Overview, 250));
+        SetText(tag, Mp4Atoms.Date, TagFormat.Date(metadata));
+        SetText(tag, Mp4Atoms.Genre, TagFormat.Join(metadata.Genres));
+        SetText(tag, Mp4Atoms.ShortDescription, TagFormat.Truncate(metadata.Overview, 250));
         SetText(tag, Mp4Atoms.LongDescription, metadata.Overview);
         SetText(tag, Mp4Atoms.Comment, metadata.Overview);
 
         SetInteger(tag, Mp4Atoms.MediaType, isTv ? Mp4Atoms.MediaTypeTvShow : Mp4Atoms.MediaTypeMovie);
-        SetInteger(tag, Mp4Atoms.HdVideo, HdFlagFor(metadata.Resolution));
+        SetInteger(tag, Mp4Atoms.HdVideo, TagFormat.HdFlag(metadata.Resolution));
 
         if (isTv)
         {
             SetText(tag, Mp4Atoms.ShowName, metadata.ShowName);
             SetText(tag, Mp4Atoms.Network, metadata.Network);
-            SetText(tag, Mp4Atoms.EpisodeId, EpisodeLabel(metadata));
+            SetText(tag, Mp4Atoms.EpisodeId, TagFormat.EpisodeLabel(metadata));
 
             // iTunes and the Apple TV app group episodes by album, so mirror their convention.
             var album = metadata.Season is null
@@ -151,11 +151,11 @@ public sealed class Mp4TagWriter
 
             SetText(tag, Mp4Atoms.Album, metadata.Title);
             var credited = metadata.Directors.Count > 0 ? metadata.Directors : metadata.Cast;
-            SetText(tag, Mp4Atoms.Artist, credited.Count > 0 ? string.Join(", ", credited) : null);
+            SetText(tag, Mp4Atoms.Artist, TagFormat.Join(credited));
             SetText(tag, Mp4Atoms.AlbumArtist, metadata.Studio);
         }
 
-        SetText(tag, Mp4Atoms.Writer, metadata.Writers.Count > 0 ? string.Join(", ", metadata.Writers) : null);
+        SetText(tag, Mp4Atoms.Writer, TagFormat.Join(metadata.Writers));
 
         WriteMovieInfo(tag, metadata);
         WriteContentRating(tag, metadata);
@@ -257,37 +257,6 @@ public sealed class Mp4TagWriter
         if (bytes.Length >= 8 && bytes[0] == 0x89 && bytes[1] == 'P' && bytes[2] == 'N' && bytes[3] == 'G')
             return "image/png";
         return "image/jpeg";
-    }
-
-    /// <summary>Apple's HD flag, derived from the resolution we lifted off the filename.</summary>
-    private static int HdFlagFor(string? resolution) => resolution switch
-    {
-        "4320p" or "2160p" => 3,
-        "1440p" or "1080p" or "1080i" => 2,
-        "720p" => 1,
-        _ => 0,
-    };
-
-    private static string? EpisodeLabel(MediaMetadata metadata)
-    {
-        if (metadata.Episodes.Count == 0)
-            return null;
-        var episodes = string.Join("-E", metadata.Episodes.Select(e => e.ToString("00")));
-        return metadata.Season is null ? $"E{episodes}" : $"S{metadata.Season:00}E{episodes}";
-    }
-
-    private static string? FormatDate(MediaMetadata metadata)
-    {
-        if (metadata.ReleaseDate is { } date)
-            return date.ToString("yyyy-MM-dd");
-        return metadata.Year?.ToString();
-    }
-
-    private static string? Truncate(string? text, int limit)
-    {
-        if (string.IsNullOrWhiteSpace(text) || text.Length <= limit)
-            return text;
-        return string.Concat(text.AsSpan(0, limit - 1).TrimEnd(), "…");
     }
 
     private static void SetText(AppleTag tag, ReadOnlyByteVector atom, string? value)

@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using VideoMetadataFiller.App.Services;
 using VideoMetadataFiller.Core.Localization;
 using VideoMetadataFiller.Core.Model;
+using VideoMetadataFiller.Core.Writing;
 
 namespace VideoMetadataFiller.App.ViewModels;
 
@@ -29,6 +30,16 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
     private bool _rebinding;
 
     private CancellationTokenSource? _posterLoad;
+
+    private readonly Mp4TagReader _reader = new();
+
+    private CancellationTokenSource? _diffLoad;
+
+    /// <summary>What the selected file holds right now, kept so edits re-diff without re-reading it.</summary>
+    private ExistingTags? _existing;
+
+    /// <summary>Why the file's own tags could not be read, when they could not.</summary>
+    private string? _existingError;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelection))]
@@ -65,6 +76,13 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
     /// <summary>Whether anything in the selection was changed by hand, enabling Discard.</summary>
     [ObservableProperty]
     private bool _hasManualChanges;
+
+    /// <summary>One line saying what applying would do to the file: the diff's headline.</summary>
+    [ObservableProperty]
+    private string? _diffSummary;
+
+    [ObservableProperty]
+    private bool _isLoadingDiff;
 
     [ObservableProperty]
     private bool _isArtworkPickerOpen;
@@ -131,6 +149,16 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
     /// <summary>True for a single file, where per-file controls (language, TMDB id) make sense.</summary>
     public bool IsSingleSelection => SelectionCount == 1;
 
+    /// <summary>
+    /// What applying would change in the file, compared against the tags it already carries.
+    /// Only shown for a single file: the answer is per-file, and a merged one would mean nothing.
+    /// </summary>
+    public ObservableCollection<MetadataChangeViewModel> Changes { get; } = [];
+
+    public bool HasChanges => Changes.Count > 0;
+
+    public bool ShowDiff => IsSingleSelection;
+
     /// <summary>Images offered by the picker for the selected file.</summary>
     public ObservableCollection<ArtworkChoiceViewModel> ArtworkChoices { get; } = [];
 
@@ -152,6 +180,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
         {
             SelectionCount = _selection.Count;
             OnPropertyChanged(nameof(IsSingleSelection));
+            OnPropertyChanged(nameof(ShowDiff));
 
             var kind = DominantKind();
             KindIndex = kind == MediaKind.TvEpisode ? 1 : 0;
@@ -174,6 +203,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
 
         UpdateEditMarkers();
         _ = LoadPosterAsync();
+        _ = LoadDiffAsync();
     }
 
     /// <summary>Re-reads the form from the files without disturbing the selection.</summary>
@@ -310,6 +340,113 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
             : ArtworkChoices.FirstOrDefault(c => c.Path == path)?.KindLabel;
 
         ArtworkCaption = label is null ? _lookup.ArtworkSize : $"{label} · {_lookup.ArtworkSize}";
+    }
+
+    /// <summary>
+    /// Reads what the selected file already holds, then works out what applying would change.
+    /// The read is the only expensive part and happens once per selection; editing a field
+    /// re-compares against the copy kept from it.
+    /// </summary>
+    private async Task LoadDiffAsync()
+    {
+        _diffLoad?.Cancel();
+        _diffLoad?.Dispose();
+        _diffLoad = new CancellationTokenSource();
+        var token = _diffLoad.Token;
+
+        _existing = null;
+        _existingError = null;
+        IsLoadingDiff = _selection.Count == 1;
+        RecomputeDiff();
+
+        if (_selection.Count != 1)
+            return;
+
+        var path = _selection[0].Path;
+        try
+        {
+            var (tags, error) = await Task.Run(() => ReadExisting(path), token);
+            if (token.IsCancellationRequested)
+                return;
+
+            _existing = tags;
+            _existingError = error;
+        }
+        catch (OperationCanceledException)
+        {
+            // Superseded by a newer selection, which owns the state from here.
+            return;
+        }
+        finally
+        {
+            if (!token.IsCancellationRequested)
+                IsLoadingDiff = false;
+        }
+
+        RecomputeDiff();
+    }
+
+    /// <summary>
+    /// A file that cannot be read is a message in the pane, not an exception: it is usually a
+    /// file that moved or is being written to right now, and neither should break the form.
+    /// </summary>
+    private (ExistingTags? Tags, string? Error) ReadExisting(string path)
+    {
+        try
+        {
+            // The cover is loaded too, for the one selected file: comparing the bytes is what
+            // lets a file that was just applied report that there is nothing left to write.
+            return (_reader.Read(path, includeArtwork: true), null);
+        }
+        catch (TagReadException e)
+        {
+            return (null, e.Message);
+        }
+        catch (Exception e)
+        {
+            return (null, Strings.Format("read.failed", e.Message));
+        }
+    }
+
+    /// <summary>
+    /// Re-compares the form against the file without touching the disk. Called on every edit, so
+    /// the diff answers for what is on screen rather than for what TMDB last returned.
+    /// </summary>
+    private void RecomputeDiff()
+    {
+        Changes.Clear();
+        DiffSummary = BuildChanges();
+        OnPropertyChanged(nameof(HasChanges));
+    }
+
+    /// <summary>Fills <see cref="Changes"/> and returns the line that heads them.</summary>
+    private string? BuildChanges()
+    {
+        if (_selection.Count != 1)
+            return null;
+
+        if (IsLoadingDiff)
+            return Strings.Get("diff.loading");
+
+        if (_existingError is { } error)
+            return Strings.Format("diff.unreadable", error);
+
+        if (_existing is not { } existing)
+            return null;
+
+        // Nothing has been matched yet, so there is no "after" to compare against.
+        var pending = _selection[0].Metadata;
+        if (string.IsNullOrWhiteSpace(pending.Title) && string.IsNullOrWhiteSpace(pending.ShowName))
+            return Strings.Get("diff.nothingToWrite");
+
+        foreach (var change in MetadataDiff.Between(existing, pending))
+            Changes.Add(new MetadataChangeViewModel(change));
+
+        return Changes.Count == 0
+            ? Strings.Get("diff.upToDate")
+            : existing.IsEmpty
+                ? Strings.Get("diff.untagged")
+                : Strings.Format("diff.changeCount", Changes.Count);
     }
 
     private async Task LoadCandidatePostersAsync()
@@ -588,6 +725,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
             file.MarkFieldEdited(key);
             _lookup.NotifyMetadataChanged(file);
             UpdateEditMarkers();
+            RecomputeDiff();
         }
 
         return

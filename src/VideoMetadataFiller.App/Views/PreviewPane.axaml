@@ -202,6 +202,56 @@
           </StackPanel>
         </Expander>
 
+        <!--
+          What applying would change. Read out of the file itself, so it answers "is this one
+          already done?" and "what exactly am I about to overwrite?" without leaving the pane.
+        -->
+        <Expander Margin="0,0,0,12" IsVisible="{Binding ShowDiff}"
+                  ToolTip.Tip="{loc:T diff.tip}">
+          <Expander.Header>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="{loc:T diff.section}" Classes="sectionLabel" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding DiffSummary}" Classes="subtle" VerticalAlignment="Center"
+                         TextWrapping="Wrap" />
+            </StackPanel>
+          </Expander.Header>
+
+          <StackPanel Spacing="6" Margin="0,6,0,0">
+            <Grid ColumnDefinitions="130,*,Auto,*" IsVisible="{Binding HasChanges}">
+              <TextBlock Grid.Column="1" Text="{loc:T diff.now}" Classes="subtle" FontSize="10" />
+              <TextBlock Grid.Column="3" Text="{loc:T diff.after}" Classes="subtle" FontSize="10" />
+            </Grid>
+
+            <ItemsControl ItemsSource="{Binding Changes}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:MetadataChangeViewModel">
+                  <!--
+                    Fixed label column, then two equal halves: the columns line up down the list
+                    however long one value happens to be, and both sides wrap rather than
+                    stretching the pane.
+                  -->
+                  <Grid ColumnDefinitions="130,*,Auto,*" Margin="0,0,0,5">
+                    <TextBlock Text="{Binding Label}" Classes="fieldLabel" TextWrapping="Wrap"
+                               Margin="0,0,8,0" />
+
+                    <TextBlock Grid.Column="1" Text="{Binding Current}" TextWrapping="Wrap"
+                               Classes="subtle" Classes.struck="{Binding IsCleared}"
+                               Classes.placeholder="{Binding IsAdded}" MaxLines="4"
+                               TextTrimming="CharacterEllipsis" />
+
+                    <TextBlock Grid.Column="2" Text="→" Classes="subtle" Margin="8,0"
+                               VerticalAlignment="Top" />
+
+                    <TextBlock Grid.Column="3" Text="{Binding Pending}" TextWrapping="Wrap"
+                               Classes.placeholder="{Binding IsCleared}" MaxLines="4"
+                               TextTrimming="CharacterEllipsis" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Expander>
+
         <!-- Movie / TV toggle -->
         <StackPanel Orientation="Horizontal" Spacing="5">
           <TextBlock Text="{loc:T pane.type}" Classes="sectionLabel" />

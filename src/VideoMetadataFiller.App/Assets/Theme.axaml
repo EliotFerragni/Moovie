@@ -177,6 +177,16 @@
     <Setter Property="BorderThickness" Value="1.5" />
   </Style>
 
+  <!-- Diff rows: a value applying will empty, and a stand-in for a side that has no value -->
+  <Style Selector="TextBlock.struck">
+    <Setter Property="TextDecorations" Value="Strikethrough" />
+  </Style>
+
+  <Style Selector="TextBlock.placeholder">
+    <Setter Property="Foreground" Value="{DynamicResource SubtleText}" />
+    <Setter Property="FontStyle" Value="Italic" />
+  </Style>
+
   <Style Selector="Border.candidate">
     <Setter Property="Background" Value="{DynamicResource PanelBackground}" />
     <Setter Property="BorderBrush" Value="{DynamicResource PanelBorder}" />
