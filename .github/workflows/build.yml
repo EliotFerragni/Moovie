@@ -1,10 +1,18 @@
 name: build
 
+# Feature branches are covered by their pull request, so push only fires on the
+# trunk: a branch with an open PR would otherwise run the whole workflow twice.
 on:
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
   workflow_dispatch:
+  release:
+    types: [published]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   DOTNET_NOLOGO: true
@@ -12,18 +20,21 @@ env:
 
 jobs:
   test:
-    name: test (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+    name: test (ubuntu-latest)
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "9.0.x"
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: ${{ runner.os }}-nuget-
 
       - name: Restore
         run: dotnet restore
@@ -34,19 +45,17 @@ jobs:
       - name: Test
         run: dotnet test --configuration Release --no-build --verbosity normal
 
-  publish:
-    name: publish ${{ matrix.runtime }}
-    needs: test
-    runs-on: ${{ matrix.host }}
+  # Windows and macOS runners bill at 2x and 10x Linux, so they are not worth
+  # spending on every push. They exist to prove the app still runs on those
+  # platforms, which is a periodic check: trunk, a release, or asked for by hand.
+  test-all-os:
+    name: test (${{ matrix.os }})
+    if: github.event_name != 'pull_request'
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { runtime: win-x64,     host: windows-latest }
-          - { runtime: win-arm64,   host: windows-latest }
-          - { runtime: osx-x64,     host: macos-latest }
-          - { runtime: osx-arm64,   host: macos-latest }
-          - { runtime: linux-x64,   host: ubuntu-latest }
+        os: [windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
 
@@ -54,14 +63,53 @@ jobs:
         with:
           dotnet-version: "9.0.x"
 
-      # The shell script also assembles the macOS .app bundle, which a bare
-      # dotnet publish does not produce.
-      - name: Publish
-        shell: bash
-        run: ./build/publish.sh ${{ matrix.runtime }}
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: ${{ runner.os }}-nuget-
 
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test --configuration Release --no-build --verbosity normal
+
+  # Every target cross-compiles from Linux: a self-contained publish only needs
+  # the matching runtime pack from NuGet, and the .app bundle is assembled with
+  # mkdir/sed/mv. See build/publish.sh. Signing would need a Mac; these builds
+  # are deliberately unsigned.
+  publish:
+    name: publish (all targets)
+    needs: test
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-publish-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: ${{ runner.os }}-nuget-publish-
+
+      - name: Publish
+        run: ./build/publish.sh all
+
+      # One artifact for all targets: it expires as a single unit, which keeps a
+      # free account's 500 MB of artifact storage from filling up.
       - uses: actions/upload-artifact@v4
         with:
-          name: VideoMetadataFiller-${{ matrix.runtime }}
-          path: artifacts/${{ matrix.runtime }}
+          name: VideoMetadataFiller-all-targets
+          path: artifacts/
           if-no-files-found: error
+          retention-days: 14

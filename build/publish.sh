@@ -8,6 +8,12 @@
 #
 # Output lands in artifacts/<runtime>/. Each build bundles the .NET runtime, so the
 # result needs no installation and no .NET on the target machine.
+#
+# Every target cross-compiles from every host: the runtime identifier only selects
+# which runtime pack is restored from NuGet, and the .app bundle below is assembled
+# with mkdir/sed/mv. CI therefore builds all six targets on a Linux runner, which
+# bills at a sixth of a macOS one. Codesigning and notarization are the only steps
+# that would genuinely need a Mac, and these builds are deliberately unsigned.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -52,7 +58,11 @@ for runtime in "${TARGETS[@]}"; do
   if [[ "$runtime" == osx-* ]]; then
     bundle="$output/Video Metadata Filler.app"
     mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources"
-    mv "$output/VideoMetadataFiller" "$bundle/Contents/MacOS/VideoMetadataFiller"
+    # Skia, HarfBuzz and the Avalonia natives are published next to the executable
+    # instead of being embedded in it, unlike on Windows and Linux. They have to
+    # travel into Contents/MacOS/ too, or the bundle is broken the moment it is
+    # moved anywhere on its own.
+    find "$output" -maxdepth 1 -type f -exec mv {} "$bundle/Contents/MacOS/" \;
     chmod +x "$bundle/Contents/MacOS/VideoMetadataFiller"
     sed "s/__RUNTIME__/$runtime/" build/Info.plist.template > "$bundle/Contents/Info.plist"
     echo "    bundled as $bundle"
