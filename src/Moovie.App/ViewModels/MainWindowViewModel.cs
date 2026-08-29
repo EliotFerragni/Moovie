@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Moovie.App.Services;
@@ -24,6 +25,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     private readonly SettingsStore _settingsStore;
     private readonly ArtworkLoader _artwork = new();
     private readonly Mp4TagWriter _writer = new();
+
+    private readonly Mp4TagReader _reader = new();
 
     private TmdbService? _tmdb;
     private MatchResolver? _resolver;
@@ -102,6 +105,21 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     /// </summary>
     public void DiscardManualChanges(FileItemViewModel file)
     {
+        // Nothing has been looked up, so there is no TMDB result to go back to — but there is
+        // still a state before the edits: the file's own tags, and its name for the gaps.
+        if (file.FetchedMetadata is null)
+        {
+            if (!file.HasManualChanges)
+                return;
+
+            Seed(file);
+            file.ClearUserEdits();
+            file.Message = null;
+            file.Status = FileStatus.Pending;
+            NotifyMetadataChanged(file);
+            return;
+        }
+
         if (!file.DiscardManualChanges())
             return;
 
@@ -186,23 +204,50 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     }
 
     /// <summary>
-    /// Works out what each filename says and how big its video is. No network, so this does run
-    /// on adding: the guess is what makes a row read as "Severance S01E01?" rather than "Not
-    /// recognised" while it waits, and only the lookup itself is the user's to ask for.
+    /// Reads everything about a file that does not need the network: the tags it already carries,
+    /// what its name says, and how big its video really is.
     /// </summary>
+    /// <remarks>
+    /// This runs on adding, which is the point. A file that has been tagged before opens with its
+    /// own content in the form rather than a blank sheet, so there is something to review before
+    /// spending an API call — and after one, the difference between the two is visible instead of
+    /// implied.
+    /// </remarks>
     private async Task ExamineAsync(IReadOnlyList<FileItemViewModel> items)
     {
-        // Parsing is cheap but the probe opens every file, so it does not run on the UI thread.
-        var parsed = await Task.Run(() => items.Select(i => Examine(i.Path)).ToList());
+        // Parsing is cheap, but the probe and the tag read each open the file, so this stays off
+        // the UI thread. Both are the same header, and a season's worth is still milliseconds.
+        var examined = await Task.Run(
+            () => items.Select(i => (Parsed: Examine(i.Path), Tags: ReadTags(i.Path))).ToList());
 
         for (var i = 0; i < items.Count; i++)
         {
-            items[i].Parsed = parsed[i];
-            SeedFromParse(items[i]);
+            items[i].Parsed = examined[i].Parsed;
+            items[i].FileTags = examined[i].Tags;
+            Seed(items[i]);
         }
 
         UpdateSummary();
         Preview.Refresh();
+
+        foreach (var item in items)
+            _ = EnsureThumbnailAsync(item);
+    }
+
+    /// <summary>
+    /// The file's own tags, or nothing at all when it will not open. An unreadable file is still a
+    /// row: the preview pane says why when it is selected, and the list should not lose it here.
+    /// </summary>
+    private ExistingTags ReadTags(string path)
+    {
+        try
+        {
+            return _reader.Read(path);
+        }
+        catch (Exception)
+        {
+            return ExistingTags.None;
+        }
     }
 
     private static IEnumerable<string> Expand(IEnumerable<string> paths)
@@ -290,12 +335,15 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
             await Task.Run(() =>
             {
                 foreach (var item in items)
+                {
                     item.Parsed = Examine(item.Path);
+                    item.FileTags ??= ReadTags(item.Path);
+                }
             });
 
             foreach (var item in items)
             {
-                SeedFromParse(item);
+                Seed(item);
                 item.Status = FileStatus.Pending;
                 item.Message = Strings.Get("main.waitingForKey");
             }
@@ -357,9 +405,19 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
             return;
 
         item.Parsed = await Task.Run(() => Examine(item.Path), token);
-        if (force)
+
+        // Re-read on a forced pass: the file may have been written since it was added, and the
+        // form is about to be rebuilt on top of whatever it holds now.
+        if (force || item.FileTags is null)
+            item.FileTags = await Task.Run(() => ReadTags(item.Path), token);
+
+        // A forced pass over a file that has already been looked up is "start this one over", so
+        // hand edits go with it. On one that never has, they are the only thing the user has told
+        // us and the lookup is being asked for the first time, so they stay and outrank the result.
+        if (force && item.FetchedMetadata is not null)
             item.ClearUserEdits();
-        SeedFromParse(item);
+
+        Seed(item);
 
         item.Status = FileStatus.Searching;
         item.Message = null;
@@ -402,30 +460,12 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     }
 
     /// <summary>
-    /// Fills the metadata with what the filename alone told us, so the row reads sensibly even if
-    /// TMDB has nothing.
+    /// Fills the form with what is known before any lookup. See <see cref="MetadataSeed"/> for the
+    /// order the two sources are merged in.
     /// </summary>
-    private static void SeedFromParse(FileItemViewModel item)
+    private static void Seed(FileItemViewModel item)
     {
-        if (item.Parsed is not { } parsed)
-            return;
-
-        var metadata = new MediaMetadata
-        {
-            Kind = parsed.Kind == MediaKind.Unknown ? MediaKind.Movie : parsed.Kind,
-            Season = parsed.Season,
-            Episodes = [.. parsed.Episodes],
-            Year = parsed.Year,
-            Resolution = parsed.Resolution,
-            ReleaseDate = parsed.AirDate,
-        };
-
-        if (parsed.Kind == MediaKind.TvEpisode)
-            metadata.ShowName = parsed.Title;
-        else
-            metadata.Title = parsed.Title;
-
-        item.Metadata = metadata;
+        item.Metadata = MetadataSeed.From(item.FileTags, item.Parsed);
         item.Candidates = [];
     }
 
@@ -637,14 +677,35 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
             // No path but bytes in hand means the file's own cover was kept from the preview
             // diff, so the row shows that rather than emptying over a cover that is staying put.
             // The length stands in for a path: it only has to tell this file's own covers apart.
-            var kept = file.Metadata.ArtworkData;
-            var marker = kept is { Length: > 0 } ? $"embedded:{kept.Length}" : null;
+            if (file.Metadata.ArtworkData is { Length: > 0 } kept)
+            {
+                Take($"embedded:{kept.Length}", () => ArtworkLoader.Decode(kept, ArtworkLoader.ThumbnailHeight));
+                return;
+            }
+
+            // Nothing chosen yet, but the file may already carry a cover of its own, which is
+            // what the row shows until a lookup offers a different one.
+            if (file.FileTags is { HasArtwork: true } && file.ThumbnailPath != $"file:{file.Path}")
+            {
+                file.ThumbnailPath = $"file:{file.Path}";
+                file.Thumbnail = await LoadEmbeddedThumbnailAsync(file.Path);
+            }
+            else if (file.FileTags is not { HasArtwork: true })
+            {
+                file.ThumbnailPath = null;
+                file.Thumbnail = null;
+            }
+
+            return;
+        }
+
+        void Take(string marker, Func<Bitmap?> decode)
+        {
             if (file.ThumbnailPath == marker)
                 return;
 
             file.ThumbnailPath = marker;
-            file.Thumbnail = ArtworkLoader.Decode(kept);
-            return;
+            file.Thumbnail = decode();
         }
 
         if (file.ThumbnailPath == path)
@@ -652,6 +713,27 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
 
         file.ThumbnailPath = path;
         file.Thumbnail = await _artwork.LoadAsync(_tmdb, path, ArtworkLoader.ThumbnailSize);
+    }
+
+    /// <summary>
+    /// The cover embedded in one file, at tile size. Read per row rather than for the whole list:
+    /// adding a folder should not decode three hundred covers before one has been looked at.
+    /// </summary>
+    private async Task<Bitmap?> LoadEmbeddedThumbnailAsync(string path)
+    {
+        var bytes = await Task.Run(() =>
+        {
+            try
+            {
+                return _reader.Read(path, includeArtwork: true).Metadata.ArtworkData;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        });
+
+        return ArtworkLoader.Decode(bytes, ArtworkLoader.ThumbnailHeight);
     }
 
     // ---------------------------------------------------------------- apply
@@ -807,7 +889,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
         // already been looked up, though: a file still waiting is waiting on purpose.
         if (Settings.Language != previousLanguage && _resolver is not null)
         {
-            var lookedUp = Files.Where(f => f.Status.HasBeenLookedUp()).ToList();
+            var lookedUp = Files.Where(f => f.HasBeenLookedUp).ToList();
             if (lookedUp.Count > 0)
                 await ScanAsync(lookedUp, force: true);
         }

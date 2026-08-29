@@ -60,6 +60,7 @@
   "pane.enterNumericId": "Saisissez un identifiant TMDB numérique.",
   "pane.addKeyFirst": "Ajoutez d'abord une clé API TMDB dans les réglages.",
   "pane.matchFirst": "Lancez d'abord la recherche pour ce fichier.",
+  "pane.artworkInFile": "déjà dans le fichier",
   "pane.applyingTo": "Application à {0} fichiers…",
   "pane.appliedTo": "Appliqué à {0} fichiers.",
   "artwork.chooseTitle": "CHOISIR UNE JAQUETTE",

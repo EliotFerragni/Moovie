@@ -60,6 +60,7 @@
   "pane.enterNumericId": "Enter a numeric TMDB id.",
   "pane.addKeyFirst": "Add a TMDB API key in Settings first.",
   "pane.matchFirst": "Look this file up first.",
+  "pane.artworkInFile": "already in the file",
   "pane.applyingTo": "Applying to {0} files…",
   "pane.appliedTo": "Applied to {0} files.",
   "artwork.chooseTitle": "CHOOSE ARTWORK",

@@ -60,6 +60,7 @@
   "pane.enterNumericId": "Geben Sie eine numerische TMDB-ID ein.",
   "pane.addKeyFirst": "Fügen Sie zuerst einen TMDB-API-Schlüssel in den Einstellungen hinzu.",
   "pane.matchFirst": "Schlagen Sie diese Datei zuerst nach.",
+  "pane.artworkInFile": "bereits in der Datei",
   "pane.applyingTo": "Wird auf {0} Dateien angewendet…",
   "pane.appliedTo": "Auf {0} Dateien angewendet.",
   "artwork.chooseTitle": "BILD WÄHLEN",

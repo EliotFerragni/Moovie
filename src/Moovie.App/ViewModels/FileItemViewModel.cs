@@ -3,6 +3,7 @@ using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Moovie.Core.Localization;
 using Moovie.Core.Model;
+using Moovie.Core.Writing;
 
 namespace Moovie.App.ViewModels;
 
@@ -71,6 +72,29 @@ public sealed partial class FileItemViewModel : ObservableObject
     /// <summary>What the filename parser worked out, kept so a rescan can reuse it.</summary>
     public ParsedName? Parsed { get; set; }
 
+    /// <summary>
+    /// The tags the file itself carries, read when it was added. The form starts from these, so a
+    /// file that is already tagged shows its own content rather than a blank sheet, and a lookup
+    /// only fills what is missing or replaces what the user lets it.
+    /// </summary>
+    public ExistingTags? FileTags { get; set; }
+
+    /// <summary>Whether the description below came out of the file rather than out of its name.</summary>
+    private bool DescribedByFileTags => FileTags is { IsEmpty: false };
+
+    /// <summary>
+    /// Whether a lookup has run for this file, whatever came of it.
+    /// </summary>
+    /// <remarks>
+    /// Not a question the status can answer any more: editing a field before a lookup moves a file
+    /// out of Pending, so "not Pending" would claim a lookup that never happened. A fetched
+    /// snapshot is the real evidence; the three statuses beside it are the outcomes that leave no
+    /// snapshot behind but did cost a round trip.
+    /// </remarks>
+    public bool HasBeenLookedUp =>
+        FetchedMetadata is not null
+        || Status is FileStatus.NotFound or FileStatus.Failed or FileStatus.NeedsChoice;
+
     public string Extension => System.IO.Path.GetExtension(Path);
 
     public Geometry StatusGeometry => StatusVisuals.GeometryFor(Status);
@@ -95,9 +119,9 @@ public sealed partial class FileItemViewModel : ObservableObject
 
     /// <summary>The one-line description under the filename: what we think this file holds.</summary>
     /// <remarks>
-    /// A file that has not been looked up yet is described from its filename alone, and says so
-    /// with a trailing question mark. Files are not looked up on their own, so that state is the
-    /// normal one for a freshly added list rather than a rare in-between.
+    /// A description guessed from the filename alone says so with a trailing question mark. One
+    /// read out of the file's own tags does not: it is what the file actually claims to hold,
+    /// whether or not a lookup has confirmed it against TMDB.
     /// </remarks>
     public string Subtitle
     {
@@ -107,7 +131,9 @@ public sealed partial class FileItemViewModel : ObservableObject
             if (description is null)
                 return Strings.Get("status.notRecognised");
 
-            return Status.HasBeenLookedUp() ? description : $"{description}?";
+            // A lookup that found nothing leaves the guess a guess, so the snapshot is what
+            // settles this rather than whether a lookup happened to run.
+            return FetchedMetadata is not null || DescribedByFileTags ? description : $"{description}?";
         }
     }
 
@@ -144,10 +170,16 @@ public sealed partial class FileItemViewModel : ObservableObject
     }
 
     /// <summary>Records that the user changed <paramref name="fieldName"/> by hand.</summary>
+    /// <remarks>
+    /// A file waiting to be looked up counts too. The form is filled from its own tags, so an edit
+    /// there is a deliberate change to real content, and leaving it unappliable would be refusing
+    /// to write something the user just typed in front of the value it replaces.
+    /// </remarks>
     public void MarkFieldEdited(string fieldName)
     {
         _userEditedFields.Add(fieldName);
-        if (Status is FileStatus.Matched or FileStatus.NotFound or FileStatus.Applied or FileStatus.Failed)
+        if (Status is FileStatus.Pending or FileStatus.Matched or FileStatus.NotFound
+                   or FileStatus.Applied or FileStatus.Failed)
             Status = FileStatus.Edited;
         Message = null;
         RefreshSubtitle();

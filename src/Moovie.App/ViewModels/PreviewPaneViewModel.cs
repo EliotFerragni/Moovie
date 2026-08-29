@@ -306,11 +306,13 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
         UpdateArtworkCaption(path);
         if (path is null)
         {
-            // No path but bytes in hand means the file's own cover was adopted from the diff, so
-            // the pane shows that rather than going blank over a cover it is about to keep.
-            var kept = _selection.Count == 1 ? ArtworkLoader.Decode(_selection[0].Metadata.ArtworkData) : null;
-            Poster = kept;
-            PosterIsWide = kept is not null && kept.PixelSize.Width > kept.PixelSize.Height;
+            // Nothing to fetch, but the file's own cover is worth showing anyway: before a lookup
+            // it is what the file holds, and after keeping it from the diff it is what will stay
+            // there. Either way it is the bitmap the diff already decoded, not a second copy.
+            Poster = _embeddedCover;
+            PosterIsWide = _embeddedCover is { } own && own.PixelSize.Width > own.PixelSize.Height;
+            if (_embeddedCover is not null)
+                ArtworkCaption = Strings.Get("pane.artworkInFile");
             return;
         }
 
@@ -368,6 +370,13 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
         IsLoadingDiff = _selection.Count == 1;
         RecomputeDiff();
 
+        // The rows are gone, so nothing refers to the old cover but possibly the poster frame.
+        // Let go of it there too before the bitmap is destroyed under a live drawing.
+        if (ReferenceEquals(Poster, _embeddedCover))
+            Poster = null;
+        _embeddedCover?.Dispose();
+        _embeddedCover = null;
+
         if (_selection.Count != 1)
             return;
 
@@ -380,8 +389,6 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
 
             _existing = tags;
             _existingError = error;
-
-            _embeddedCover?.Dispose();
             _embeddedCover = ArtworkLoader.Decode(tags?.Metadata.ArtworkData);
         }
         catch (OperationCanceledException)
@@ -396,6 +403,11 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
         }
 
         RecomputeDiff();
+
+        // The read is what produces the file's own cover, and it lands after the poster load has
+        // already given up on a file with no image chosen, so the frame is filled in now.
+        if (Poster is null && _embeddedCover is not null)
+            _ = LoadPosterAsync();
     }
 
     /// <summary>
@@ -446,14 +458,12 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
         if (_existing is not { } existing)
             return null;
 
-        // Before a lookup the form holds only what the filename gave, and the file cannot be
-        // applied at all, so listing its fields as about to be overwritten would promise
-        // something that cannot happen yet.
+        // Nothing known about this file at all, from its tags or its name, so there is no "after"
+        // to compare against yet.
         var file = _selection[0];
-        if (!file.Status.HasBeenLookedUp())
-            return Strings.Get("diff.nothingToWrite");
-
         var pending = file.Metadata;
+        if (string.IsNullOrWhiteSpace(pending.Title) && string.IsNullOrWhiteSpace(pending.ShowName))
+            return Strings.Get("diff.nothingToWrite");
 
         foreach (var change in MetadataDiff.Between(existing, pending, file.FetchedMetadata))
             Changes.Add(new MetadataChangeViewModel(change, Adopt));

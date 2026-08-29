@@ -15,6 +15,13 @@ public sealed class ArtworkLoader : IDisposable
     /// <summary>Thumbnail size for the candidate chooser.</summary>
     public const string ThumbnailSize = "w154";
 
+    /// <summary>
+    /// Height to decode an embedded cover to for the file list. A cover in a container is
+    /// full-size, and a scrolled list of three hundred of them at full size is a lot of memory
+    /// spent on 48-pixel tiles.
+    /// </summary>
+    public const int ThumbnailHeight = 96;
+
     private readonly Dictionary<string, Bitmap?> _decoded = [];
     private readonly SemaphoreSlim _lock = new(1, 1);
 
@@ -74,7 +81,11 @@ public sealed class ArtworkLoader : IDisposable
     /// Decodes an image already in hand — a cover read straight out of a file, which has no TMDB
     /// path to cache it under. The caller owns the bitmap and disposes it when done.
     /// </summary>
-    public static Bitmap? Decode(byte[]? bytes)
+    /// <param name="decodeToHeight">
+    /// Decode down to this height rather than at full size, for a list tile that would otherwise
+    /// hold a 1500-pixel cover to draw 48 of them.
+    /// </param>
+    public static Bitmap? Decode(byte[]? bytes, int? decodeToHeight = null)
     {
         if (bytes is not { Length: > 0 })
             return null;
@@ -82,7 +93,9 @@ public sealed class ArtworkLoader : IDisposable
         try
         {
             using var stream = new MemoryStream(bytes);
-            return new Bitmap(stream);
+            return decodeToHeight is { } height
+                ? Bitmap.DecodeToHeight(stream, height)
+                : new Bitmap(stream);
         }
         catch (Exception)
         {

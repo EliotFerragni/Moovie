@@ -16,8 +16,10 @@ install, no .NET needed on the machine.
 
 ## What it does
 
+- **Reads what a file already holds** when you add it — its existing tags, its name and its
+  video track — so the form opens with the file's own content rather than a blank sheet.
 - **Reads the filename** to work out whether a file is a movie or a TV episode, and for
-  episodes to pull out the season and episode numbers.
+  episodes to pull out the season and episode numbers, filling only what the tags did not.
 - **Looks the title up on TMDB** when you ask it to, and picks one automatically when it is
   confident. Adding files never looks anything up on its own.
 - **Asks you when it is not.** Ambiguous files are flagged in the list and get a chooser
@@ -43,8 +45,9 @@ The left pane lists your files, each with a status icon:
 | ✓✓ | Written |
 | ⚠ | Something went wrong (the reason is shown in the preview pane) |
 
-Once a file is matched, the artwork it is going to carry appears at the left of the row — the
-same image the preview pane shows, including one you picked by hand. With show posters chosen,
+Each row carries the artwork the file is going to end up with at its left — the cover already
+embedded in the file before any lookup, then whatever the lookup or you chose, and always the
+same image the preview pane shows. With show posters chosen,
 a run of files from the same show reads as one block and a row that landed on the wrong title
 stands out immediately; with episode stills or season posters the rows differ from each other,
 which is simply what those kinds are. Landscape artwork is letterboxed in the tile rather than
@@ -128,9 +131,22 @@ diff answers for what is on screen rather than for what TMDB last returned.
 
 Adding files does not look them up. Dropping a folder is how files get into the list, not a
 decision to spend an API call on every one of them and overwrite whatever they already carry,
-so the lookup waits to be asked for. What the app can work out on its own it does work out on
-its own: each row is read from its filename and its video track as soon as it lands, and shows
-that guess with a trailing `?` until the lookup confirms it.
+so the lookup waits to be asked for.
+
+What needs no network happens on adding. Each file is opened, the tags it already carries are
+read, its name is parsed and its video track probed, and the form is filled from all three —
+**the file's own tags first**, with the filename supplying only what the file does not have. So
+a file tagged by an earlier pass opens showing its own content, right down to its cover art,
+and there is something real to review before a single API call. A description that came from the
+filename rather than from the file says so with a trailing `?`.
+
+A lookup then replaces those values with TMDB's, keeping anything you typed yourself, and the
+diff shows both sides so you can put any field back. Editing a file before looking it up is a
+complete path in itself: the edit makes the file ready to apply, and **Discard edits** goes back
+to what the file holds rather than needing a lookup to undo against.
+
+The only thing the file's own tags do not win is the resolution. The container stores a coarse
+HD flag, not a frame size, so `1080p` always comes from the video track.
 
 Only `.mp4` and `.m4v` files are handled. That is deliberate: MP4 tags can be written in
 pure managed code, so the app ships as one file with no helper binaries alongside it.
