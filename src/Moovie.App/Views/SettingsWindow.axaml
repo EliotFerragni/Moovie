@@ -13,8 +13,13 @@
 
   <Grid RowDefinitions="*,Auto">
 
-    <ScrollViewer Padding="20,16,28,16">
-      <StackPanel Spacing="20">
+    <!--
+      The inset is a margin on the content, not padding on the ScrollViewer: padding is left out
+      of the scrollable extent, so the bottom of it is unreachable and the last line stays clipped
+      however far you scroll. The wider right inset leaves room for the scrollbar.
+    -->
+    <ScrollViewer>
+      <StackPanel Spacing="20" Margin="20,16,28,16">
 
         <!-- TMDB access -->
         <StackPanel Spacing="6">
