@@ -10,6 +10,12 @@ public sealed class AboutViewModel
 {
     public string AppName => "Moovie";
 
+    /// <summary>
+    /// The title bar. Built here rather than in the XAML so the app's name stays out of the
+    /// translations: only the word around it is a translator's business.
+    /// </summary>
+    public string WindowTitle => Strings.Format("about.windowTitle", AppName);
+
     public string Version { get; } = ReadVersion();
 
     public string Tagline =>

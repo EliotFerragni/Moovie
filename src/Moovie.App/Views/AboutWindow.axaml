@@ -4,7 +4,7 @@
         xmlns:vm="using:Moovie.App.ViewModels"
         x:Class="Moovie.App.Views.AboutWindow"
         x:DataType="vm:AboutViewModel"
-        Title="About Moovie"
+        Title="{Binding WindowTitle}"
         Icon="avares://Moovie/Assets/Icon/app-256.png"
         Width="440" SizeToContent="Height"
         CanResize="False"

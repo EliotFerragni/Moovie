@@ -3,13 +3,18 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Moovie.App.ViewModels;
+using Moovie.Core.Localization;
 using Moovie.Core.Writing;
 
 namespace Moovie.App.Views;
 
 public partial class MainWindow : Window
 {
-    private static readonly FilePickerFileType VideoFiles = new("Video files")
+    /// <summary>
+    /// The filter the file picker offers. Built per call rather than held in a static field: its
+    /// name is translated, and a static would be built before the language was chosen.
+    /// </summary>
+    private static FilePickerFileType VideoFiles => new(Strings.Get("picker.videoFiles"))
     {
         Patterns = ["*.mp4", "*.m4v", "*.MP4", "*.M4V"],
         AppleUniformTypeIdentifiers = ["public.mpeg-4"],
@@ -46,7 +51,7 @@ public partial class MainWindow : Window
     {
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Add video files",
+            Title = Strings.Get("picker.addFiles"),
             AllowMultiple = true,
             FileTypeFilter = [VideoFiles],
         });
@@ -58,7 +63,7 @@ public partial class MainWindow : Window
     {
         var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = "Add a folder of videos",
+            Title = Strings.Get("picker.addFolder"),
             AllowMultiple = false,
         });
 

@@ -4,7 +4,7 @@
         xmlns:vm="using:Moovie.App.ViewModels"
         x:Class="Moovie.App.Views.SettingsWindow"
         x:DataType="vm:SettingsViewModel"
-        Title="Settings"
+        Title="{loc:T settings.windowTitle}"
         Icon="avares://Moovie/Assets/Icon/app-256.png"
         Width="840" Height="780"
         MinWidth="700" MinHeight="520"
