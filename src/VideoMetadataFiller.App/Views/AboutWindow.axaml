@@ -5,6 +5,7 @@
         x:Class="VideoMetadataFiller.App.Views.AboutWindow"
         x:DataType="vm:AboutViewModel"
         Title="About Video Metadata Filler"
+        Icon="avares://VideoMetadataFiller/Assets/Icon/app-256.png"
         Width="440" SizeToContent="Height"
         CanResize="False"
         WindowStartupLocation="CenterOwner"

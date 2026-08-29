@@ -67,6 +67,7 @@ for runtime in "${TARGETS[@]}"; do
     # a bundle that leaves them behind breaks the moment it is moved on its own.
     find "$output" -maxdepth 1 -type f -exec mv {} "$bundle/Contents/MacOS/" \;
     chmod +x "$bundle/Contents/MacOS/VideoMetadataFiller"
+    cp src/VideoMetadataFiller.App/Assets/Icon/app.icns "$bundle/Contents/Resources/"
     sed -e "s/__RUNTIME__/$runtime/" -e "s/__VERSION__/$VERSION/" \
       build/Info.plist.template > "$bundle/Contents/Info.plist"
     echo "    bundled as $bundle"

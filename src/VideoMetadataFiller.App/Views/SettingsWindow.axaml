@@ -5,6 +5,7 @@
         x:Class="VideoMetadataFiller.App.Views.SettingsWindow"
         x:DataType="vm:SettingsViewModel"
         Title="Settings"
+        Icon="avares://VideoMetadataFiller/Assets/Icon/app-256.png"
         Width="840" Height="780"
         MinWidth="700" MinHeight="520"
         WindowStartupLocation="CenterOwner"

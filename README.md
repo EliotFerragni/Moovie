@@ -1,3 +1,5 @@
+<img src="src/VideoMetadataFiller.App/Assets/Icon/app-256.png" width="96" align="right" alt="">
+
 # Video Metadata Filler
 
 [![build](https://github.com/EliotFerragni/Video-metadata-filler/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/EliotFerragni/Video-metadata-filler/actions/workflows/build.yml)
@@ -459,6 +461,32 @@ Any target builds from any host — a runtime identifier only picks which runtim
 restored, so a Mac build works fine from Linux. Release builds come from CI, where all six
 targets are produced on a single `ubuntu-latest` runner. The one thing that would need a
 real Mac is codesigning, which is why the macOS builds are unsigned.
+
+### The icon
+
+The artwork lives at `src/VideoMetadataFiller.App/Assets/Icon/`, as four files built from
+one master:
+
+| File | Used by |
+|---|---|
+| `app.png` | the 1024 master everything else is derived from |
+| `app.ico` | the Windows executable, via `<ApplicationIcon>` |
+| `app.icns` | the macOS bundle, copied into `Contents/Resources` by `publish.sh` |
+| `app-256.png` | the window and taskbar at runtime, on every platform |
+
+They are committed so the build needs no image tooling, and regenerated with one command
+when the master changes:
+
+```bash
+pip install Pillow
+python3 build/make-icons.py path/to/new-master.png
+```
+
+The script trims the transparent border, squares the canvas and resamples the ladder — and
+below 64 pixels it drops the outer glow and crops to the tile. That halo is most of the
+charm at 256 and pure overhead at 16, where it spends a ring of pixels on light and leaves
+the drawing too small to read; trimming it buys about a tenth more width, which is the
+difference between horns and a smudge.
 
 `build/package.sh` turns `artifacts/` into one archive per target under `dist/` — `.tar.gz`
 for Linux, `.zip` elsewhere, both of which keep the executable bit that a CI artifact's own

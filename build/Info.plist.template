@@ -16,6 +16,9 @@
   <string>APPL</string>
   <key>CFBundleExecutable</key>
   <string>VideoMetadataFiller</string>
+  <!-- Finder appends the .icns; publish.sh puts the file in Contents/Resources. -->
+  <key>CFBundleIconFile</key>
+  <string>app</string>
   <key>LSMinimumSystemVersion</key>
   <string>11.0</string>
   <key>NSHighResolutionCapable</key>

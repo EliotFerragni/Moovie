@@ -8,7 +8,16 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+
+    <!-- Windows reads this out of the executable itself; every other platform is served
+         by the .icns in the macOS bundle or by the window icon below. -->
+    <ApplicationIcon>Assets/Icon/app.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- .axaml is picked up automatically; an image has to be named to be embedded. -->
+    <AvaloniaResource Include="Assets/Icon/app-256.png" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="$(AvaloniaVersion)" />
