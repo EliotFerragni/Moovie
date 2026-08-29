@@ -42,8 +42,8 @@
           <Button Content="{loc:T main.addFiles}" Command="{Binding AddFilesCommand}" />
           <Button Content="{loc:T main.addFolder}" Command="{Binding AddFolderCommand}" />
           <Rectangle Width="1" Margin="4,3" Fill="{DynamicResource PanelBorder}" />
-          <Button Content="{loc:T main.rescanSelected}" Command="{Binding RescanSelectedCommand}" />
-          <Button Content="{loc:T main.rescanAll}" Command="{Binding RescanAllCommand}" />
+          <Button Content="{loc:T main.lookUpSelected}" Command="{Binding LookUpSelectedCommand}" />
+          <Button Content="{loc:T main.lookUpAll}" Command="{Binding LookUpAllCommand}" />
           <Rectangle Width="1" Margin="4,3" Fill="{DynamicResource PanelBorder}" />
           <Button Content="{loc:T main.remove}" Command="{Binding RemoveSelectedCommand}" />
           <Button Content="{loc:T main.clear}" Command="{Binding ClearAllCommand}" />

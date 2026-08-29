@@ -177,6 +177,44 @@
     <Setter Property="BorderThickness" Value="1.5" />
   </Style>
 
+  <!--
+    The two halves of a diff row. Each is a button so the value itself is the target, and the one
+    that will actually be written is outlined the same way a chosen cover is, so "which of these
+    two am I keeping" reads the same wherever it is asked.
+  -->
+  <Style Selector="Button.sourceCell">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+  </Style>
+
+  <Style Selector="Button.sourceCell /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+
+  <Style Selector="Button.sourceCell:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource RowHover}" />
+    <Setter Property="CornerRadius" Value="5" />
+  </Style>
+
+  <Style Selector="Border.sourceBox">
+    <Setter Property="BorderThickness" Value="1.5" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="Padding" Value="5,3" />
+  </Style>
+
+  <Style Selector="Border.sourceBox.unavailable">
+    <Setter Property="Opacity" Value="0.5" />
+  </Style>
+
+  <Style Selector="Border.sourceBox.chosen">
+    <Setter Property="BorderBrush" Value="{DynamicResource InfoColor}" />
+    <Setter Property="Background" Value="{DynamicResource AccentSoft}" />
+  </Style>
+
   <!-- Diff rows: a value applying will empty, and a stand-in for a side that has no value -->
   <Style Selector="TextBlock.struck">
     <Setter Property="TextDecorations" Value="Strikethrough" />

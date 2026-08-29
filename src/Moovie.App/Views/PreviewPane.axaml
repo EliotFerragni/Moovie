@@ -217,34 +217,84 @@
           </Expander.Header>
 
           <StackPanel Spacing="6" Margin="0,6,0,0">
-            <Grid ColumnDefinitions="130,*,Auto,*" IsVisible="{Binding HasChanges}">
-              <TextBlock Grid.Column="1" Text="{loc:T diff.now}" Classes="subtle" FontSize="10" />
-              <TextBlock Grid.Column="3" Text="{loc:T diff.after}" Classes="subtle" FontSize="10" />
+            <Grid ColumnDefinitions="120,*,*" IsVisible="{Binding HasChanges}">
+              <TextBlock Grid.Column="1" Text="{loc:T diff.inFile}" Classes="subtle" FontSize="10"
+                         Margin="7,0,0,0" />
+              <TextBlock Grid.Column="2" Text="{loc:T diff.fromTmdb}" Classes="subtle" FontSize="10"
+                         Margin="7,0,0,0" />
             </Grid>
 
             <ItemsControl ItemsSource="{Binding Changes}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:MetadataChangeViewModel">
                   <!--
-                    Fixed label column, then two equal halves: the columns line up down the list
-                    however long one value happens to be, and both sides wrap rather than
-                    stretching the pane.
+                    Fixed label column, then the two sources as equal halves: the columns line up
+                    down the list however long one value happens to be, and both sides wrap rather
+                    than stretching the pane. Each side is a button, so choosing which value gets
+                    written is a click on the value itself rather than on a control beside it.
                   -->
-                  <Grid ColumnDefinitions="130,*,Auto,*" Margin="0,0,0,5">
+                  <Grid ColumnDefinitions="120,*,*" Margin="0,0,0,5">
                     <TextBlock Text="{Binding Label}" Classes="fieldLabel" TextWrapping="Wrap"
-                               Margin="0,0,8,0" />
+                               Margin="0,4,8,0" />
 
-                    <TextBlock Grid.Column="1" Text="{Binding Current}" TextWrapping="Wrap"
-                               Classes="subtle" Classes.struck="{Binding IsCleared}"
-                               Classes.placeholder="{Binding IsAdded}" MaxLines="4"
-                               TextTrimming="CharacterEllipsis" />
+                    <Button Grid.Column="1" Classes="sourceCell" Padding="0"
+                            Command="{Binding UseFileCommand}"
+                            IsHitTestVisible="{Binding CanUseFile}"
+                            ToolTip.Tip="{Binding UseFileTip}">
+                      <Border Classes="sourceBox" Classes.chosen="{Binding IsCurrentChosen}"
+                              Classes.unavailable="{Binding IsCurrentUnavailable}">
+                        <StackPanel>
+                          <TextBlock Text="{Binding Current}" TextWrapping="Wrap"
+                                     IsVisible="{Binding IsText}"
+                                     Classes="subtle" Classes.struck="{Binding IsCleared}"
+                                     Classes.placeholder="{Binding IsAdded}" MaxLines="4"
+                                     TextTrimming="CharacterEllipsis" />
+                          <StackPanel IsVisible="{Binding IsArtwork}" Spacing="3">
+                            <Border Width="56" Height="84" CornerRadius="3" ClipToBounds="True"
+                                    HorizontalAlignment="Left"
+                                    Background="{DynamicResource PosterPlaceholder}">
+                              <Image Source="{Binding CurrentImage}" Stretch="Uniform" />
+                            </Border>
+                            <TextBlock Text="{Binding Current}" Classes="subtle" FontSize="10"
+                                       Classes.placeholder="{Binding IsAdded}" TextWrapping="Wrap" />
+                          </StackPanel>
+                        </StackPanel>
+                      </Border>
+                    </Button>
 
-                    <TextBlock Grid.Column="2" Text="→" Classes="subtle" Margin="8,0"
-                               VerticalAlignment="Top" />
+                    <Button Grid.Column="2" Classes="sourceCell" Padding="0"
+                            Command="{Binding UseTmdbCommand}"
+                            IsHitTestVisible="{Binding CanUseTmdb}"
+                            ToolTip.Tip="{Binding UseTmdbTip}">
+                      <Border Classes="sourceBox" Classes.chosen="{Binding IsFetchedChosen}"
+                              Classes.unavailable="{Binding IsFetchedUnavailable}">
+                        <StackPanel>
+                          <TextBlock Text="{Binding Fetched}" TextWrapping="Wrap"
+                                     IsVisible="{Binding IsText}" MaxLines="4"
+                                     TextTrimming="CharacterEllipsis" />
+                          <StackPanel IsVisible="{Binding IsArtwork}" Spacing="3">
+                            <Border Width="56" Height="84" CornerRadius="3" ClipToBounds="True"
+                                    HorizontalAlignment="Left"
+                                    Background="{DynamicResource PosterPlaceholder}">
+                              <Image Source="{Binding FetchedImage}" Stretch="Uniform" />
+                            </Border>
+                            <!-- The image says what this is; the caption is for when there is none. -->
+                            <TextBlock Text="{Binding Fetched}" Classes="subtle" FontSize="10"
+                                       IsVisible="{Binding !HasFetchedImage}" TextWrapping="Wrap" />
+                          </StackPanel>
+                        </StackPanel>
+                      </Border>
+                    </Button>
 
-                    <TextBlock Grid.Column="3" Text="{Binding Pending}" TextWrapping="Wrap"
-                               Classes.placeholder="{Binding IsCleared}" MaxLines="4"
-                               TextTrimming="CharacterEllipsis" />
+                    <!-- Neither side is highlighted, so say outright what the form will write. -->
+                    <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+                               Text="{Binding WillWrite}" IsVisible="{Binding HasWillWrite}"
+                               Classes="subtle" FontSize="11" Margin="7,2,0,0" TextWrapping="Wrap" />
+
+                    <Grid.RowDefinitions>
+                      <RowDefinition Height="Auto" />
+                      <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
                   </Grid>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>

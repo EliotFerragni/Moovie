@@ -29,7 +29,7 @@ public partial class App : Application
             // Files and folders named on the command line are loaded straight away, so the app
             // works as an "Open with" target and accepts files dropped onto its icon.
             if (desktop.Args is { Length: > 0 } args)
-                window.Opened += (_, _) => _ = viewModel.AddPathsAsync(args);
+                window.Opened += (_, _) => viewModel.AddPaths(args);
         }
 
         base.OnFrameworkInitializationCompleted();

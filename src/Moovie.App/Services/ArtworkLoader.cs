@@ -70,6 +70,27 @@ public sealed class ArtworkLoader : IDisposable
         return bitmap;
     }
 
+    /// <summary>
+    /// Decodes an image already in hand — a cover read straight out of a file, which has no TMDB
+    /// path to cache it under. The caller owns the bitmap and disposes it when done.
+    /// </summary>
+    public static Bitmap? Decode(byte[]? bytes)
+    {
+        if (bytes is not { Length: > 0 })
+            return null;
+
+        try
+        {
+            using var stream = new MemoryStream(bytes);
+            return new Bitmap(stream);
+        }
+        catch (Exception)
+        {
+            // A cover in a format we cannot decode is a blank tile, not a broken pane.
+            return null;
+        }
+    }
+
     public void Dispose()
     {
         foreach (var bitmap in _decoded.Values)

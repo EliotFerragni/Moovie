@@ -143,7 +143,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
         if (PickFilesAsync is null)
             return;
         var paths = await PickFilesAsync();
-        await AddPathsAsync(paths);
+        AddPaths(paths);
     }
 
     [RelayCommand(CanExecute = nameof(CanEditList))]
@@ -153,14 +153,19 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
             return;
         var folder = await PickFolderAsync();
         if (folder is not null)
-            await AddPathsAsync([folder]);
+            AddPaths([folder]);
     }
 
     /// <summary>
     /// Adds files and folders, expanding folders recursively and keeping only containers we can tag.
     /// Used by the toolbar and by drag-and-drop alike.
     /// </summary>
-    public async Task AddPathsAsync(IEnumerable<string> paths)
+    /// <remarks>
+    /// Adding does not look anything up. Dropping a folder is how you get files into the list, not
+    /// a decision to spend an API call on every one of them and overwrite whatever they already
+    /// carry; the list says how many are waiting and Look up all starts it.
+    /// </remarks>
+    public void AddPaths(IEnumerable<string> paths)
     {
         var existing = Files.Select(f => f.Path).ToHashSet(PathComparer);
         var added = new List<FileItemViewModel>();
@@ -175,8 +180,29 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
         }
 
         UpdateSummary();
+
         if (added.Count > 0)
-            await ScanAsync(added);
+            _ = ExamineAsync(added);
+    }
+
+    /// <summary>
+    /// Works out what each filename says and how big its video is. No network, so this does run
+    /// on adding: the guess is what makes a row read as "Severance S01E01?" rather than "Not
+    /// recognised" while it waits, and only the lookup itself is the user's to ask for.
+    /// </summary>
+    private async Task ExamineAsync(IReadOnlyList<FileItemViewModel> items)
+    {
+        // Parsing is cheap but the probe opens every file, so it does not run on the UI thread.
+        var parsed = await Task.Run(() => items.Select(i => Examine(i.Path)).ToList());
+
+        for (var i = 0; i < items.Count; i++)
+        {
+            items[i].Parsed = parsed[i];
+            SeedFromParse(items[i]);
+        }
+
+        UpdateSummary();
+        Preview.Refresh();
     }
 
     private static IEnumerable<string> Expand(IEnumerable<string> paths)
@@ -237,17 +263,17 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
         SelectedFiles.Clear();
         SelectedFiles.AddRange(selection);
         Preview.SetSelection(SelectedFiles);
-        RescanSelectedCommand.NotifyCanExecuteChanged();
+        LookUpSelectedCommand.NotifyCanExecuteChanged();
         RemoveSelectedCommand.NotifyCanExecuteChanged();
     }
 
     // ---------------------------------------------------------------- lookup
 
     [RelayCommand(CanExecute = nameof(CanEditList))]
-    private async Task RescanAllAsync() => await ScanAsync(Files.ToList(), force: true);
+    private async Task LookUpAllAsync() => await ScanAsync(Files.ToList(), force: true);
 
     [RelayCommand(CanExecute = nameof(CanEditList))]
-    private async Task RescanSelectedAsync() => await ScanAsync(SelectedFiles.ToList(), force: true);
+    private async Task LookUpSelectedAsync() => await ScanAsync(SelectedFiles.ToList(), force: true);
 
     /// <summary>
     /// Parses each filename and looks the result up on TMDB, a few at a time.
@@ -608,8 +634,16 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
 
         if (string.IsNullOrWhiteSpace(path))
         {
-            file.ThumbnailPath = null;
-            file.Thumbnail = null;
+            // No path but bytes in hand means the file's own cover was kept from the preview
+            // diff, so the row shows that rather than emptying over a cover that is staying put.
+            // The length stands in for a path: it only has to tell this file's own covers apart.
+            var kept = file.Metadata.ArtworkData;
+            var marker = kept is { Length: > 0 } ? $"embedded:{kept.Length}" : null;
+            if (file.ThumbnailPath == marker)
+                return;
+
+            file.ThumbnailPath = marker;
+            file.Thumbnail = ArtworkLoader.Decode(kept);
             return;
         }
 
@@ -769,9 +803,14 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
         RefreshRenamePreviews();
         Preview.Refresh();
 
-        // A different language means everything on screen is in the wrong one.
-        if (Settings.Language != previousLanguage && Files.Count > 0 && _resolver is not null)
-            await ScanAsync(Files.ToList(), force: true);
+        // A different language means everything on screen is in the wrong one. Only what has
+        // already been looked up, though: a file still waiting is waiting on purpose.
+        if (Settings.Language != previousLanguage && _resolver is not null)
+        {
+            var lookedUp = Files.Where(f => f.Status.HasBeenLookedUp()).ToList();
+            if (lookedUp.Count > 0)
+                await ScanAsync(lookedUp, force: true);
+        }
     }
 
     /// <summary>
@@ -899,8 +938,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
         AddFolderCommand.NotifyCanExecuteChanged();
         RemoveSelectedCommand.NotifyCanExecuteChanged();
         ClearAllCommand.NotifyCanExecuteChanged();
-        RescanAllCommand.NotifyCanExecuteChanged();
-        RescanSelectedCommand.NotifyCanExecuteChanged();
+        LookUpAllCommand.NotifyCanExecuteChanged();
+        LookUpSelectedCommand.NotifyCanExecuteChanged();
         ApplyCommand.NotifyCanExecuteChanged();
     }
 

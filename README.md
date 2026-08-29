@@ -18,12 +18,14 @@ install, no .NET needed on the machine.
 
 - **Reads the filename** to work out whether a file is a movie or a TV episode, and for
   episodes to pull out the season and episode numbers.
-- **Looks the title up on TMDB** and picks one automatically when it is confident.
+- **Looks the title up on TMDB** when you ask it to, and picks one automatically when it is
+  confident. Adding files never looks anything up on its own.
 - **Asks you when it is not.** Ambiguous files are flagged in the list and get a chooser
   with posters, years and overviews.
 - **Lets you edit every field**, one file at a time or many at once.
 - **Says what will change** before anything is written: the tags the file already carries are
-  read back out and shown against the new ones.
+  read back out and shown beside the new ones, cover art included, and either side can be
+  picked field by field.
 - **Writes tags and cover art** into the MP4 container in one batch, and optionally renames
   the files to a pattern you define.
 
@@ -63,33 +65,49 @@ episode number, the TMDB id — go read-only rather than stamping one value acro
 season. The language applies to the whole selection too, reading `— multiple values —` when the
 files are not all in the same one.
 
-### What applying will change
+### What will be written
 
-The pane reads the tags a file already carries and compares them with what **Apply** would
-write into it, so the header line answers the two questions worth asking before overwriting
-anything — *is this one already done?* and *what exactly am I about to replace?*
+The pane reads the tags a file already carries and shows them beside what the lookup returned,
+so the header line answers the two questions worth asking before overwriting anything — *is
+this one already done?* and *what exactly am I about to replace?*
 
 ```
-WHAT APPLYING WILL CHANGE    9 field(s) will change
+WHAT WILL BE WRITTEN    9 field(s) will change
 ```
 
-Expanding it lists the fields, each with what is in the file now beside what will replace it.
+Expanding it lists the fields as two columns, **In this file** and **From TMDB**, with the one
+that **Apply** will actually write outlined. Click the other to swap them. That is the whole
+point of the section: a lookup is right about most fields and wrong about one, and picking
+through it field by field beats accepting all of it or none.
+
+- **Taking the file's value counts as a hand edit**, so a refetch keeps it and **Discard edits**
+  puts it back. Taking TMDB's value clears that mark, since the field is once again exactly what
+  the lookup returned.
+- **A field pointed at the file's own value stays listed.** It is no longer a change, so it is
+  not counted in the header, but it has to remain on screen or there would be no way back.
+- **A field typed in by hand matches neither column**, so neither is outlined and the row spells
+  out what will be written underneath.
+- **The cover art row shows both images**, the one embedded in the file beside the one TMDB
+  returned. A thumbnail is the only way to tell a replacement worth making from one that swaps a
+  good cover for a worse one.
+- **The HD flag can only be taken from TMDB.** 1080i, 1080p and 1440p all store a 2, so the
+  file's side has no resolution to hand back and is dimmed.
+
 A value that applying would empty is struck through and marked *(cleared)*, which is how
 switching a file from episode to movie shows the show name and season being wiped rather than
 doing it quietly. A file that already holds exactly what would be written says so instead —
 which is also what you see after applying, since the pane re-reads the file it just wrote.
 
-Four details keep it honest rather than decorative:
+Three details keep the comparison honest rather than decorative:
 
 - **Only atoms that actually get written are compared.** A TMDB id has no MP4 atom, so listing
   it would promise a change that never happens.
-- **Each side is compared in its written form.** One `©day` atom holds either a full date or a
-  bare year, so the comparison is over the string that reaches the container, not over the two
-  fields behind it.
+- **Every column is in its written form.** One `©day` atom holds either a full date or a bare
+  year, so the comparison is over the string that reaches the container, not over the two fields
+  behind it. The TV fields follow the type currently set, so a value a row offers is always one
+  the writer would really put in the file.
 - **Cover art is never reported as cleared**, because applying with no new image deliberately
-  leaves the embedded one alone.
-- **The HD flag is compared as the flag.** 1080i, 1080p and 1440p all write a 2, so showing it
-  as a resolution would invent differences that no write would make.
+  leaves the embedded one alone. Taking the file's own cover is how you say *leave this one*.
 
 The file is read once per selection; editing a field re-compares against it immediately, so the
 diff answers for what is on screen rather than for what TMDB last returned.
@@ -104,8 +122,15 @@ diff answers for what is on screen rather than for what TMDB last returned.
 2. Open **Settings…** in the app, paste the key, and press **Test key**.
 3. Drop some files onto the left pane, or use **Add files…** / **Add folder…**. Folders are
    searched recursively, so a whole season can go in at once.
-4. Review the list. Sort out anything marked `?` or `✕`.
-5. Press **Apply to all ready files**.
+4. Press **Look up all**, or select a few files and press **Look up selected**.
+5. Review the list. Sort out anything marked `?` or `✕`.
+6. Press **Apply to all ready files**.
+
+Adding files does not look them up. Dropping a folder is how files get into the list, not a
+decision to spend an API call on every one of them and overwrite whatever they already carry,
+so the lookup waits to be asked for. What the app can work out on its own it does work out on
+its own: each row is read from its filename and its video track as soon as it lands, and shows
+that guess with a trailing `?` until the lookup confirms it.
 
 Only `.mp4` and `.m4v` files are handled. That is deliberate: MP4 tags can be written in
 pure managed code, so the app ships as one file with no helper binaries alongside it.

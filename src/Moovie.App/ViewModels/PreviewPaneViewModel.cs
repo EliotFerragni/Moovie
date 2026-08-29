@@ -41,6 +41,12 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
     /// <summary>Why the file's own tags could not be read, when they could not.</summary>
     private string? _existingError;
 
+    /// <summary>
+    /// The file's own cover, decoded from the bytes read out of it. Owned here rather than by the
+    /// loader's cache, which is keyed by TMDB path and has nothing to key this under.
+    /// </summary>
+    private Bitmap? _embeddedCover;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelection))]
     private int _selectionCount;
@@ -300,8 +306,11 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
         UpdateArtworkCaption(path);
         if (path is null)
         {
-            Poster = null;
-            PosterIsWide = false;
+            // No path but bytes in hand means the file's own cover was adopted from the diff, so
+            // the pane shows that rather than going blank over a cover it is about to keep.
+            var kept = _selection.Count == 1 ? ArtworkLoader.Decode(_selection[0].Metadata.ArtworkData) : null;
+            Poster = kept;
+            PosterIsWide = kept is not null && kept.PixelSize.Width > kept.PixelSize.Height;
             return;
         }
 
@@ -371,6 +380,9 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
 
             _existing = tags;
             _existingError = error;
+
+            _embeddedCover?.Dispose();
+            _embeddedCover = ArtworkLoader.Decode(tags?.Metadata.ArtworkData);
         }
         catch (OperationCanceledException)
         {
@@ -434,19 +446,105 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
         if (_existing is not { } existing)
             return null;
 
-        // Nothing has been matched yet, so there is no "after" to compare against.
-        var pending = _selection[0].Metadata;
-        if (string.IsNullOrWhiteSpace(pending.Title) && string.IsNullOrWhiteSpace(pending.ShowName))
+        // Before a lookup the form holds only what the filename gave, and the file cannot be
+        // applied at all, so listing its fields as about to be overwritten would promise
+        // something that cannot happen yet.
+        var file = _selection[0];
+        if (!file.Status.HasBeenLookedUp())
             return Strings.Get("diff.nothingToWrite");
 
-        foreach (var change in MetadataDiff.Between(existing, pending))
-            Changes.Add(new MetadataChangeViewModel(change));
+        var pending = file.Metadata;
 
-        return Changes.Count == 0
+        foreach (var change in MetadataDiff.Between(existing, pending, file.FetchedMetadata))
+            Changes.Add(new MetadataChangeViewModel(change, Adopt));
+
+        ShowCovers();
+
+        // Rows are not all changes: one already pointed at the file's own value is listed so it
+        // can be pointed back, and saying "3 fields will change" over four rows would be a lie.
+        var changing = Changes.Count(c => c.IsChange);
+        return changing == 0
             ? Strings.Get("diff.upToDate")
             : existing.IsEmpty
                 ? Strings.Get("diff.untagged")
-                : Strings.Format("diff.changeCount", Changes.Count);
+                : Strings.Format("diff.changeCount", changing);
+    }
+
+    /// <summary>
+    /// Puts the two covers on the artwork row: the one in the file, decoded from its own bytes,
+    /// and the one the lookup returned, fetched at thumbnail size. Seeing them side by side is
+    /// the only way to tell a replacement worth making from one that swaps a good cover for a
+    /// worse one.
+    /// </summary>
+    private void ShowCovers()
+    {
+        var row = Changes.FirstOrDefault(c => c.IsArtwork);
+        if (row is null)
+            return;
+
+        row.CurrentImage = _embeddedCover;
+
+        if (_selection.Count == 1 && _selection[0].FetchedMetadata?.ArtworkPath is { } path)
+            _ = LoadRowCoverAsync(path);
+    }
+
+    private async Task LoadRowCoverAsync(string path)
+    {
+        var bitmap = await _artwork.LoadAsync(_lookup.Tmdb, path, ArtworkLoader.ThumbnailSize);
+
+        // The row may have been rebuilt by an edit while this was in flight; the current one, if
+        // there still is one, is the one that should carry the image.
+        var live = Changes.FirstOrDefault(c => c.IsArtwork);
+        if (live is not null)
+            live.FetchedImage = bitmap;
+    }
+
+    /// <summary>
+    /// Points one field at the file's own value or at the lookup's, and refreshes everything that
+    /// depends on it. This is what makes the diff a place to mix the two sources rather than only
+    /// somewhere to read the outcome.
+    /// </summary>
+    /// <remarks>
+    /// Taking the file's value counts as a hand edit, so a refetch keeps it and Discard puts it
+    /// back. Taking the lookup's value is the opposite: it clears that mark, since the field is
+    /// once again exactly what TMDB returned.
+    /// </remarks>
+    private void Adopt(MetadataChange change, bool fromFile)
+    {
+        if (_selection.Count != 1)
+            return;
+
+        var file = _selection[0];
+        var source = fromFile ? _existing?.Metadata : file.FetchedMetadata;
+        if (source is null || !MetadataFields.Copy(change.Key, source, file.Metadata))
+            return;
+
+        if (fromFile)
+            file.MarkFieldEdited(change.Key);
+        else
+            file.ClearFieldEdit(change.Key);
+
+        _lookup.NotifyMetadataChanged(file);
+
+        // The form holds the same values, so it has to be re-read rather than left showing what
+        // was there before the swap.
+        _rebinding = true;
+        try
+        {
+            KindIndex = file.Metadata.Kind == MediaKind.TvEpisode ? 1 : 0;
+            foreach (var field in Fields)
+                field.Rebind(_selection, DominantKind());
+        }
+        finally
+        {
+            _rebinding = false;
+        }
+
+        UpdateEditMarkers();
+        RecomputeDiff();
+
+        if (change.Key is nameof(MediaMetadata.ArtworkPath))
+            _ = LoadPosterAsync();
     }
 
     private async Task LoadCandidatePostersAsync()

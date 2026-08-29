@@ -17,7 +17,7 @@ public sealed partial class FileItemViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(
-        nameof(StatusGeometry), nameof(StatusDescription),
+        nameof(StatusGeometry), nameof(StatusDescription), nameof(Subtitle),
         nameof(IsStatusOk), nameof(IsStatusWarning), nameof(IsStatusError),
         nameof(IsStatusInfo), nameof(IsStatusIdle))]
     private FileStatus _status = FileStatus.Pending;
@@ -94,26 +94,40 @@ public sealed partial class FileItemViewModel : ObservableObject
     public bool HasRenamePreview => !string.IsNullOrWhiteSpace(RenamePreview);
 
     /// <summary>The one-line description under the filename: what we think this file holds.</summary>
+    /// <remarks>
+    /// A file that has not been looked up yet is described from its filename alone, and says so
+    /// with a trailing question mark. Files are not looked up on their own, so that state is the
+    /// normal one for a freshly added list rather than a rare in-between.
+    /// </remarks>
     public string Subtitle
     {
         get
         {
-            if (Metadata.Kind == MediaKind.TvEpisode)
-            {
-                var show = Metadata.ShowName ?? Parsed?.Title ?? Strings.Get("pane.unknownShow");
-                var number = FormatEpisodeNumber();
-                var title = string.IsNullOrWhiteSpace(Metadata.Title) ? null : $" · {Metadata.Title}";
-                return $"{show}{number}{title}";
-            }
+            var description = Describe();
+            if (description is null)
+                return Strings.Get("status.notRecognised");
 
-            if (!string.IsNullOrWhiteSpace(Metadata.Title))
-                return Metadata.EffectiveYear is { } year ? $"{Metadata.Title} ({year})" : Metadata.Title;
-
-            if (Parsed is { Title.Length: > 0 } parsed)
-                return parsed.Year is { } parsedYear ? $"{parsed.Title} ({parsedYear})?" : $"{parsed.Title}?";
-
-            return Strings.Get("status.notRecognised");
+            return Status.HasBeenLookedUp() ? description : $"{description}?";
         }
+    }
+
+    private string? Describe()
+    {
+        if (Metadata.Kind == MediaKind.TvEpisode)
+        {
+            var show = Metadata.ShowName ?? Parsed?.Title ?? Strings.Get("pane.unknownShow");
+            var number = FormatEpisodeNumber();
+            var title = string.IsNullOrWhiteSpace(Metadata.Title) ? null : $" · {Metadata.Title}";
+            return $"{show}{number}{title}";
+        }
+
+        if (!string.IsNullOrWhiteSpace(Metadata.Title))
+            return Metadata.EffectiveYear is { } year ? $"{Metadata.Title} ({year})" : Metadata.Title;
+
+        if (Parsed is { Title.Length: > 0 } parsed)
+            return parsed.Year is { } parsedYear ? $"{parsed.Title} ({parsedYear})" : parsed.Title;
+
+        return null;
     }
 
     private string FormatEpisodeNumber()

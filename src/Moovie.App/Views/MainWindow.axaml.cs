@@ -105,7 +105,7 @@ public partial class MainWindow : Window
 
         // Folders are expanded by the view model; only obvious non-media single files are dropped
         // here, so a stray text file in a dragged selection is quietly ignored.
-        await viewModel.AddPathsAsync(paths.Where(p => Directory.Exists(p) || Mp4TagWriter.IsSupported(p)));
+        viewModel.AddPaths(paths.Where(p => Directory.Exists(p) || Mp4TagWriter.IsSupported(p)));
     }
 
     /// <summary>

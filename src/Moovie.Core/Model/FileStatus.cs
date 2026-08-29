@@ -39,6 +39,12 @@ public static class FileStatusExtensions
     public static bool IsReadyToApply(this FileStatus status) =>
         status is FileStatus.Matched or FileStatus.Edited;
 
+    /// <summary>
+    /// True once the file has been through a lookup, whatever came of it. Files are not looked up
+    /// on their own, so this is what separates "no result" from "not asked for yet".
+    /// </summary>
+    public static bool HasBeenLookedUp(this FileStatus status) => status is not FileStatus.Pending;
+
     /// <summary>True when the app is mid-flight on this file and it should not be edited.</summary>
     public static bool IsBusy(this FileStatus status) =>
         status is FileStatus.Searching or FileStatus.Applying;
