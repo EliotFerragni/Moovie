@@ -41,6 +41,13 @@ The left pane lists your files, each with a status icon:
 | ✓✓ | Written |
 | ⚠ | Something went wrong (the reason is shown in the preview pane) |
 
+Once a file is matched, the artwork it is going to carry appears at the left of the row — the
+same image the preview pane shows, including one you picked by hand. With show posters chosen,
+a run of files from the same show reads as one block and a row that landed on the wrong title
+stands out immediately; with episode stills or season posters the rows differ from each other,
+which is simply what those kinds are. Landscape artwork is letterboxed in the tile rather than
+cropped to a sliver.
+
 The right pane previews and edits the metadata for whatever is selected.
 
 Anything you change by hand is marked: the field is outlined and gets a dot beside its label,

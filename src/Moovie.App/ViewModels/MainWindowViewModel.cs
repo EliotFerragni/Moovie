@@ -433,6 +433,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
             : outcome.Status;
         item.Message = outcome.Message;
         item.RefreshSubtitle();
+        _ = EnsureThumbnailAsync(item);
     }
 
     /// <summary>
@@ -591,6 +592,32 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     {
         RefreshRenamePreview(file);
         UpdateSummary();
+        _ = EnsureThumbnailAsync(file);
+    }
+
+    /// <summary>
+    /// Loads the thumbnail for one row, which is the same image the file is going to carry, so
+    /// the list never shows one picture and the preview another. Called when a row scrolls into
+    /// view and again whenever a file's artwork changes, so a list of several hundred only pays
+    /// for the rows somebody has actually looked at, and the second call for an unchanged file
+    /// costs a string comparison.
+    /// </summary>
+    public async Task EnsureThumbnailAsync(FileItemViewModel file)
+    {
+        var path = file.Metadata.ArtworkPath;
+
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            file.ThumbnailPath = null;
+            file.Thumbnail = null;
+            return;
+        }
+
+        if (file.ThumbnailPath == path)
+            return;
+
+        file.ThumbnailPath = path;
+        file.Thumbnail = await _artwork.LoadAsync(_tmdb, path, ArtworkLoader.ThumbnailSize);
     }
 
     // ---------------------------------------------------------------- apply
@@ -767,6 +794,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
             file.Metadata.ArtworkPath = resolved;
             file.Metadata.ArtworkData = null;
             file.ClearFieldEdit(nameof(MediaMetadata.ArtworkPath));
+            _ = EnsureThumbnailAsync(file);
         }
     }
 

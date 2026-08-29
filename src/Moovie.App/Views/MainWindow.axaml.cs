@@ -109,6 +109,18 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// Loads a row's poster as the row is realised, so a list of several hundred files fetches
+    /// only what somebody scrolls to. The list virtualises, so this fires again when a row comes
+    /// back; the view model makes the repeat call cheap rather than the view tracking what it
+    /// has already asked for.
+    /// </summary>
+    private void OnFileRowPrepared(object? sender, ContainerPreparedEventArgs e)
+    {
+        if (e.Container.DataContext is FileItemViewModel file && ViewModel is { } viewModel)
+            _ = viewModel.EnsureThumbnailAsync(file);
+    }
+
+    /// <summary>
     /// Keeps the view model's selection in step. Bound in code rather than XAML because
     /// <see cref="ListBox.SelectedItems"/> is an untyped list that is awkward to bind reliably.
     /// </summary>

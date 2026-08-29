@@ -1,4 +1,5 @@
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Moovie.Core.Localization;
 using Moovie.Core.Model;
@@ -37,6 +38,16 @@ public sealed partial class FileItemViewModel : ObservableObject
     /// <summary>Language for this file alone, overriding the global setting when set.</summary>
     [ObservableProperty]
     private string? _languageOverride;
+
+    /// <summary>The chosen artwork as shown in the list, loaded once the row is on screen.</summary>
+    [ObservableProperty]
+    private Bitmap? _thumbnail;
+
+    /// <summary>
+    /// Which artwork the thumbnail was loaded for, so a file that matches something else
+    /// reloads and one that has not changed does not.
+    /// </summary>
+    public string? ThumbnailPath { get; set; }
 
     /// <summary>What the file would be renamed to, or null when renaming is off.</summary>
     [ObservableProperty]
