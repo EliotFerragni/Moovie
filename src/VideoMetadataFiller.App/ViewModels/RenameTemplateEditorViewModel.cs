@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Text.RegularExpressions;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using VideoMetadataFiller.Core.Localization;
 using VideoMetadataFiller.Core.Model;
 using VideoMetadataFiller.Core.Settings;
 using VideoMetadataFiller.Core.Writing;
@@ -38,6 +39,16 @@ public sealed partial class RenameTemplateEditorViewModel : ObservableObject
     [ObservableProperty]
     private string _preview = string.Empty;
 
+    /// <summary>
+    /// The same template rendered for a file at the omission threshold, shown only when one is
+    /// set. Without it the setting is invisible here — the samples are 2160p, so nothing in the
+    /// preview moves — and a template writing <c>[{resolution}]</c> outside an optional section
+    /// would leave empty brackets behind with nothing to warn you.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasThresholdPreview))]
+    private string? _thresholdPreview;
+
     [ObservableProperty]
     private int _seasonDigits = 2;
 
@@ -47,9 +58,13 @@ public sealed partial class RenameTemplateEditorViewModel : ObservableObject
     [ObservableProperty]
     private SeparatorStyle _separator;
 
+    /// <summary>Mirrors the setting above, so the preview shows what the threshold does.</summary>
+    [ObservableProperty]
+    private string? _omitResolutionAtOrBelow;
+
     public RenameTemplateEditorViewModel(
         string title, MediaKind kind, string template, string defaultTemplate,
-        MediaMetadata sample, SeparatorStyle separator)
+        MediaMetadata sample, SeparatorStyle separator, string? omitResolutionAtOrBelow = null)
     {
         Title = title;
         _kind = kind;
@@ -57,6 +72,7 @@ public sealed partial class RenameTemplateEditorViewModel : ObservableObject
         _defaultTemplate = defaultTemplate;
         _template = template;
         _separator = separator;
+        _omitResolutionAtOrBelow = omitResolutionAtOrBelow;
 
         Tokens =
         [
@@ -105,6 +121,8 @@ public sealed partial class RenameTemplateEditorViewModel : ObservableObject
     }
 
     partial void OnSeparatorChanged(SeparatorStyle value) => Revalidate();
+
+    partial void OnOmitResolutionAtOrBelowChanged(string? value) => Revalidate();
 
     partial void OnSeasonDigitsChanged(int value) => ApplyDigits("season", value);
 
@@ -156,12 +174,32 @@ public sealed partial class RenameTemplateEditorViewModel : ObservableObject
         return zeros is >= 1 and <= 4 ? zeros : null;
     }
 
+    public bool HasThresholdPreview => !string.IsNullOrEmpty(ThresholdPreview);
+
     private void Revalidate()
     {
         var parsed = RenameTemplate.Parse(Template);
         Errors = parsed.Validation.IsValid ? null : string.Join("  ", parsed.Validation.Errors);
         Preview = parsed.Validation.IsValid
-            ? RenameEngine.BuildFileName(parsed, _sample, ".mp4", Separator)
+            ? RenameEngine.BuildFileName(parsed, _sample, ".mp4", Separator, OmitResolutionAtOrBelow)
             : "—";
+        ThresholdPreview = BuildThresholdPreview(parsed);
+    }
+
+    private string? BuildThresholdPreview(RenameTemplate parsed)
+    {
+        if (!parsed.Validation.IsValid || string.IsNullOrEmpty(OmitResolutionAtOrBelow))
+            return null;
+
+        var atThreshold = _sample.Clone();
+        atThreshold.Resolution = OmitResolutionAtOrBelow;
+        var name = RenameEngine.BuildFileName(
+            parsed, atThreshold, ".mp4", Separator, OmitResolutionAtOrBelow);
+
+        // A template with no resolution in it renders the same either way, so there is nothing
+        // to show and a second identical line would only be noise.
+        return name == Preview
+            ? null
+            : Strings.Format("settings.previewAtThreshold", OmitResolutionAtOrBelow, name);
     }
 }

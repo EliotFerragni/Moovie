@@ -71,6 +71,13 @@
           <TextBlock Text="{loc:T settings.separator}" Classes="fieldLabel" Margin="0,8,0,3" />
           <ComboBox ItemsSource="{Binding Separators}" SelectedItem="{Binding Separator}"
                     HorizontalAlignment="Left" MinWidth="330" />
+
+          <TextBlock Text="{loc:T settings.omitResolution}" Classes="fieldLabel" Margin="0,8,0,3" />
+          <ComboBox ItemsSource="{Binding ResolutionFloors}"
+                    SelectedItem="{Binding OmitResolutionAtOrBelow}"
+                    HorizontalAlignment="Left" MinWidth="330" />
+          <TextBlock Classes="subtle" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,0"
+                     Text="{loc:T settings.omitResolutionHint}" />
         </StackPanel>
 
         <!-- The two template editors -->
@@ -143,8 +150,12 @@
 
         <TextBlock Text="{loc:T settings.preview}" Classes="fieldLabel" Margin="0,4,0,0" />
         <Border Classes="preview">
-          <TextBlock Text="{Binding Preview}" Classes="mono" FontSize="12"
-                     TextWrapping="Wrap" />
+          <StackPanel Spacing="3">
+            <TextBlock Text="{Binding Preview}" Classes="mono" FontSize="12"
+                       TextWrapping="Wrap" />
+            <TextBlock Text="{Binding ThresholdPreview}" Classes="mono subtle" FontSize="12"
+                       TextWrapping="Wrap" IsVisible="{Binding HasThresholdPreview}" />
+          </StackPanel>
         </Border>
 
         <TextBlock Classes="subtle" FontSize="11" TextWrapping="Wrap"

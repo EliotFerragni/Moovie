@@ -22,7 +22,8 @@ public sealed record TemplateValidation(IReadOnlyList<string> Errors)
 /// <list type="bullet">
 /// <item><c>{name}</c> or <c>{name:format}</c> — a value from <see cref="RenameTokens"/>.
 /// Numbers take digit padding (<c>{season:00}</c> → <c>01</c>), dates take .NET format strings
-/// (<c>{airDate:yyyy-MM-dd}</c>), text takes <c>upper</c>, <c>lower</c> or <c>title</c>.</item>
+/// (<c>{airDate:yyyy-MM-dd}</c>), text takes <c>upper</c>, <c>lower</c> or <c>title</c>, and
+/// <c>{resolution:short}</c> writes 2160p as <c>4k</c>.</item>
 /// <item><c>&lt; … &gt;</c> — an optional segment, dropped entirely when every token inside it
 /// is empty. This is what keeps <c>&lt; - {episodeTitle}&gt;</c> from leaving a dangling
 /// separator. Angle brackets were chosen because no filesystem allows them in a name, so
@@ -190,15 +191,21 @@ public sealed class RenameTemplate
             return new TextNode(string.Empty);
         }
 
-        if (!string.IsNullOrEmpty(format) && !IsFormatValid(token.Kind, format, out var reason))
+        if (!string.IsNullOrEmpty(format) && !IsFormatValid(token, format, out var reason))
             errors.Add($"'{{{name}:{format}}}' is not valid — {reason}");
 
         return new TokenNode(token, string.IsNullOrEmpty(format) ? null : format);
     }
 
-    private static bool IsFormatValid(TokenValueKind kind, string format, out string reason)
+    private static bool IsFormatValid(RenameToken token, string format, out string reason)
     {
-        switch (kind)
+        if (token.ExtraFormats.Contains(format, StringComparer.Ordinal))
+        {
+            reason = string.Empty;
+            return true;
+        }
+
+        switch (token.Kind)
         {
             case TokenValueKind.Number:
                 if (NumberFormat.IsMatch(format))
@@ -230,7 +237,9 @@ public sealed class RenameTemplate
                     return true;
                 }
 
-                reason = "text takes upper, lower or title.";
+                reason = token.ExtraFormats.Count == 0
+                    ? "text takes upper, lower or title."
+                    : $"text takes upper, lower, title or {string.Join(", ", token.ExtraFormats)}.";
                 return false;
         }
     }
@@ -239,16 +248,23 @@ public sealed class RenameTemplate
     /// Renders the template for <paramref name="metadata"/>. Returns the bare stem — no extension,
     /// no separator substitution, no sanitisation; <see cref="RenameEngine"/> does those.
     /// </summary>
-    public string Render(MediaMetadata metadata, string? extension = null)
+    /// <param name="omitResolutionAtOrBelow">
+    /// A resolution at or below which <c>{resolution}</c> renders empty, for the ordinary ones
+    /// not worth naming. Null or empty writes every resolution. Wrap the token in an optional
+    /// <c>&lt;…&gt;</c> group and the brackets around it go with it.
+    /// </param>
+    public string Render(
+        MediaMetadata metadata, string? extension = null, string? omitResolutionAtOrBelow = null)
     {
         var output = new StringBuilder();
-        RenderNodes(_nodes, metadata, extension, output);
+        RenderNodes(_nodes, metadata, extension, omitResolutionAtOrBelow, output);
         return output.ToString();
     }
 
     /// <returns>True when at least one token in <paramref name="nodes"/> produced a value.</returns>
     private static bool RenderNodes(
-        IReadOnlyList<Node> nodes, MediaMetadata metadata, string? extension, StringBuilder output)
+        IReadOnlyList<Node> nodes, MediaMetadata metadata, string? extension,
+        string? omitResolutionAtOrBelow, StringBuilder output)
     {
         var sawToken = false;
         var producedValue = false;
@@ -264,7 +280,7 @@ public sealed class RenameTemplate
                 case TokenNode tokenNode:
                 {
                     sawToken = true;
-                    var value = Resolve(tokenNode, metadata, extension, output);
+                    var value = Resolve(tokenNode, metadata, extension, omitResolutionAtOrBelow, output);
                     if (!string.IsNullOrEmpty(value))
                     {
                         producedValue = true;
@@ -277,7 +293,8 @@ public sealed class RenameTemplate
                 case OptionalNode optional:
                 {
                     var start = output.Length;
-                    var inner = RenderNodes(optional.Children, metadata, extension, output);
+                    var inner = RenderNodes(
+                        optional.Children, metadata, extension, omitResolutionAtOrBelow, output);
                     if (!inner)
                         output.Length = start; // Every token inside was empty: drop the segment whole.
                     else
@@ -291,7 +308,9 @@ public sealed class RenameTemplate
         return producedValue || !sawToken;
     }
 
-    private static string? Resolve(TokenNode node, MediaMetadata m, string? extension, StringBuilder output) =>
+    private static string? Resolve(
+        TokenNode node, MediaMetadata m, string? extension,
+        string? omitResolutionAtOrBelow, StringBuilder output) =>
         node.Token.Name switch
         {
             "title" => FormatText(m.Title, node.Format),
@@ -306,12 +325,25 @@ public sealed class RenameTemplate
             "genre" => FormatText(m.Genres.FirstOrDefault(), node.Format),
             "studio" => FormatText(m.Studio, node.Format),
             "network" => FormatText(m.Network, node.Format),
-            "resolution" => FormatText(m.Resolution, node.Format),
+            // An ordinary resolution renders as nothing, so an optional group around it vanishes
+            // rather than leaving empty brackets behind.
+            "resolution" => VideoResolution.IsAtOrBelow(m.Resolution, omitResolutionAtOrBelow)
+                ? null
+                : FormatResolution(m.Resolution, node.Format),
             "tmdbId" => FormatNumber(m.TmdbId, node.Format),
             "imdbId" => FormatText(m.ImdbId, node.Format),
             "ext" => FormatText(extension, node.Format),
             _ => null,
         };
+
+    /// <summary>
+    /// Text formatting plus <c>short</c>, which writes 2160p as <c>4k</c>. Shortening replaces
+    /// the value rather than decorating it, so it is not combined with a case format.
+    /// </summary>
+    private static string? FormatResolution(string? value, string? format) =>
+        format == "short"
+            ? FormatText(VideoResolution.Shorten(value), null)
+            : FormatText(value, format);
 
     private static string? FormatText(string? value, string? format)
     {

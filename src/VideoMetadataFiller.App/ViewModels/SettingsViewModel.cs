@@ -23,6 +23,15 @@ public sealed record SeparatorChoice(SeparatorStyle Style, string DisplayName)
 }
 
 /// <summary>
+/// A resolution the rename templates may leave out, plus the "never" entry that turns the
+/// threshold off. The value is the label itself, or empty for never.
+/// </summary>
+public sealed record ResolutionFloorChoice(string Value, string DisplayName)
+{
+    public override string ToString() => DisplayName;
+}
+
+/// <summary>
 /// The settings dialog: TMDB key, default language, artwork size, and the two rename templates.
 /// Edits a copy, so cancelling leaves the live settings untouched.
 /// </summary>
@@ -57,6 +66,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private bool _createBackup;
 
+    [ObservableProperty]
+    private ResolutionFloorChoice _omitResolutionAtOrBelow;
+
     /// <summary>Result of the Strings.Get("settings.testKey") button.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasKeyStatus))]
@@ -80,14 +92,17 @@ public sealed partial class SettingsViewModel : ObservableObject
         _tvArtwork = TvArtworkKinds.First(c => c.Kind == settings.TvArtwork);
         _movieArtwork = MovieArtworkKinds.First(c => c.Kind == settings.MovieArtwork);
         _separator = Separators.FirstOrDefault(s => s.Style == settings.Separator) ?? Separators[0];
+        _omitResolutionAtOrBelow =
+            ResolutionFloors.FirstOrDefault(c => c.Value == settings.OmitResolutionAtOrBelow)
+            ?? ResolutionFloors[0];
 
         MovieTemplate = new RenameTemplateEditorViewModel(
             Strings.Get("settings.movies"), MediaKind.Movie, settings.MovieRenameTemplate, AppSettings.DefaultMovieTemplate,
-            RenameEngine.SampleMovie, settings.Separator);
+            RenameEngine.SampleMovie, settings.Separator, settings.OmitResolutionAtOrBelow);
 
         TvTemplate = new RenameTemplateEditorViewModel(
             Strings.Get("settings.tvShows"), MediaKind.TvEpisode, settings.TvRenameTemplate, AppSettings.DefaultTvTemplate,
-            RenameEngine.SampleEpisode, settings.Separator);
+            RenameEngine.SampleEpisode, settings.Separator, settings.OmitResolutionAtOrBelow);
     }
 
     public RenameTemplateEditorViewModel MovieTemplate { get; }
@@ -102,6 +117,19 @@ public sealed partial class SettingsViewModel : ObservableObject
         new(SeparatorStyle.Dot, Strings.Get("settings.sepDot")),
         new(SeparatorStyle.Underscore, Strings.Get("settings.sepUnderscore")),
         new(SeparatorStyle.Dash, Strings.Get("settings.sepDash")),
+    ];
+
+    /// <summary>
+    /// Resolutions a name may leave out. Ordered smallest first so the list reads as a ladder,
+    /// with "never" — the default — at the top.
+    /// </summary>
+    public IReadOnlyList<ResolutionFloorChoice> ResolutionFloors { get; } =
+    [
+        new(string.Empty, Strings.Get("settings.omitResolutionNever")),
+        // The direction rides on the option rather than the label above it, so it is still
+        // there once the dropdown is closed and only the chosen value shows.
+        .. VideoResolution.Ladder.Select(label =>
+            new ResolutionFloorChoice(label, Strings.Format("settings.omitResolutionOption", label))),
     ];
 
     /// <summary>TMDB image widths, largest first. Bigger artwork means bigger files.</summary>
@@ -161,6 +189,12 @@ public sealed partial class SettingsViewModel : ObservableObject
         TvTemplate.Separator = value.Style;
     }
 
+    partial void OnOmitResolutionAtOrBelowChanged(ResolutionFloorChoice value)
+    {
+        MovieTemplate.OmitResolutionAtOrBelow = value.Value;
+        TvTemplate.OmitResolutionAtOrBelow = value.Value;
+    }
+
     /// <summary>Folds the edits back into a settings object ready to persist.</summary>
     public AppSettings ToSettings()
     {
@@ -174,6 +208,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         settings.TvArtwork = TvArtwork.Kind;
         settings.MovieArtwork = MovieArtwork.Kind;
         settings.CreateBackup = CreateBackup;
+        settings.OmitResolutionAtOrBelow = OmitResolutionAtOrBelow.Value;
         settings.MovieRenameTemplate = MovieTemplate.Template;
         settings.TvRenameTemplate = TvTemplate.Template;
         return settings;

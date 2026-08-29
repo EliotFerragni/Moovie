@@ -36,13 +36,18 @@ public static class RenameEngine
     /// <summary>
     /// Builds the filename (stem plus extension) that <paramref name="metadata"/> should get.
     /// </summary>
+    /// <param name="omitResolutionAtOrBelow">
+    /// A resolution at or below which <c>{resolution}</c> is left out. See
+    /// <see cref="RenameTemplate.Render"/>.
+    /// </param>
     public static string BuildFileName(
         RenameTemplate template,
         MediaMetadata metadata,
         string extension,
-        SeparatorStyle separator = SeparatorStyle.Space)
+        SeparatorStyle separator = SeparatorStyle.Space,
+        string? omitResolutionAtOrBelow = null)
     {
-        var stem = template.Render(metadata, extension);
+        var stem = template.Render(metadata, extension, omitResolutionAtOrBelow);
         if (template.UsesExtension && stem.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
             stem = stem[..^extension.Length];
 
@@ -118,13 +123,16 @@ public static class RenameEngine
     /// Renames <paramref name="path"/> in place. Returns the new path, or the original when the
     /// name is already right or nothing renderable came out of the template.
     /// </summary>
-    public static string Rename(string path, RenameTemplate template, MediaMetadata metadata, SeparatorStyle separator)
+    public static string Rename(
+        string path, RenameTemplate template, MediaMetadata metadata, SeparatorStyle separator,
+        string? omitResolutionAtOrBelow = null)
     {
         var directory = Path.GetDirectoryName(path);
         if (string.IsNullOrEmpty(directory))
             return path;
 
-        var fileName = BuildFileName(template, metadata, Path.GetExtension(path), separator);
+        var fileName = BuildFileName(
+            template, metadata, Path.GetExtension(path), separator, omitResolutionAtOrBelow);
         if (fileName.Length == 0)
             return path;
 
@@ -140,9 +148,12 @@ public static class RenameEngine
     /// A preview of what <paramref name="path"/> would become, without touching the filesystem.
     /// Used for the "old → new" column in the file list.
     /// </summary>
-    public static string PreviewFileName(string path, RenameTemplate template, MediaMetadata metadata, SeparatorStyle separator)
+    public static string PreviewFileName(
+        string path, RenameTemplate template, MediaMetadata metadata, SeparatorStyle separator,
+        string? omitResolutionAtOrBelow = null)
     {
-        var fileName = BuildFileName(template, metadata, Path.GetExtension(path), separator);
+        var fileName = BuildFileName(
+            template, metadata, Path.GetExtension(path), separator, omitResolutionAtOrBelow);
         return fileName.Length == 0 ? Path.GetFileName(path) : fileName;
     }
 

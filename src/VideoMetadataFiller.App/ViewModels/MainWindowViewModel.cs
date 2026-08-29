@@ -677,7 +677,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
             {
                 var template = file.Metadata.Kind == MediaKind.TvEpisode ? tvTemplate : movieTemplate;
                 var renamed = await Task.Run(
-                    () => RenameEngine.Rename(file.Path, template, file.Metadata, Settings.Separator), token);
+                    () => RenameEngine.Rename(
+                        file.Path, template, file.Metadata,
+                        Settings.Separator, Settings.OmitResolutionAtOrBelow), token);
                 file.UpdatePath(renamed);
             }
 
@@ -826,7 +828,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
             return;
         }
 
-        var preview = RenameEngine.PreviewFileName(file.Path, template, file.Metadata, Settings.Separator);
+        var preview = RenameEngine.PreviewFileName(
+            file.Path, template, file.Metadata, Settings.Separator, Settings.OmitResolutionAtOrBelow);
         file.RenamePreview = string.Equals(preview, file.FileName, StringComparison.Ordinal) ? null : preview;
     }
 

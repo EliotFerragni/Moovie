@@ -204,6 +204,7 @@ TV shows:  {show} - S{season:00}E{episode:00}< - {episodeTitle}>
 | Digits | `{season:0}` `{season:00}` `{episode:000}` | `1` · `01` · `007` |
 | Dates | `{airDate:yyyy-MM-dd}` `{releaseDate:yyyy}` | `2021-03-08` · `2017` |
 | Text | `{title:upper}` `{title:lower}` `{title:title}` | case conversion |
+| Short | `{resolution:short}` | `2160p` → `4k` · `4320p` → `8k` |
 
 **Optional parts.** Wrap a section in angle brackets and it disappears when the fields inside
 it are empty:
@@ -217,7 +218,7 @@ Angle brackets were chosen because no filesystem allows them in a name, which le
 brackets free for the common style:
 
 ```
-{title} ({year}) [{resolution}]   →   Blade Runner 2049 (2017) [2160p].mp4
+{title} ({year})< [{resolution}]>   →   Blade Runner 2049 (2017) [2160p].mp4
 ```
 
 Write `{{` and `}}` for literal braces.
@@ -235,6 +236,33 @@ track cannot be read.
 Height decides the label, but width may promote it: widescreen film is cropped rather than
 letterboxed, so a 2.39:1 transfer is 1920×800 and is still `1080p`. Width never demotes, or
 4:3 and anamorphic material would be misnamed — 720×576 is `576p`, not `720p`.
+
+**Not every resolution is worth naming.** Most libraries have a baseline that goes without
+saying and only mark what beats it. Settings has **Leave the resolution out**: pick
+`576p and below` and anything at or under it renders as nothing, while 720p and up are written
+as usual. The direction sits on the choice rather than on the label above it, so it is still
+there once the dropdown is closed and only the chosen value shows.
+
+```
+{title} ({year})< [{resolution}]>
+
+  2160p  →  Blade Runner 2049 (2017) [2160p].mp4
+   576p  →  Blade Runner 2049 (2017).mp4
+```
+
+The token comes out empty, so the optional `<…>` section around it takes the brackets and the
+space with it. Written as a bare `[{resolution}]` instead, the empty brackets would stay — the
+live preview in Settings shows a second line at the threshold whenever one is set, so you can
+see which of the two you have written before saving.
+
+`{resolution:short}` writes the two resolutions that have a shorter name — `2160p` as `4k`
+and `4320p` as `8k` — and leaves the rest as they are, since `1080p` is already what people
+write. `1440p` is deliberately not shortened: "2K" properly means a 1080p-class frame, so
+borrowing it here would name the file wrongly.
+
+This is a naming preference and nothing more. The resolution is still read from the video, still
+shown in the preview pane, and still decides the HD flag written into the file; only the
+filename leaves it out.
 
 Renaming happens in place: only the filename changes, never the folder. Characters that are
 illegal on Windows are stripped whatever platform you are on, so a library stays portable, and
@@ -364,7 +392,7 @@ embeds Inter.
 
 ```bash
 dotnet --info                                    # should report 10.0.x
-dotnet test                                      # 240 tests
+dotnet test                                      # 279 tests
 dotnet run --project src/VideoMetadataFiller.App
 ```
 

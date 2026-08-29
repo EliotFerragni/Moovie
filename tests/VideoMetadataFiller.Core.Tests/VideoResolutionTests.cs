@@ -90,6 +90,62 @@ public class VideoResolutionTests : IDisposable
         Assert.Null(VideoResolution.Read(Path.Combine(_directory, "nope.mp4")));
     }
 
+    [Theory]
+    [InlineData("360p", "480p", true)]
+    [InlineData("480p", "576p", true)]
+    // "At or below" includes the threshold itself: naming 576p is how you stop seeing 576p.
+    [InlineData("576p", "576p", true)]
+    [InlineData("720p", "576p", false)]
+    [InlineData("2160p", "576p", false)]
+    [InlineData("1080p", "1080p", true)]
+    [InlineData("1440p", "1080p", false)]
+    // Interlaced 1080 is the same frame size as progressive 1080, so it hides with it.
+    [InlineData("1080i", "1080p", true)]
+    [InlineData("4k", "1080p", false)]
+    public void Compares_one_resolution_against_a_threshold(string resolution, string threshold, bool expected)
+    {
+        Assert.Equal(expected, VideoResolution.IsAtOrBelow(resolution, threshold));
+    }
+
+    [Theory]
+    // No threshold set is the default, and hides nothing.
+    [InlineData("576p", null)]
+    [InlineData("576p", "")]
+    // A value this app does not recognise is left alone rather than hidden on a guess.
+    [InlineData("SuperVision", "1080p")]
+    [InlineData(null, "1080p")]
+    [InlineData("1080p", "nonsense")]
+    public void Hides_nothing_when_either_side_is_unknown(string? resolution, string? threshold)
+    {
+        Assert.False(VideoResolution.IsAtOrBelow(resolution, threshold));
+    }
+
+    [Theory]
+    [InlineData("2160p", "4k")]
+    [InlineData("4320p", "8k")]
+    // Already how people write them, so shortening leaves them be.
+    [InlineData("1080p", "1080p")]
+    [InlineData("720p", "720p")]
+    [InlineData("576p", "576p")]
+    // "2K" properly means a 1080p-class frame, so 1440p must not borrow it.
+    [InlineData("1440p", "1440p")]
+    [InlineData("SuperVision", "SuperVision")]
+    [InlineData(null, null)]
+    public void Shortens_only_the_two_resolutions_that_have_a_short_name(string? label, string? expected)
+    {
+        Assert.Equal(expected, VideoResolution.Shorten(label));
+    }
+
+    [Fact]
+    public void The_ladder_is_ordered_and_every_rung_is_ranked()
+    {
+        var ranks = VideoResolution.Ladder.Select(VideoResolution.Rank).ToList();
+
+        Assert.DoesNotContain(0, ranks);
+        Assert.Equal(ranks.Order(), ranks);
+        Assert.Equal(ranks.Distinct(), ranks);
+    }
+
     /// <summary>
     /// A copy of the fixture whose video sample entry declares <paramref name="width"/> by
     /// <paramref name="height"/>. Only the declared frame size is rewritten — that is the field

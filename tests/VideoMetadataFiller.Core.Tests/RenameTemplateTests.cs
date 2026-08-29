@@ -178,4 +178,28 @@ public class RenameTemplateTests
         Assert.True(RenameTemplate.Validate(AppSettings.DefaultMovieTemplate).IsValid);
         Assert.True(RenameTemplate.Validate(AppSettings.DefaultTvTemplate).IsValid);
     }
+
+    [Fact]
+    public void Short_is_accepted_on_the_resolution_and_nowhere_else()
+    {
+        Assert.True(RenameTemplate.Validate("{resolution:short}").IsValid);
+
+        var wrongToken = RenameTemplate.Validate("{title:short}");
+        Assert.False(wrongToken.IsValid);
+        Assert.Contains("upper, lower or title", wrongToken.Errors[0]);
+    }
+
+    [Fact]
+    public void The_resolutions_error_names_short_among_its_formats()
+    {
+        var errors = RenameTemplate.Validate("{resolution:sideways}").Errors;
+
+        Assert.Contains("upper, lower, title or short", errors[0]);
+    }
+
+    [Fact]
+    public void The_ordinary_text_formats_still_work_on_the_resolution()
+    {
+        Assert.True(RenameTemplate.Validate("{resolution:upper}").IsValid);
+    }
 }

@@ -44,6 +44,17 @@ public sealed class AppSettings
     public SeparatorStyle Separator { get; set; } = SeparatorStyle.Space;
 
     /// <summary>
+    /// A resolution at or below which <c>{resolution}</c> is left out of a rendered filename, for
+    /// the ones a library treats as ordinary and does not bother naming. Empty writes them all.
+    /// </summary>
+    /// <remarks>
+    /// Only the filename is affected. The resolution is still read, still shown in the pane, and
+    /// still decides the HD flag written into the file — hiding it from a name is a naming
+    /// preference, not a claim that the app does not know it.
+    /// </remarks>
+    public string OmitResolutionAtOrBelow { get; set; } = string.Empty;
+
+    /// <summary>
     /// TMDB image size for embedded artwork. The preview pane downloads this same size, so what
     /// is on screen is what gets written.
     /// </summary>

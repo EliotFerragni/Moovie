@@ -20,8 +20,15 @@ public enum TokenValueKind
 public sealed record RenameToken(
     string Name,
     TokenValueKind Kind,
-    MediaKind AppliesTo = MediaKind.Unknown)
+    MediaKind AppliesTo = MediaKind.Unknown,
+    IReadOnlyList<string>? ExtraFormats = null)
 {
+    /// <summary>
+    /// Formats this token accepts beyond the ones its <see cref="Kind"/> allows. Kept here with
+    /// the rest of the vocabulary so the validator stays generic rather than naming one token.
+    /// </summary>
+    public IReadOnlyList<string> ExtraFormats { get; } = ExtraFormats ?? [];
+
     /// <summary>
     /// What the token palette shows about this token. Keyed off the name rather than held here,
     /// so the vocabulary and its translations cannot drift apart.
@@ -57,7 +64,7 @@ public static class RenameTokens
         new("genre", TokenValueKind.Text),
         new("studio", TokenValueKind.Text, MediaKind.Movie),
         new("network", TokenValueKind.Text, MediaKind.TvEpisode),
-        new("resolution", TokenValueKind.Text),
+        new("resolution", TokenValueKind.Text, ExtraFormats: ["short"]),
         new("tmdbId", TokenValueKind.Number),
         new("imdbId", TokenValueKind.Text),
         new("ext", TokenValueKind.Text),
