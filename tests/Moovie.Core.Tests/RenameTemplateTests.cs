@@ -244,4 +244,69 @@ public class RenameTemplateTests
         Assert.Equal("{season}", season.Written(null));
         Assert.Equal("{season:00}", season.Written("00"));
     }
+
+    /// <summary>
+    /// The complaint this exists for: {tmdbId:00} rendered the id unchanged, three times, and a
+    /// reference that lists three ways of writing the same number teaches the opposite of what it
+    /// is for. Case conversion is exempt — whether :title changes anything depends on the value,
+    /// not on the token, so it stays offered even where a well-cased sample makes it look inert.
+    /// </summary>
+    [Theory]
+    [InlineData(MediaKind.Movie)]
+    [InlineData(MediaKind.TvEpisode)]
+    public void No_offered_format_leaves_the_value_exactly_as_it_was(MediaKind kind)
+    {
+        string[] caseConversions = ["upper", "lower", "title"];
+        var sample = kind == MediaKind.Movie ? RenameEngine.SampleMovie : RenameEngine.SampleEpisode;
+
+        foreach (var token in RenameTokens.All.Where(t => t.IsRelevantTo(kind) && t.Name != "ext"))
+        {
+            var bare = RenameTemplate.Parse(token.Written(null)).Render(sample);
+
+            foreach (var format in token.OfferedFormats
+                         .Where(f => f is not null && !caseConversions.Contains(f)))
+            {
+                var rendered = RenameTemplate.Parse(token.Written(format)).Render(sample);
+                Assert.False(rendered == bare,
+                    $"{token.Written(format)} renders '{rendered}', the same as {token.Written(null)}");
+            }
+        }
+    }
+
+    [Theory]
+    // A year is always four digits and an id is not a counted quantity, so padding is inert.
+    [InlineData("year")]
+    [InlineData("tmdbId")]
+    // Codes, not prose: upper mangles them and title is nonsense on a value with no words.
+    [InlineData("imdbId")]
+    public void A_token_its_formats_cannot_help_offers_only_itself(string name)
+    {
+        Assert.Equal([null], RenameTokens.Find(name)!.OfferedFormats);
+    }
+
+    [Fact]
+    public void The_resolution_offers_its_own_format_and_none_of_the_text_ones()
+    {
+        Assert.Equal([null, "short"], RenameTokens.Find("resolution")!.OfferedFormats);
+    }
+
+    /// <summary>Clicking a chip must not insert the very format that does nothing.</summary>
+    [Fact]
+    public void A_chip_inserts_a_format_only_where_one_helps()
+    {
+        Assert.Equal("{season:00}", RenameTokens.Find("season")!.Insertion);
+        Assert.Equal("{year}", RenameTokens.Find("year")!.Insertion);
+        Assert.Equal("{tmdbId}", RenameTokens.Find("tmdbId")!.Insertion);
+    }
+
+    /// <summary>The validator is unchanged: nothing that used to parse stops parsing.</summary>
+    [Theory]
+    [InlineData("{year:0000}")]
+    [InlineData("{tmdbId:00}")]
+    [InlineData("{resolution:upper}")]
+    [InlineData("{imdbId:lower}")]
+    public void A_format_the_palette_stopped_offering_is_still_accepted(string template)
+    {
+        Assert.True(RenameTemplate.Validate(template).IsValid);
+    }
 }

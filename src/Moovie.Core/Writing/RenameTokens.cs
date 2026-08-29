@@ -17,11 +17,20 @@ public enum TokenValueKind
 }
 
 /// <summary>One placeholder usable in a rename template.</summary>
+/// <param name="OffersKindFormats">
+/// Whether the formats implied by <paramref name="Kind"/> are worth offering for this token.
+/// False where they cannot change the value: a year is always four digits, an id is not a
+/// counted quantity, and a resolution or an IMDb id is a lowercase code that case conversion
+/// only mangles. The validator still accepts them, so no existing template breaks — this
+/// decides what the palette advertises, and a reference that lists three ways of writing the
+/// same number teaches the opposite of what it is for.
+/// </param>
 public sealed record RenameToken(
     string Name,
     TokenValueKind Kind,
     MediaKind AppliesTo = MediaKind.Unknown,
-    IReadOnlyList<string>? ExtraFormats = null)
+    IReadOnlyList<string>? ExtraFormats = null,
+    bool OffersKindFormats = true)
 {
     /// <summary>
     /// Formats this token accepts beyond the ones its <see cref="Kind"/> allows. Kept here with
@@ -39,12 +48,14 @@ public sealed record RenameToken(
     public bool IsRelevantTo(MediaKind kind) => AppliesTo == MediaKind.Unknown || AppliesTo == kind;
 
     /// <summary>What the token palette in Settings inserts when clicked.</summary>
-    public string Insertion => Kind switch
-    {
-        TokenValueKind.Number => $"{{{Name}:00}}",
-        TokenValueKind.Date => $"{{{Name}:yyyy-MM-dd}}",
-        _ => $"{{{Name}}}",
-    };
+    public string Insertion => OffersKindFormats
+        ? Kind switch
+        {
+            TokenValueKind.Number => $"{{{Name}:00}}",
+            TokenValueKind.Date => $"{{{Name}:yyyy-MM-dd}}",
+            _ => $"{{{Name}}}",
+        }
+        : $"{{{Name}}}";
 
     /// <summary>
     /// Every form of this token worth showing in the palette, bare first: what the user may
@@ -54,21 +65,31 @@ public sealed record RenameToken(
     /// Exhaustive for numbers and text, and for the extra formats a token adds; dates are an
     /// open set, so those are a representative handful rather than a complete list, and the
     /// palette says as much.
+    /// <para>
+    /// The explicit spelling of a default is left out — <c>:0</c> is the bare token and
+    /// <c>:yyyy-MM-dd</c> is what a date already does — because a row that renders exactly what
+    /// the row above it renders is not a second option, it is the same one written twice.
+    /// </para>
     /// </remarks>
-    public IReadOnlyList<string?> OfferedFormats =>
-    [
-        null,
-        .. Kind switch
+    public IReadOnlyList<string?> OfferedFormats
+    {
+        get
         {
-            TokenValueKind.Number => (string[])["0", "00", "000"],
-            TokenValueKind.Date => ["yyyy-MM-dd", "yyyy", "MMMM yyyy"],
-            _ => ["upper", "lower", "title"],
-        },
-        .. ExtraFormats,
-    ];
+            string[] byKind = OffersKindFormats
+                ? Kind switch
+                {
+                    TokenValueKind.Number => ["00", "000"],
+                    TokenValueKind.Date => ["yyyy", "MMMM yyyy"],
+                    _ => ["upper", "lower", "title"],
+                }
+                : [];
+
+            return [null, .. byKind, .. ExtraFormats];
+        }
+    }
 
     /// <summary>Whether the palette should say the formats shown are only a sample.</summary>
-    public bool HasOpenEndedFormats => Kind == TokenValueKind.Date;
+    public bool HasOpenEndedFormats => Kind == TokenValueKind.Date && OffersKindFormats;
 
     /// <summary>This token written with one of its formats, e.g. <c>{season:00}</c>.</summary>
     public string Written(string? format) =>
@@ -82,7 +103,7 @@ public static class RenameTokens
     [
         new("title", TokenValueKind.Text),
         new("originalTitle", TokenValueKind.Text),
-        new("year", TokenValueKind.Number),
+        new("year", TokenValueKind.Number, OffersKindFormats: false),
         new("show", TokenValueKind.Text, MediaKind.TvEpisode),
         new("season", TokenValueKind.Number, MediaKind.TvEpisode),
         new("episode", TokenValueKind.Number, MediaKind.TvEpisode),
@@ -92,9 +113,9 @@ public static class RenameTokens
         new("genre", TokenValueKind.Text),
         new("studio", TokenValueKind.Text, MediaKind.Movie),
         new("network", TokenValueKind.Text, MediaKind.TvEpisode),
-        new("resolution", TokenValueKind.Text, ExtraFormats: ["short"]),
-        new("tmdbId", TokenValueKind.Number),
-        new("imdbId", TokenValueKind.Text),
+        new("resolution", TokenValueKind.Text, ExtraFormats: ["short"], OffersKindFormats: false),
+        new("tmdbId", TokenValueKind.Number, OffersKindFormats: false),
+        new("imdbId", TokenValueKind.Text, OffersKindFormats: false),
         new("ext", TokenValueKind.Text),
     ];
 

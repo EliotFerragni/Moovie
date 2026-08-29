@@ -226,21 +226,24 @@ brackets free for the common style:
 Write `{{` and `}}` for literal braces.
 
 **You do not have to remember any of this.** Each field in the palette under a template carries
-its whole vocabulary: hover one and it lists every form it can be written in, against what each
+its own vocabulary: hover one and it lists the forms worth writing it in, against what each
 would produce for the sample shown below the box.
 
 ```
-{resolution}         2160p
-{resolution:upper}   2160P
-{resolution:lower}   2160p
-{resolution:title}   2160P
-{resolution:short}   4k
+{season}       1          {resolution}         2160p
+{season:00}    01         {resolution:short}   4k
+{season:000}   001
 ```
 
+A field is only offered a format that can change its value, which is why the resolution is not
+shown three ways of being cased and the year is not shown three ways of being padded — a year
+is always four digits, so `{year:00}` is the same row written twice. Anything left out is still
+accepted, so no template that already works stops working; it is simply not advertised.
+
 The examples are rendered rather than written down, so they follow the template's own sample —
-a movie template's `{title}` shows a film, a TV one's shows an episode — and a test fails if a
-sample ever loses a field the palette offers, or if the palette offers a format the validator
-would reject.
+a movie template's `{title}` shows a film, a TV one's shows an episode — and tests fail if a
+sample ever loses a field the palette offers, if the palette offers a format the validator would
+reject, or if an offered format leaves the value exactly as it was.
 
 **Multi-episode files** repeat the episode marker, so `E{episode:00}` renders as `E01-E02` —
 the form media servers recognise.
@@ -415,7 +418,7 @@ embeds Inter.
 
 ```bash
 dotnet --info                                    # should report 10.0.x
-dotnet test                                      # 291 tests
+dotnet test                                      # 302 tests
 dotnet run --project src/Moovie.App
 ```
 
