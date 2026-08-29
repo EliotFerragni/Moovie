@@ -1,0 +1,156 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:Moovie.App.Localization"
+        xmlns:vm="using:Moovie.App.ViewModels"
+        xmlns:views="using:Moovie.App.Views"
+        x:Class="Moovie.App.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Moovie"
+        Icon="avares://Moovie/Assets/Icon/app-256.png"
+        Width="1280" Height="820"
+        MinWidth="900" MinHeight="560"
+        Background="{DynamicResource AppBackground}">
+
+  <Window.Styles>
+    <!-- Status icon colours live here so they follow the theme with no converter involved. -->
+    <Style Selector="Path.status">
+      <Setter Property="Width" Value="15" />
+      <Setter Property="Height" Value="15" />
+      <Setter Property="Stretch" Value="Uniform" />
+      <Setter Property="Fill" Value="{DynamicResource IdleColor}" />
+    </Style>
+    <Style Selector="Path.status.ok">
+      <Setter Property="Fill" Value="{DynamicResource OkColor}" />
+    </Style>
+    <Style Selector="Path.status.warn">
+      <Setter Property="Fill" Value="{DynamicResource WarnColor}" />
+    </Style>
+    <Style Selector="Path.status.err">
+      <Setter Property="Fill" Value="{DynamicResource ErrorColor}" />
+    </Style>
+    <Style Selector="Path.status.info">
+      <Setter Property="Fill" Value="{DynamicResource InfoColor}" />
+    </Style>
+  </Window.Styles>
+
+  <Grid RowDefinitions="Auto,Auto,*,Auto">
+
+    <!-- Toolbar -->
+    <Border Grid.Row="0" Classes="toolbar" Padding="12,9">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <Button Content="{loc:T main.addFiles}" Command="{Binding AddFilesCommand}" />
+          <Button Content="{loc:T main.addFolder}" Command="{Binding AddFolderCommand}" />
+          <Rectangle Width="1" Margin="4,3" Fill="{DynamicResource PanelBorder}" />
+          <Button Content="{loc:T main.rescanSelected}" Command="{Binding RescanSelectedCommand}" />
+          <Button Content="{loc:T main.rescanAll}" Command="{Binding RescanAllCommand}" />
+          <Rectangle Width="1" Margin="4,3" Fill="{DynamicResource PanelBorder}" />
+          <Button Content="{loc:T main.remove}" Command="{Binding RemoveSelectedCommand}" />
+          <Button Content="{loc:T main.clear}" Command="{Binding ClearAllCommand}" />
+        </StackPanel>
+
+        <TextBlock Grid.Column="1" Text="Moovie" Classes="h1"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+          <Button Content="{loc:T main.about}" Command="{Binding OpenAboutCommand}" />
+          <Button Content="{loc:T main.settings}" Command="{Binding OpenSettingsCommand}" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- Banner: missing API key and similar things the user must act on -->
+    <Border Grid.Row="1" Classes="notice" Margin="12,10,12,0" IsVisible="{Binding HasBanner}"
+            Padding="12,9">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Text="{Binding Banner}" TextWrapping="Wrap" VerticalAlignment="Center" />
+        <Button Grid.Column="1" Content="{loc:T main.openSettings}" Margin="12,0,0,0"
+                Command="{Binding OpenSettingsCommand}" />
+      </Grid>
+    </Border>
+
+    <!-- Two panes -->
+    <Grid Grid.Row="2" ColumnDefinitions="400,Auto,*" Margin="12,10">
+
+      <Border Classes="panel" Name="FileListPanel" DragDrop.AllowDrop="True">
+        <Grid RowDefinitions="Auto,*">
+          <Border Padding="12,10" BorderThickness="0,0,0,1"
+                  BorderBrush="{DynamicResource PanelBorder}">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="{loc:T main.files}" Classes="sectionLabel" Margin="0" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="{Binding StatusSummary}" Classes="subtle"
+                         VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            </Grid>
+          </Border>
+
+          <ListBox Grid.Row="1" Name="FileList" Classes="fileList"
+                   ItemsSource="{Binding Files}" SelectionMode="Multiple"
+                   SelectionChanged="OnFileSelectionChanged">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:FileItemViewModel">
+                <Grid ColumnDefinitions="*,Auto" ToolTip.Tip="{Binding Path}">
+                  <StackPanel Spacing="1">
+                    <TextBlock Text="{Binding FileName}" FontWeight="Medium"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Subtitle}" Classes="subtle"
+                               TextTrimming="CharacterEllipsis" />
+                    <StackPanel Orientation="Horizontal" Spacing="4"
+                                IsVisible="{Binding HasRenamePreview}">
+                      <TextBlock Text="→" Classes="subtle" />
+                      <TextBlock Text="{Binding RenamePreview}" FontSize="11"
+                                 Foreground="{DynamicResource InfoColor}"
+                                 TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                  </StackPanel>
+
+                  <Path Grid.Column="1" Classes="status"
+                        Classes.ok="{Binding IsStatusOk}"
+                        Classes.warn="{Binding IsStatusWarning}"
+                        Classes.err="{Binding IsStatusError}"
+                        Classes.info="{Binding IsStatusInfo}"
+                        Data="{Binding StatusGeometry}"
+                        Margin="10,0,2,0" VerticalAlignment="Center"
+                        ToolTip.Tip="{Binding StatusDescription}" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+
+          <TextBlock Grid.Row="1" Classes="subtle" Margin="24"
+                     HorizontalAlignment="Center" VerticalAlignment="Center"
+                     TextAlignment="Center" TextWrapping="Wrap"
+                     IsVisible="{Binding !HasFiles}"
+                     Text="{loc:T main.dropHint}" />
+        </Grid>
+      </Border>
+
+      <GridSplitter Grid.Column="1" Width="8" Background="Transparent"
+                    ResizeDirection="Columns" />
+
+      <Border Grid.Column="2" Classes="panel">
+        <views:PreviewPane DataContext="{Binding Preview}" />
+      </Border>
+    </Grid>
+
+    <!-- Bottom bar -->
+    <Border Grid.Row="3" Classes="toolbar" BorderThickness="0,1,0,0" Padding="12,10">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <CheckBox Content="{loc:T main.renameToo}" IsChecked="{Binding RenameEnabled}"
+                  VerticalAlignment="Center" />
+
+        <StackPanel Grid.Column="1" Margin="16,0" VerticalAlignment="Center"
+                    IsVisible="{Binding IsBusy}">
+          <TextBlock Text="{Binding ProgressText}" Classes="subtle" Margin="0,0,0,3" />
+          <ProgressBar Value="{Binding Progress}" Maximum="100" Height="4" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+          <Button Content="{loc:T main.cancel}" Command="{Binding CancelCommand}"
+                  IsVisible="{Binding IsBusy}" />
+          <Button Content="{loc:T main.applyAll}" Command="{Binding ApplyCommand}"
+                  Classes="accent" IsDefault="True" />
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

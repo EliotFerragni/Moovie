@@ -1,0 +1,317 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:Moovie.App.Localization"
+             xmlns:vm="using:Moovie.App.ViewModels"
+             x:Class="Moovie.App.Views.PreviewPane"
+             x:DataType="vm:PreviewPaneViewModel">
+
+  <Grid RowDefinitions="Auto,*">
+
+    <!-- Header: poster, what is selected, and the per-file language -->
+    <Border Grid.Row="0" Padding="14,12" BorderThickness="0,0,0,1"
+            BorderBrush="{DynamicResource PanelBorder}">
+      <Grid ColumnDefinitions="Auto,*">
+
+        <!--
+          Uniform, not UniformToFill: an episode still is 16:9 and a poster is 2:3, so filling a
+          fixed box would crop most of the width off one of them. Height is pinned and width
+          follows the image, which also keeps a big 'original' download from sizing the pane.
+        -->
+        <StackPanel VerticalAlignment="Top" Margin="0,0,12,0" IsVisible="{Binding IsSingleSelection}">
+          <Button x:Name="ArtworkButton" Classes="artwork"
+                  Command="{Binding OpenArtworkPickerCommand}"
+                  ToolTip.Tip="{loc:T artwork.clickToChange}">
+            <Border Height="132" MinWidth="88" MaxWidth="220" CornerRadius="5" ClipToBounds="True"
+                    Background="{DynamicResource PosterPlaceholder}">
+              <Image Source="{Binding Poster}" Stretch="Uniform" />
+            </Border>
+          </Button>
+
+          <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,4,0,0"
+                      IsVisible="{Binding HasArtworkCaption}">
+            <Ellipse Width="5" Height="5" VerticalAlignment="Center"
+                     Fill="{DynamicResource InfoColor}"
+                     IsVisible="{Binding IsArtworkUserEdited}"
+                     ToolTip.Tip="{loc:T artwork.editedTip}" />
+            <TextBlock Text="{Binding ArtworkCaption}" Classes="subtle" FontSize="10"
+                       TextWrapping="Wrap" MaxWidth="200" />
+          </StackPanel>
+
+          <Popup IsOpen="{Binding IsArtworkPickerOpen, Mode=TwoWay}"
+                 PlacementTarget="{Binding #ArtworkButton}"
+                 Placement="BottomEdgeAlignedLeft"
+                 IsLightDismissEnabled="True">
+            <Border Background="{DynamicResource PanelBackground}"
+                    BorderBrush="{DynamicResource PanelBorder}" BorderThickness="1"
+                    CornerRadius="8" Padding="12" Width="520" MaxHeight="430"
+                    BoxShadow="0 8 24 0 #40000000">
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Text="{loc:T artwork.chooseTitle}" Classes="sectionLabel" />
+                <TextBlock DockPanel.Dock="Top" Classes="subtle" FontSize="11" TextWrapping="Wrap"
+                           Margin="0,0,0,8"
+                           Text="{loc:T artwork.chooseBlurb}" />
+                <TextBlock DockPanel.Dock="Top" Classes="subtle" Margin="0,4" Text="{loc:T artwork.loading}"
+                           IsVisible="{Binding IsLoadingArtwork}" />
+                <TextBlock DockPanel.Dock="Top" Classes="subtle" Margin="0,4" TextWrapping="Wrap"
+                           Text="{Binding ArtworkMessage}" IsVisible="{Binding HasArtworkMessage}" />
+
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                  <ItemsControl ItemsSource="{Binding ArtworkChoices}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal" />
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:ArtworkChoiceViewModel">
+                        <Button Classes="artwork" Margin="3" ToolTip.Tip="{Binding Caption}"
+                                Command="{Binding $parent[ItemsControl].((vm:PreviewPaneViewModel)DataContext).ChooseArtworkCommand}"
+                                CommandParameter="{Binding}">
+                          <!--
+                            A fixed height, not a fixed width: 16:9 and 2:3 cells are different
+                            shapes, so pinning the height puts every caption on one baseline while
+                            letting the caption itself stay as wide as its text needs.
+                          -->
+                          <DockPanel Height="170">
+                            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="4"
+                                        Margin="0,4,0,0">
+                              <TextBlock Text="{Binding KindLabel}" Classes="subtle" FontSize="10" />
+                              <TextBlock Text="{Binding LanguageTag}" Classes="subtle" FontSize="10"
+                                         FontWeight="SemiBold" IsVisible="{Binding HasLanguage}" />
+                            </StackPanel>
+                            <Border Classes="artworkCell" Classes.current="{Binding IsCurrent}"
+                                    VerticalAlignment="Center" HorizontalAlignment="Left">
+                              <Border Width="{Binding CellWidth}" Height="{Binding CellHeight}"
+                                      CornerRadius="4" ClipToBounds="True"
+                                      Background="{DynamicResource PosterPlaceholder}">
+                                <Image Source="{Binding Thumbnail}" Stretch="Uniform" />
+                              </Border>
+                            </Border>
+                          </DockPanel>
+                        </Button>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
+              </DockPanel>
+            </Border>
+          </Popup>
+        </StackPanel>
+
+        <StackPanel Grid.Column="1" Spacing="4">
+          <TextBlock Text="{Binding HeaderTitle}" Classes="h2" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding HeaderSubtitle}" Classes="subtle" TextWrapping="Wrap" />
+
+          <!-- Wraps rather than stacks: three controls and a label overflow a narrow pane. -->
+          <WrapPanel Orientation="Horizontal" Margin="0,6,0,0"
+                     IsVisible="{Binding HasSelection}">
+            <TextBlock Text="{loc:T pane.language}" Classes="subtle" VerticalAlignment="Center"
+                       Margin="0,0,8,4" />
+            <ComboBox ItemsSource="{Binding Languages}"
+                      SelectedItem="{Binding SelectedLanguage}"
+                      PlaceholderText="{Binding LanguagePlaceholder}"
+                      MinWidth="150" Margin="0,0,8,4"
+                      ToolTip.Tip="{loc:T pane.languageTip}" />
+            <Button Content="{loc:T pane.refetch}" Command="{Binding RefetchCommand}" Margin="0,0,8,4"
+                    ToolTip.Tip="{loc:T pane.refetchTip}" />
+            <Button Content="{loc:T pane.discard}" Command="{Binding DiscardEditsCommand}" Margin="0,0,0,4"
+                    IsEnabled="{Binding HasManualChanges}"
+                    ToolTip.Tip="{loc:T pane.discardTip}" />
+          </WrapPanel>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- Nothing selected -->
+    <TextBlock Grid.Row="1" Classes="subtle" Margin="32"
+               HorizontalAlignment="Center" VerticalAlignment="Center"
+               TextAlignment="Center" TextWrapping="Wrap"
+               IsVisible="{Binding !HasSelection}"
+               Text="{loc:T pane.selectToReview}" />
+
+    <!--
+      The inset is a margin on the content, not padding on the ScrollViewer: padding is left out
+      of the scrollable extent, so the bottom of it is unreachable and the last field stays
+      clipped however far you scroll.
+    -->
+    <ScrollViewer Grid.Row="1" IsVisible="{Binding HasSelection}">
+      <StackPanel Spacing="2" Margin="14,12,14,18">
+
+        <!-- Why this file needs attention -->
+        <Border Classes="notice" IsVisible="{Binding HasNotice}">
+          <TextBlock Text="{Binding Notice}" TextWrapping="Wrap" />
+        </Border>
+
+        <!-- Candidate chooser: resolves an ambiguous match -->
+        <StackPanel IsVisible="{Binding HasCandidates}" Margin="0,0,0,12">
+          <TextBlock Text="{loc:T pane.chooseTitle}" Classes="sectionLabel" />
+          <ItemsControl ItemsSource="{Binding Candidates}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:CandidateViewModel">
+                <Border Classes="candidate">
+                  <Grid ColumnDefinitions="Auto,*,Auto">
+                    <Border Width="46" Height="69" CornerRadius="4" ClipToBounds="True"
+                            Background="{DynamicResource PosterPlaceholder}"
+                            Margin="0,0,10,0" VerticalAlignment="Top">
+                      <Image Source="{Binding Poster}" Stretch="UniformToFill" />
+                    </Border>
+
+                    <StackPanel Grid.Column="1" Spacing="2">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Year}" Classes="subtle" VerticalAlignment="Center" />
+                      </StackPanel>
+                      <TextBlock Text="{Binding OriginalTitle}" Classes="subtle" FontStyle="Italic"
+                                 IsVisible="{Binding HasOriginalTitle}" TextWrapping="Wrap" />
+                      <TextBlock Text="{Binding Overview}" Classes="subtle" TextWrapping="Wrap"
+                                 MaxLines="3" TextTrimming="CharacterEllipsis" />
+                      <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,3,0,0">
+                        <TextBlock Text="{Binding Kind}" Classes="subtle" FontSize="11" />
+                        <TextBlock Text="{Binding ConfidenceText}" Classes="subtle" FontSize="11" />
+                        <TextBlock Text="{Binding TmdbReference}" Classes="subtle" FontSize="11" />
+                      </StackPanel>
+                    </StackPanel>
+
+                    <Button Grid.Column="2" Content="{loc:T pane.useThis}" VerticalAlignment="Center"
+                            Margin="10,0,0,0"
+                            Command="{Binding $parent[ItemsControl].((vm:PreviewPaneViewModel)DataContext).ChooseCommand}"
+                            CommandParameter="{Binding}" />
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+
+        <!-- Manual search, for names the parser could not make sense of -->
+        <Expander Header="{loc:T pane.searchByHand}" Margin="0,0,0,12"
+                  IsVisible="{Binding HasSelection}"
+                  ToolTip.Tip="{loc:T pane.searchByHandTip}">
+          <StackPanel Spacing="8" Margin="0,6,0,0">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBox Text="{Binding SearchText}" Watermark="{loc:T pane.searchWatermark}" />
+              <Button Grid.Column="1" Content="{loc:T pane.search}" Margin="6,0,0,0"
+                      Command="{Binding SearchCommand}" IsEnabled="{Binding !IsSearching}" />
+            </Grid>
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBox Text="{Binding TmdbIdText}" Watermark="{loc:T pane.idWatermark}" />
+              <Button Grid.Column="1" Content="{loc:T pane.useId}" Margin="6,0,0,0"
+                      Command="{Binding ApplyTmdbIdCommand}" IsEnabled="{Binding !IsSearching}" />
+            </Grid>
+            <TextBlock Text="{Binding SearchMessage}" Classes="subtle" TextWrapping="Wrap" />
+          </StackPanel>
+        </Expander>
+
+        <!--
+          What applying would change. Read out of the file itself, so it answers "is this one
+          already done?" and "what exactly am I about to overwrite?" without leaving the pane.
+        -->
+        <Expander Margin="0,0,0,12" IsVisible="{Binding ShowDiff}"
+                  ToolTip.Tip="{loc:T diff.tip}">
+          <Expander.Header>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="{loc:T diff.section}" Classes="sectionLabel" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding DiffSummary}" Classes="subtle" VerticalAlignment="Center"
+                         TextWrapping="Wrap" />
+            </StackPanel>
+          </Expander.Header>
+
+          <StackPanel Spacing="6" Margin="0,6,0,0">
+            <Grid ColumnDefinitions="130,*,Auto,*" IsVisible="{Binding HasChanges}">
+              <TextBlock Grid.Column="1" Text="{loc:T diff.now}" Classes="subtle" FontSize="10" />
+              <TextBlock Grid.Column="3" Text="{loc:T diff.after}" Classes="subtle" FontSize="10" />
+            </Grid>
+
+            <ItemsControl ItemsSource="{Binding Changes}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:MetadataChangeViewModel">
+                  <!--
+                    Fixed label column, then two equal halves: the columns line up down the list
+                    however long one value happens to be, and both sides wrap rather than
+                    stretching the pane.
+                  -->
+                  <Grid ColumnDefinitions="130,*,Auto,*" Margin="0,0,0,5">
+                    <TextBlock Text="{Binding Label}" Classes="fieldLabel" TextWrapping="Wrap"
+                               Margin="0,0,8,0" />
+
+                    <TextBlock Grid.Column="1" Text="{Binding Current}" TextWrapping="Wrap"
+                               Classes="subtle" Classes.struck="{Binding IsCleared}"
+                               Classes.placeholder="{Binding IsAdded}" MaxLines="4"
+                               TextTrimming="CharacterEllipsis" />
+
+                    <TextBlock Grid.Column="2" Text="→" Classes="subtle" Margin="8,0"
+                               VerticalAlignment="Top" />
+
+                    <TextBlock Grid.Column="3" Text="{Binding Pending}" TextWrapping="Wrap"
+                               Classes.placeholder="{Binding IsCleared}" MaxLines="4"
+                               TextTrimming="CharacterEllipsis" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Expander>
+
+        <!-- Movie / TV toggle -->
+        <StackPanel Orientation="Horizontal" Spacing="5">
+          <TextBlock Text="{loc:T pane.type}" Classes="sectionLabel" />
+          <Ellipse Width="5" Height="5" VerticalAlignment="Center" Margin="0,0,0,4"
+                   Fill="{DynamicResource InfoColor}"
+                   IsVisible="{Binding IsKindUserEdited}"
+                   ToolTip.Tip="{loc:T pane.typeEditedTip}" />
+        </StackPanel>
+        <ListBox SelectedIndex="{Binding KindIndex}" Margin="0,0,0,14"
+                 HorizontalAlignment="Left">
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Orientation="Horizontal" />
+            </ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
+          <ListBoxItem Content="{loc:T pane.movie}" />
+          <ListBoxItem Content="{loc:T pane.tvEpisode}" />
+        </ListBox>
+
+        <!-- The metadata form. One template drives every field; see FieldEditor. -->
+        <TextBlock Text="{loc:T pane.metadata}" Classes="sectionLabel" />
+        <ItemsControl ItemsSource="{Binding Fields}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:FieldEditor">
+              <StackPanel IsVisible="{Binding IsVisible}" Margin="0,0,0,11">
+                <Grid ColumnDefinitions="Auto,Auto,*">
+                  <TextBlock Text="{Binding Label}" Classes="fieldLabel" />
+
+                  <!-- A dot marks a value you typed rather than one TMDB supplied. -->
+                  <Ellipse Grid.Column="1" Width="5" Height="5" Margin="5,0,0,4"
+                           VerticalAlignment="Center"
+                           Fill="{DynamicResource InfoColor}"
+                           IsVisible="{Binding IsUserEdited}"
+                           ToolTip.Tip="{loc:T pane.fieldEditedTip}" />
+
+                  <TextBlock Grid.Column="2" Text="{loc:T pane.filledFromEnglish}" Classes="subtle"
+                             FontSize="11" HorizontalAlignment="Right"
+                             IsVisible="{Binding IsFallback}"
+                             ToolTip.Tip="{loc:T pane.filledFromEnglishTip}" />
+                </Grid>
+
+                <TextBox Text="{Binding Value}" Watermark="{Binding Watermark}"
+                         IsReadOnly="{Binding !IsEditable}"
+                         Classes.edited="{Binding IsUserEdited}"
+                         IsVisible="{Binding !IsMultiline}" />
+
+                <TextBox Text="{Binding Value}" Watermark="{Binding Watermark}"
+                         IsReadOnly="{Binding !IsEditable}"
+                         Classes.edited="{Binding IsUserEdited}"
+                         IsVisible="{Binding IsMultiline}"
+                         AcceptsReturn="True" TextWrapping="Wrap" Height="96" />
+
+                <TextBlock Text="{Binding Hint}" Classes="subtle" FontSize="11"
+                           Margin="2,3,0,0" TextWrapping="Wrap"
+                           IsVisible="{Binding HasHint}" />
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

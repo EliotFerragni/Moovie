@@ -25,13 +25,13 @@ for dir in artifacts/*/; do
     linux-*)
       # tar keeps the executable bit. A plain zip does not on every extractor, and a Linux
       # binary that arrives without +x looks broken.
-      archive="dist/VideoMetadataFiller-$runtime.tar.gz"
+      archive="dist/Moovie-$runtime.tar.gz"
       tar -czf "$archive" -C artifacts "$runtime"
       ;;
     *)
       # Info-ZIP stores Unix permissions, so the macOS .app stays launchable. This is also why
       # releases carry these archives rather than CI artifacts, which are rezipped without them.
-      archive="dist/VideoMetadataFiller-$runtime.zip"
+      archive="dist/Moovie-$runtime.zip"
       (cd artifacts && zip -qr "../$archive" "$runtime")
       ;;
   esac

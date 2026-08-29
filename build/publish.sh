@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Publishes a self-contained, single-file build of Video Metadata Filler.
+# Publishes a self-contained, single-file build of Moovie.
 #
 #   ./build/publish.sh                  # build for the machine you are on
 #   ./build/publish.sh win-x64          # build for one target
@@ -18,7 +18,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-PROJECT="src/VideoMetadataFiller.App/VideoMetadataFiller.App.csproj"
+PROJECT="src/Moovie.App/Moovie.App.csproj"
 
 # Directory.Build.props is the one place the version lives; the bundle borrows it from there.
 VERSION="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props | head -1)"
@@ -60,14 +60,14 @@ for runtime in "${TARGETS[@]}"; do
 
   # macOS wants an .app bundle to be treated as an application rather than a bare binary.
   if [[ "$runtime" == osx-* ]]; then
-    bundle="$output/Video Metadata Filler.app"
+    bundle="$output/Moovie.app"
     mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources"
     # Move everything, not just the executable. .NET 10 embeds the Skia, HarfBuzz and
     # Avalonia natives into the single file, but .NET 9 published them beside it, and
     # a bundle that leaves them behind breaks the moment it is moved on its own.
     find "$output" -maxdepth 1 -type f -exec mv {} "$bundle/Contents/MacOS/" \;
-    chmod +x "$bundle/Contents/MacOS/VideoMetadataFiller"
-    cp src/VideoMetadataFiller.App/Assets/Icon/app.icns "$bundle/Contents/Resources/"
+    chmod +x "$bundle/Contents/MacOS/Moovie"
+    cp src/Moovie.App/Assets/Icon/app.icns "$bundle/Contents/Resources/"
     sed -e "s/__RUNTIME__/$runtime/" -e "s/__VERSION__/$VERSION/" \
       build/Info.plist.template > "$bundle/Contents/Info.plist"
     echo "    bundled as $bundle"
@@ -81,6 +81,6 @@ cat <<'NOTE'
 Note for macOS: these builds are unsigned, so Gatekeeper will refuse to open them
 until the quarantine flag is cleared:
 
-    xattr -dr com.apple.quarantine "Video Metadata Filler.app"
+    xattr -dr com.apple.quarantine "Moovie.app"
 
 NOTE

@@ -1,11 +1,11 @@
-<img src="src/VideoMetadataFiller.App/Assets/Icon/app-256.png" width="96" align="right" alt="">
+<img src="src/Moovie.App/Assets/Icon/app-256.png" width="96" align="right" alt="">
 
-# Video Metadata Filler
+# Moovie
 
 [![build](https://github.com/EliotFerragni/Video-metadata-filler/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/EliotFerragni/Video-metadata-filler/actions/workflows/build.yml)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-%23D97757.svg?style=for-the-badge&logo=claudecode&logoColor=white)
 
-A desktop app that fills the metadata of movie and TV files from
+Fills the metadata of movie and TV files from
 [The Movie Database](https://www.themoviedb.org). Drop files in, review what was matched,
 correct anything that is wrong, then write it all in one go.
 
@@ -171,7 +171,7 @@ Two things make this safe:
   *filled in from English*, so a blank-looking translation is never a mystery.
 
 Adding a language means dropping a `<tag>.json` next to
-`src/VideoMetadataFiller.Core/Localization/en.json`, translating the values and listing the tag
+`src/Moovie.Core/Localization/en.json`, translating the values and listing the tag
 in `Strings.Available`. A test fails if any translation drifts from the English key set or
 loses a `{0}` placeholder. The TMDB language names in the metadata dropdown stay in English.
 
@@ -415,8 +415,8 @@ embeds Inter.
 
 ```bash
 dotnet --info                                    # should report 10.0.x
-dotnet test                                      # 287 tests
-dotnet run --project src/VideoMetadataFiller.App
+dotnet test                                      # 291 tests
+dotnet run --project src/Moovie.App
 ```
 
 The tests are headless and run fine over SSH or in a container. `dotnet run` opens a window,
@@ -464,7 +464,7 @@ real Mac is codesigning, which is why the macOS builds are unsigned.
 
 ### The icon
 
-The artwork lives at `src/VideoMetadataFiller.App/Assets/Icon/`, as four files built from
+The artwork lives at `src/Moovie.App/Assets/Icon/`, as four files built from
 one master:
 
 | File | Used by |
@@ -495,11 +495,11 @@ manual run or from a release is runnable as it arrives, with no `chmod` needed a
 `.app` still able to open. Release archives are attached to the release itself; a manual run
 keeps its archive as a build artifact for three days.
 
-macOS builds are assembled into a `Video Metadata Filler.app` bundle. They are unsigned, so
+macOS builds are assembled into a `Moovie.app` bundle. They are unsigned, so
 Gatekeeper needs persuading once:
 
 ```bash
-xattr -dr com.apple.quarantine "Video Metadata Filler.app"
+xattr -dr com.apple.quarantine "Moovie.app"
 ```
 
 Linux builds still rely on the host's usual desktop libraries (fontconfig, X11 or Wayland).
@@ -507,7 +507,7 @@ Linux builds still rely on the host's usual desktop libraries (fontconfig, X11 o
 The app also accepts paths on the command line, so it works as an "Open with" target:
 
 ```bash
-VideoMetadataFiller ~/Videos/Season\ 02
+Moovie ~/Videos/Season\ 02
 ```
 
 ---
@@ -515,7 +515,7 @@ VideoMetadataFiller ~/Videos/Season\ 02
 ## Layout
 
 ```
-src/VideoMetadataFiller.Core/     no UI dependencies, fully unit-tested
+src/Moovie.Core/     no UI dependencies, fully unit-tested
   Parsing/     FilenameParser, JunkTokens
   Tmdb/        ITmdbService, TmdbService
   Matching/    TitleScorer, MatchResolver
@@ -523,19 +523,19 @@ src/VideoMetadataFiller.Core/     no UI dependencies, fully unit-tested
                RenameTemplate, RenameEngine
   Settings/    AppSettings, SettingsStore
 
-src/VideoMetadataFiller.App/      Avalonia UI
+src/Moovie.App/      Avalonia UI
   ViewModels/  MainWindowViewModel, PreviewPaneViewModel, FieldEditor
   Views/       MainWindow, PreviewPane, SettingsWindow
 
-tests/VideoMetadataFiller.Core.Tests/
+tests/Moovie.Core.Tests/
 ```
 
 `Core` has no reference to Avalonia, and `ITmdbService` is an interface, so the parser, the
 matching policy, the tag writer and the rename engine are all tested without a UI, a network
 or an API key. The parser's test corpus is the place to add a filename that gets parsed wrong.
 
-Settings live in `%APPDATA%\VideoMetadataFiller\settings.json` on Windows and
-`~/Library/Application Support/VideoMetadataFiller/settings.json` on macOS.
+Settings live in `%APPDATA%\Moovie\settings.json` on Windows and
+`~/Library/Application Support/Moovie/settings.json` on macOS.
 
 ---
 

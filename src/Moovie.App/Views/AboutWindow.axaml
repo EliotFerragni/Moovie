@@ -1,0 +1,48 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:Moovie.App.Localization"
+        xmlns:vm="using:Moovie.App.ViewModels"
+        x:Class="Moovie.App.Views.AboutWindow"
+        x:DataType="vm:AboutViewModel"
+        Title="About Moovie"
+        Icon="avares://Moovie/Assets/Icon/app-256.png"
+        Width="440" SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource AppBackground}">
+
+  <StackPanel Margin="24,20" Spacing="14">
+
+    <!-- The icon and the name together: the About box is where a person checks what
+         they have actually got, so it shows the same mark the dock does. -->
+    <StackPanel Orientation="Horizontal" Spacing="16">
+      <Image Source="avares://Moovie/Assets/Icon/app-256.png"
+             Width="72" Height="72" VerticalAlignment="Center" />
+      <StackPanel Spacing="3" VerticalAlignment="Center">
+        <TextBlock Text="{Binding AppName}" Classes="h1" />
+        <TextBlock Text="{Binding Version}" Classes="subtle" />
+      </StackPanel>
+    </StackPanel>
+
+    <TextBlock Text="{Binding Tagline}" TextWrapping="Wrap" />
+
+    <Border Classes="notice">
+      <StackPanel Spacing="4">
+        <TextBlock Text="{Binding TmdbAttribution}" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding TmdbUrl}" Classes="subtle" FontSize="11" />
+      </StackPanel>
+    </Border>
+
+    <StackPanel Spacing="4">
+      <TextBlock Text="{loc:T about.runtime}" Classes="sectionLabel" />
+      <TextBlock Text="{Binding Runtime}" Classes="subtle" FontSize="11" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <StackPanel Spacing="4">
+      <TextBlock Text="{loc:T about.settingsFile}" Classes="sectionLabel" />
+      <TextBlock Text="{Binding SettingsPath}" Classes="subtle" FontSize="11" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <Button Content="{loc:T about.close}" HorizontalAlignment="Right" Click="OnClose" IsDefault="True" />
+  </StackPanel>
+</Window>

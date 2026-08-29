@@ -3,11 +3,11 @@
 <plist version="1.0">
 <dict>
   <key>CFBundleName</key>
-  <string>Video Metadata Filler</string>
+  <string>Moovie</string>
   <key>CFBundleDisplayName</key>
-  <string>Video Metadata Filler</string>
+  <string>Moovie</string>
   <key>CFBundleIdentifier</key>
-  <string>com.eliotferragni.videometadatafiller</string>
+  <string>com.eliotferragni.moovie</string>
   <key>CFBundleVersion</key>
   <string>__VERSION__</string>
   <key>CFBundleShortVersionString</key>
@@ -15,7 +15,7 @@
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleExecutable</key>
-  <string>VideoMetadataFiller</string>
+  <string>Moovie</string>
   <!-- Finder appends the .icns; publish.sh puts the file in Contents/Resources. -->
   <key>CFBundleIconFile</key>
   <string>app</string>

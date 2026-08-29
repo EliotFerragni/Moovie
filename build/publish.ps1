@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Publishes a self-contained, single-file build of Video Metadata Filler.
+    Publishes a self-contained, single-file build of Moovie.
 
 .EXAMPLE
     ./build/publish.ps1                 # build for this machine
@@ -16,7 +16,7 @@ param([string]$Target = "")
 $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "..")
 
-$project = "src/VideoMetadataFiller.App/VideoMetadataFiller.App.csproj"
+$project = "src/Moovie.App/Moovie.App.csproj"
 $allTargets = @("win-x64", "win-arm64", "osx-x64", "osx-arm64", "linux-x64", "linux-arm64")
 
 $targets = switch ($Target) {

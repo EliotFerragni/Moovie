@@ -3,7 +3,7 @@
 
     python3 build/make-icons.py path/to/source.png
 
-Writes into src/VideoMetadataFiller.App/Assets/Icon/:
+Writes into src/Moovie.App/Assets/Icon/:
 
     app.png    the square master, 1024, the source everything else comes from
     app.ico    Windows, 16 through 256, embedded in the executable
@@ -25,7 +25,7 @@ from pathlib import Path
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT = ROOT / "src/VideoMetadataFiller.App/Assets/Icon"
+OUT = ROOT / "src/Moovie.App/Assets/Icon"
 
 MASTER = 1024
 ICO_SIZES = [16, 24, 32, 48, 64, 128, 256]
