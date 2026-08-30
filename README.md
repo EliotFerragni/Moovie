@@ -708,6 +708,7 @@ Moovie ~/Videos/Season\ 02
 
 ```
 src/Moovie.Core/     no UI dependencies, fully unit-tested
+  Files/       MediaFiles
   Parsing/     FilenameParser, JunkTokens
   Tmdb/        ITmdbService, TmdbService
   Matching/    TitleScorer, MatchResolver

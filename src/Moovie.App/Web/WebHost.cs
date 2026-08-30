@@ -41,7 +41,19 @@ public static class WebHost
         transport.Start();
 
         if (paths.Count > 0)
-            viewModel.AddPaths(paths);
+        {
+            try
+            {
+                viewModel.AddPaths(paths);
+            }
+            catch (Exception e)
+            {
+                // Whatever went wrong reading one folder, a server that stays up with an empty
+                // list is worth far more than one that exits and is restarted forever by its
+                // supervisor. The page still opens and files can still be added by hand.
+                Console.Error.WriteLine($"Could not read everything under the paths given: {e.Message}");
+            }
+        }
 
         Console.WriteLine($"Moovie is serving its window on http://{(host == "+" ? "<this machine>" : host)}:{port}/");
         Console.WriteLine("The files it works on are this machine's. Press Ctrl+C to stop.");

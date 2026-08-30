@@ -3,6 +3,7 @@ using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Moovie.App.Services;
+using Moovie.Core.Files;
 using Moovie.Core.Localization;
 using Moovie.Core.Matching;
 using Moovie.Core.Model;
@@ -219,7 +220,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
         var existing = Files.Select(f => f.Path).ToHashSet(PathComparer);
         var added = new List<FileItemViewModel>();
 
-        foreach (var path in Expand(requested))
+        foreach (var path in MediaFiles.Expand(requested))
         {
             if (!existing.Add(path))
                 continue;
@@ -281,33 +282,6 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
         }
     }
 
-    private static IEnumerable<string> Expand(IEnumerable<string> paths)
-    {
-        foreach (var path in paths)
-        {
-            if (Directory.Exists(path))
-            {
-                IEnumerable<string> found;
-                try
-                {
-                    found = Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories)
-                        .Where(Mp4TagWriter.IsSupported)
-                        .OrderBy(p => p, StringComparer.OrdinalIgnoreCase);
-                }
-                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-                {
-                    continue;
-                }
-
-                foreach (var file in found)
-                    yield return file;
-            }
-            else if (File.Exists(path) && Mp4TagWriter.IsSupported(path))
-            {
-                yield return path;
-            }
-        }
-    }
 
     private static StringComparer PathComparer =>
         OperatingSystem.IsLinux() ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
