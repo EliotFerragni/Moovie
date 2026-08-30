@@ -866,6 +866,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
 
         Settings = editor.ToSettings();
         _settingsStore.Save(Settings);
+
+        // The theme is the one setting that does not wait for a restart.
+        ThemeCatalog.Apply(Settings.Theme);
         OnPropertyChanged(nameof(RenameEnabled));
 
         if (Settings.TmdbApiKey != previousKey)

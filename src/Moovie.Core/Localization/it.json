@@ -239,5 +239,9 @@
   "browser.addFiles": "Aggiungi i file selezionati",
   "browser.addFolder": "Aggiungi questa cartella",
   "browser.empty": "Non c’è nulla da aggiungere qui.",
-  "browser.cannotOpen": "Impossibile aprire questa cartella: {0}"
+  "browser.cannotOpen": "Impossibile aprire questa cartella: {0}",
+  "settings.theme": "Aspetto",
+  "settings.themeHint": "Si applica subito, a differenza della lingua dell'interfaccia.",
+  "settings.themeLight": "Chiaro",
+  "settings.themeDark": "Scuro"
 }

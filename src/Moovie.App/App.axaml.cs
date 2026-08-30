@@ -39,7 +39,9 @@ public partial class App : Application
     public static MainWindowViewModel CreateShellViewModel()
     {
         var store = new SettingsStore();
-        Strings.Use(store.Load().AppLanguage);
+        var settings = store.Load();
+        Strings.Use(settings.AppLanguage);
+        ThemeCatalog.Apply(settings.Theme);
         return new MainWindowViewModel(store);
     }
 }

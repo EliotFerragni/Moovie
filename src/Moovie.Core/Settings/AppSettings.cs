@@ -13,6 +13,15 @@ public enum SeparatorStyle
     Dash,
 }
 
+/// <summary>Which colour scheme the interface uses.</summary>
+public enum AppTheme
+{
+    /// <summary>Follow the operating system, and follow it as it changes.</summary>
+    System,
+    Light,
+    Dark,
+}
+
 /// <summary>Everything the app remembers between runs.</summary>
 public sealed class AppSettings
 {
@@ -33,6 +42,13 @@ public sealed class AppSettings
     /// interface and English metadata is a perfectly reasonable combination.
     /// </summary>
     public string AppLanguage { get; set; } = Strings.SystemTag;
+
+    /// <summary>
+    /// Light, dark, or whatever the operating system is set to. Separate from
+    /// <see cref="AppLanguage"/> in one important way: this one takes effect immediately, because
+    /// the theme is a live property rather than something the views read once as they load.
+    /// </summary>
+    public AppTheme Theme { get; set; } = AppTheme.System;
 
     public string MovieRenameTemplate { get; set; } = DefaultMovieTemplate;
 

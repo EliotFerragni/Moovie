@@ -239,5 +239,9 @@
   "browser.addFiles": "Ausgewählte Dateien hinzufügen",
   "browser.addFolder": "Diesen Ordner hinzufügen",
   "browser.empty": "Hier gibt es nichts hinzuzufügen.",
-  "browser.cannotOpen": "Dieser Ordner kann nicht geöffnet werden: {0}"
+  "browser.cannotOpen": "Dieser Ordner kann nicht geöffnet werden: {0}",
+  "settings.theme": "Erscheinungsbild",
+  "settings.themeHint": "Wird sofort angewendet, anders als die Sprache der Oberfläche.",
+  "settings.themeLight": "Hell",
+  "settings.themeDark": "Dunkel"
 }

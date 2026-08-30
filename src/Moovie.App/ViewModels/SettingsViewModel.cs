@@ -58,6 +58,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     private LanguageChoice _appLanguage;
 
     [ObservableProperty]
+    private ThemeChoice _theme;
+
+    [ObservableProperty]
     private ArtworkKindChoice _tvArtwork;
 
     [ObservableProperty]
@@ -89,6 +92,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         _artworkSize = settings.ArtworkSize;
         _createBackup = settings.CreateBackup;
         _appLanguage = AppLanguages.FirstOrDefault(l => l.Tag == settings.AppLanguage) ?? AppLanguages[0];
+        _theme = Themes.FirstOrDefault(t => t.Theme == settings.Theme) ?? Themes[0];
         _tvArtwork = TvArtworkKinds.First(c => c.Kind == settings.TvArtwork);
         _movieArtwork = MovieArtworkKinds.First(c => c.Kind == settings.MovieArtwork);
         _separator = Separators.FirstOrDefault(s => s.Style == settings.Separator) ?? Separators[0];
@@ -137,6 +141,8 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     /// <summary>Languages this window and the rest of the interface can be shown in.</summary>
     public IReadOnlyList<LanguageChoice> AppLanguages { get; } = Strings.Available;
+
+    public IReadOnlyList<ThemeChoice> Themes { get; } = ThemeCatalog.All;
 
     public IReadOnlyList<ArtworkKindChoice> TvArtworkKinds { get; } =
         [.. ArtworkKinds.ForTv.Select(ArtworkKindChoice.For)];
@@ -204,6 +210,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         settings.RenameEnabled = RenameEnabled;
         settings.Separator = Separator.Style;
         settings.AppLanguage = AppLanguage.Tag;
+        settings.Theme = Theme.Theme;
         settings.ArtworkSize = ArtworkSize;
         settings.TvArtwork = TvArtwork.Kind;
         settings.MovieArtwork = MovieArtwork.Kind;

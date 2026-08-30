@@ -24,6 +24,26 @@ public class SettingsStoreTests : IDisposable
     }
 
     [Fact]
+    public void Round_trips_the_theme()
+    {
+        new SettingsStore(Path("theme.json")).Save(new AppSettings { Theme = AppTheme.Dark });
+
+        Assert.Equal(AppTheme.Dark, new SettingsStore(Path("theme.json")).Load().Theme);
+    }
+
+    /// <summary>
+    /// Following the operating system is what the app did before the setting existed, so it has
+    /// to stay the answer for a settings file written before it too.
+    /// </summary>
+    [Fact]
+    public void Follows_the_system_theme_when_the_file_does_not_mention_one()
+    {
+        System.IO.File.WriteAllText(Path("old.json"), """{ "TmdbApiKey": "abc123" }""");
+
+        Assert.Equal(AppTheme.System, new SettingsStore(Path("old.json")).Load().Theme);
+    }
+
+    [Fact]
     public void A_missing_file_comes_back_as_defaults_rather_than_an_error()
     {
         var loaded = new SettingsStore(Path("nothing-here.json")).Load();

@@ -59,6 +59,11 @@ cropped to a sliver.
 
 The right pane previews and edits the metadata for whatever is selected.
 
+**Light or dark** follows the operating system, and **Appearance** in Settings forces one or the
+other for people whose preference does not match their desktop's. Unlike the interface language it
+takes effect the moment you save, since colours are resolved continuously rather than read once as
+a window loads.
+
 Anything you change by hand is marked: the field is outlined and gets a dot beside its label,
 and the same dot appears next to **Type** and the artwork, neither of which is a form field.
 **Discard edits** puts the whole selection back to what TMDB returned — fields, type and

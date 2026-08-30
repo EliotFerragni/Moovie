@@ -40,6 +40,11 @@
                     HorizontalAlignment="Left" MinWidth="240" />
           <TextBlock Classes="subtle" FontSize="11" TextWrapping="Wrap" Margin="2,3,0,0"
                      Text="{loc:T settings.appLanguageHint}" />
+          <TextBlock Text="{loc:T settings.theme}" Classes="fieldLabel" Margin="0,10,0,3" />
+          <ComboBox ItemsSource="{Binding Themes}" SelectedItem="{Binding Theme}"
+                    HorizontalAlignment="Left" MinWidth="240" />
+          <TextBlock Classes="subtle" FontSize="11" TextWrapping="Wrap" Margin="2,3,0,0"
+                     Text="{loc:T settings.themeHint}" />
         </StackPanel>
 
         <!-- Artwork and safety -->
