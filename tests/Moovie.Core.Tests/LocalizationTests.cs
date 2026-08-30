@@ -1,5 +1,8 @@
 using Moovie.Core.Localization;
+using Moovie.Core.Matching;
 using Moovie.Core.Model;
+using Moovie.Core.Parsing;
+using Moovie.Core.Tmdb;
 using Moovie.Core.Writing;
 using Xunit;
 
@@ -111,6 +114,134 @@ public class LocalizationTests : IDisposable
             Assert.NotEqual(kind.ToString(), translated);
             Assert.NotEqual(inEnglish, translated);
         }
+    }
+
+    /// <summary>
+    /// Every message a bad template produces has to be translated. Key parity cannot catch this:
+    /// the key can sit in all four files while the parser goes on returning a hardcoded English
+    /// sentence, which is exactly what it did.
+    /// </summary>
+    [Theory]
+    [InlineData("fr")]
+    [InlineData("de")]
+    [InlineData("it")]
+    public void Every_template_error_is_translated(string tag)
+    {
+        // Between them these reach every complaint the parser knows how to make.
+        string[] broken =
+        [
+            "",
+            "sub/{title}",
+            "{title",
+            "{title}>",
+            "{title}}",
+            "<{title}",
+            "{nonsense}",
+            "{season:zz}",
+            "{airDate:yyyy'}",   // an unterminated quoted literal, which the date formatter rejects
+            "{title:sideways}",
+            "{resolution:sideways}",
+        ];
+
+        // Why the reasons are checked separately: a bad format reports as "'{season:zz}' is not
+        // valid — <reason>", and the wrapper around it was translated while the reason was not.
+        // Comparing whole strings therefore saw a difference and passed the untranslated half.
+        Strings.Use("en");
+        var english = broken.Select(t => RenameTemplate.Validate(t).Errors.ToList()).ToList();
+        var englishReasons = new[]
+            {
+                "template.numberFormats", "template.dateFormats",
+                "template.textFormats", "template.textFormatsExtra",
+            }
+            .Select(key => Strings.Get(key).Split('{')[0].Trim())
+            .Where(fragment => fragment.Length > 10)
+            .ToList();
+
+        Strings.Use(tag);
+        var translated = broken.Select(t => RenameTemplate.Validate(t).Errors.ToList()).ToList();
+
+        for (var i = 0; i < broken.Length; i++)
+        {
+            Assert.True(english[i].Count > 0, $"'{broken[i]}' was expected to be rejected but produced no errors");
+            Assert.Equal(english[i].Count, translated[i].Count);
+
+            for (var e = 0; e < english[i].Count; e++)
+            {
+                Assert.True(
+                    english[i][e] != translated[i][e],
+                    $"'{broken[i]}' reports the same thing in {tag} as in English: {english[i][e]}");
+
+                foreach (var fragment in englishReasons)
+                    Assert.False(
+                        translated[i][e].Contains(fragment, StringComparison.Ordinal),
+                        $"'{broken[i]}' still carries the English \"{fragment}\" in {tag}: {translated[i][e]}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// The same guard for the messages that come back from matching, which is where an English
+    /// sentence in a French window was actually spotted.
+    /// </summary>
+    [Theory]
+    [InlineData("fr")]
+    [InlineData("de")]
+    [InlineData("it")]
+    public async Task Every_match_message_is_translated(string tag)
+    {
+        Strings.Use("en");
+        var english = await AllMatchMessages();
+
+        Strings.Use(tag);
+        var translated = await AllMatchMessages();
+
+        foreach (var (scenario, inEnglish) in english)
+        {
+            Assert.False(string.IsNullOrWhiteSpace(inEnglish));
+            Assert.True(
+                inEnglish != translated[scenario],
+                $"{scenario} reports the same thing in {tag} as in English: {inEnglish}");
+        }
+    }
+
+    /// <summary>One of each outcome that carries a message of its own.</summary>
+    private static async Task<Dictionary<string, string>> AllMatchMessages()
+    {
+        static Candidate Movie(int id, string title, int? year = null) =>
+            new() { TmdbId = id, Kind = MediaKind.Movie, Title = title, Year = year, Popularity = 1 };
+
+        static Candidate Show(int id, string title) =>
+            new() { TmdbId = id, Kind = MediaKind.TvEpisode, Title = title, Popularity = 1 };
+
+        static async Task<string> Resolve(ITmdbService tmdb, ParsedName parsed) =>
+            (await new MatchResolver(tmdb).ResolveAsync(parsed, "en-US")).Message ?? string.Empty;
+
+        return new Dictionary<string, string>
+        {
+            ["no movie"] = await Resolve(
+                new FakeTmdbService(),
+                FilenameParser.Parse("Some.Obscure.Thing.2019.mp4")),
+
+            ["several movies"] = await Resolve(
+                new FakeTmdbService { MovieResults = [Movie(1, "The Italian Job", 1969), Movie(2, "The Italian Job", 2003)] },
+                FilenameParser.Parse("The.Italian.Job.1080p.BluRay.mp4")),
+
+            ["no show"] = await Resolve(
+                new FakeTmdbService(),
+                new ParsedName { Kind = MediaKind.TvEpisode, Title = "Nothing At All", Season = 1, Episodes = [1] }),
+
+            ["several shows"] = await Resolve(
+                new FakeTmdbService { ShowResults = [Show(10, "The Office"), Show(11, "The Office")] },
+                new ParsedName { Kind = MediaKind.TvEpisode, Title = "The Office", Season = 1, Episodes = [1] }),
+
+            ["show but no episode number"] = await Resolve(
+                new FakeTmdbService { ShowResults = [Show(10, "Some Show")] },
+                new ParsedName { Kind = MediaKind.TvEpisode, Title = "Some Show" }),
+
+            ["no such episode"] = await Resolve(
+                new FakeTmdbService { ShowResults = [Show(10, "Some Show")] },
+                new ParsedName { Kind = MediaKind.TvEpisode, Title = "Some Show", Season = 1, Episodes = [5] }),
+        };
     }
 
     [Theory]

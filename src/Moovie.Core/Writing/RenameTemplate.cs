@@ -122,7 +122,7 @@ public sealed class RenameTemplate
                     var end = text.IndexOf('}', i + 1);
                     if (end < 0)
                     {
-                        errors.Add($"Unclosed '{{' at position {i + 1}.");
+                        errors.Add(Strings.Format("template.unclosedBrace", i + 1));
                         literal.Append(c);
                         break;
                     }
@@ -143,7 +143,7 @@ public sealed class RenameTemplate
                 case '>':
                     if (stack.Count == 0)
                     {
-                        errors.Add($"Unmatched '>' at position {i + 1}.");
+                        errors.Add(Strings.Format("template.unmatchedOptionalClose", i + 1));
                         literal.Append(c);
                         break;
                     }
@@ -155,7 +155,7 @@ public sealed class RenameTemplate
                     break;
 
                 case '}':
-                    errors.Add($"Unmatched '}}' at position {i + 1}. Write '}}}}' for a literal brace.");
+                    errors.Add(Strings.Format("template.unmatchedBrace", i + 1));
                     literal.Append(c);
                     break;
 
@@ -169,7 +169,7 @@ public sealed class RenameTemplate
 
         while (stack.Count > 0)
         {
-            errors.Add("Unclosed '<' — every optional segment needs a matching '>'.");
+            errors.Add(Strings.Get("template.unclosedOptional"));
             var children = current;
             current = stack.Pop();
             current.Add(new OptionalNode(children));
@@ -192,7 +192,7 @@ public sealed class RenameTemplate
         }
 
         if (!string.IsNullOrEmpty(format) && !IsFormatValid(token, format, out var reason))
-            errors.Add($"'{{{name}:{format}}}' is not valid — {reason}");
+            errors.Add(Strings.Format("template.invalidFormat", "{" + name + ":" + format + "}", reason));
 
         return new TokenNode(token, string.IsNullOrEmpty(format) ? null : format);
     }
@@ -214,7 +214,7 @@ public sealed class RenameTemplate
                     return true;
                 }
 
-                reason = "numbers take digit padding such as 0, 00 or 000.";
+                reason = Strings.Get("template.numberFormats");
                 return false;
 
             case TokenValueKind.Date:
@@ -226,7 +226,7 @@ public sealed class RenameTemplate
                 }
                 catch (FormatException)
                 {
-                    reason = "dates take a format such as yyyy, yyyy-MM-dd or MMMM.";
+                    reason = Strings.Get("template.dateFormats");
                     return false;
                 }
 
@@ -238,8 +238,8 @@ public sealed class RenameTemplate
                 }
 
                 reason = token.ExtraFormats.Count == 0
-                    ? "text takes upper, lower or title."
-                    : $"text takes upper, lower, title or {string.Join(", ", token.ExtraFormats)}.";
+                    ? Strings.Get("template.textFormats")
+                    : Strings.Format("template.textFormatsExtra", string.Join(", ", token.ExtraFormats));
                 return false;
         }
     }

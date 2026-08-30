@@ -33,7 +33,7 @@ public sealed class Mp4TagWriter
         if (!System.IO.File.Exists(path))
             throw new TagWriteException(Strings.Get("write.missing"));
         if (!IsSupported(path))
-            throw new TagWriteException($"{Path.GetExtension(path)} files are not supported — only MP4 and M4V.");
+            throw new TagWriteException(Strings.Format("write.unsupportedExtension", Path.GetExtension(path)));
 
         if (createBackup)
             CreateBackup(path);
@@ -74,16 +74,16 @@ public sealed class Mp4TagWriter
         {
             using var file = File.Create(path);
             if (file.GetTag(TagTypes.Apple) is not AppleTag tag)
-                throw new TagWriteException("The tags did not survive being written.");
+                throw new TagWriteException(Strings.Get("write.verifyTags"));
 
             var expectedTitle = metadata.Title;
             if (!string.IsNullOrWhiteSpace(expectedTitle) && tag.Title != expectedTitle)
-                throw new TagWriteException("The title did not survive being written.");
+                throw new TagWriteException(Strings.Get("write.verifyTitle"));
 
             if (metadata.Kind == MediaKind.TvEpisode
                 && !string.IsNullOrWhiteSpace(metadata.ShowName)
                 && ReadFirst(tag, Mp4Atoms.ShowName) != metadata.ShowName)
-                throw new TagWriteException("The show name did not survive being written.");
+                throw new TagWriteException(Strings.Get("write.verifyShow"));
         }
         catch (TagWriteException)
         {
@@ -105,7 +105,7 @@ public sealed class Mp4TagWriter
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            throw new TagWriteException($"The backup copy could not be created: {e.Message}", e);
+            throw new TagWriteException(Strings.Format("write.backupFailed", e.Message), e);
         }
     }
 

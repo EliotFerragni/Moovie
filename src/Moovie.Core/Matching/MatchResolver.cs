@@ -83,10 +83,10 @@ public sealed class MatchResolver(ITmdbService tmdb)
         var decision = Rank(parsed, candidates);
 
         if (decision.Best is null)
-            return MatchOutcome.NotFound($"No movie on TMDB matches “{parsed.Title}”.");
+            return MatchOutcome.NotFound(Strings.Format("match.noMovie", parsed.Title));
 
         if (!decision.IsAutomatic)
-            return MatchOutcome.NeedsChoice(decision.Ranked, "Several movies match this name — pick one.");
+            return MatchOutcome.NeedsChoice(decision.Ranked, Strings.Get("match.severalMovies"));
 
         var metadata = await tmdb.GetMovieAsync(decision.Best.TmdbId, language, cancellationToken)
             .ConfigureAwait(false);
@@ -105,10 +105,10 @@ public sealed class MatchResolver(ITmdbService tmdb)
         var decision = Rank(parsed, candidates);
 
         if (decision.Best is null)
-            return MatchOutcome.NotFound($"No TV show on TMDB matches “{parsed.Title}”.");
+            return MatchOutcome.NotFound(Strings.Format("match.noShow", parsed.Title));
 
         if (!decision.IsAutomatic)
-            return MatchOutcome.NeedsChoice(decision.Ranked, "Several shows match this name — pick one.");
+            return MatchOutcome.NeedsChoice(decision.Ranked, Strings.Get("match.severalShows"));
 
         var show = decision.Best;
         var coordinate = await LocateEpisodeAsync(show.TmdbId, parsed, language, cancellationToken)
@@ -120,7 +120,7 @@ public sealed class MatchResolver(ITmdbService tmdb)
             // rather than a bare list to choose from again.
             return MatchOutcome.NeedsChoice(
                 decision.Ranked,
-                "Found the show, but not which episode — set the season and episode.",
+                Strings.Get("match.showButNoEpisode"),
                 new MediaMetadata
                 {
                     Kind = MediaKind.TvEpisode,
@@ -143,7 +143,7 @@ public sealed class MatchResolver(ITmdbService tmdb)
         {
             return MatchOutcome.NeedsChoice(
                 decision.Ranked,
-                $"{show.Title} has no season {coordinate.Value.Season} episode {coordinate.Value.Episode} on TMDB.");
+                Strings.Format("match.noSuchEpisode", show.Title, coordinate.Value.Season, coordinate.Value.Episode));
         }
 
         metadata.Resolution = parsed.Resolution;

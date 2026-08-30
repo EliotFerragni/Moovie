@@ -281,7 +281,9 @@ Two things make this safe:
 Adding a language means dropping a `<tag>.json` next to
 `src/Moovie.Core/Localization/en.json`, translating the values and listing the tag
 in `Strings.Available`. A test fails if any translation drifts from the English key set or
-loses a `{0}` placeholder. The TMDB language names in the metadata dropdown stay in English.
+loses a `{0}` placeholder — and, separately, if a message the app can actually show comes back
+identical in English and in translation, which is how a sentence hardcoded in the code rather than
+looked up gets caught. The TMDB language names in the metadata dropdown stay in English.
 
 ---
 
