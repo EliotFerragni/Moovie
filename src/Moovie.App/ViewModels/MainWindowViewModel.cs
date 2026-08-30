@@ -68,9 +68,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     public PreviewPaneViewModel Preview { get; }
 
     /// <summary>Set by the view, which owns the window needed for the platform file pickers.</summary>
-    public Func<Task<IReadOnlyList<string>>>? PickFilesAsync { get; set; }
+    public Func<string?, Task<IReadOnlyList<string>>>? PickFilesAsync { get; set; }
 
-    public Func<Task<string?>>? PickFolderAsync { get; set; }
+    public Func<string?, Task<string?>>? PickFolderAsync { get; set; }
 
     /// <summary>Set by the view. Shows the settings dialog and returns true when it was saved.</summary>
     public Func<SettingsViewModel, Task<bool>>? ShowSettingsAsync { get; set; }
@@ -160,7 +160,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     {
         if (PickFilesAsync is null)
             return;
-        var paths = await PickFilesAsync();
+        var paths = await PickFilesAsync(_lastFolder);
         AddPaths(paths);
     }
 
@@ -169,9 +169,37 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     {
         if (PickFolderAsync is null)
             return;
-        var folder = await PickFolderAsync();
+        var folder = await PickFolderAsync(_lastFolder);
         if (folder is not null)
             AddPaths([folder]);
+    }
+
+    /// <summary>
+    /// Where the next picker should open. Taken from whatever was last added, which on a first run
+    /// means the folder named on the command line: the container is started pointing at the
+    /// library, and without this the picker would open on the app's own config directory instead,
+    /// that being where HOME points.
+    /// </summary>
+    private string? _lastFolder;
+
+    private void RememberFolder(IReadOnlyList<string> paths)
+    {
+        // Taken from what was asked for rather than from what was added, so pointing at a folder
+        // holding nothing taggable still opens there next time rather than somewhere unrelated.
+        foreach (var path in paths)
+        {
+            if (Directory.Exists(path))
+            {
+                _lastFolder = path;
+                return;
+            }
+
+            if (Path.GetDirectoryName(path) is { Length: > 0 } parent && Directory.Exists(parent))
+            {
+                _lastFolder = parent;
+                return;
+            }
+        }
     }
 
     /// <summary>
@@ -185,10 +213,13 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     /// </remarks>
     public void AddPaths(IEnumerable<string> paths)
     {
+        var requested = paths as IReadOnlyList<string> ?? paths.ToList();
+        RememberFolder(requested);
+
         var existing = Files.Select(f => f.Path).ToHashSet(PathComparer);
         var added = new List<FileItemViewModel>();
 
-        foreach (var path in Expand(paths))
+        foreach (var path in Expand(requested))
         {
             if (!existing.Add(path))
                 continue;

@@ -1,0 +1,16 @@
+# For Synology's Container Manager, QNAP's Container Station, or plain `docker compose up -d`
+# after loading the image. Adjust the two paths and the user, and nothing else.
+services:
+  moovie:
+    image: moovie:1.0.0
+    container_name: moovie
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - /volume1/media:/media           # the library to work on
+      - /volume1/docker/moovie:/config  # the TMDB key and the rename templates
+    # Need to be changed. Use 
+    #     id <your_username>
+    # to find which id to put. Then the files would look like written by you
+    user: "1000:1000"

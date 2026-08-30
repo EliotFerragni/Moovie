@@ -27,11 +27,11 @@ public sealed partial class FileBrowserViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasError))]
     private string? _error;
 
-    public FileBrowserViewModel(bool foldersOnly, string title)
+    public FileBrowserViewModel(bool foldersOnly, string title, string? startIn = null)
     {
         _foldersOnly = foldersOnly;
         Title = title;
-        Navigate(StartingDirectory());
+        Navigate(StartingDirectory(startIn));
     }
 
     public string Title { get; }
@@ -116,8 +116,16 @@ public sealed partial class FileBrowserViewModel : ObservableObject
         }
     }
 
-    private static string StartingDirectory()
+    /// <summary>
+    /// Wherever the caller was last working, falling back to the home directory. The fallback is
+    /// the wrong answer in a container, where HOME is the app's own config directory rather than
+    /// anywhere the media is, which is exactly why the caller gets to say.
+    /// </summary>
+    private static string StartingDirectory(string? startIn)
     {
+        if (!string.IsNullOrEmpty(startIn) && Directory.Exists(startIn))
+            return startIn;
+
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         return Directory.Exists(home) ? home : Path.GetPathRoot(Environment.CurrentDirectory) ?? "/";
     }

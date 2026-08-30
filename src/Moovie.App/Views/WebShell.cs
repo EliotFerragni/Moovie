@@ -22,11 +22,11 @@ public sealed class WebShell(Visual root) : IAppShell
 {
     private const double Inset = 40;
 
-    public async Task<IReadOnlyList<string>> PickFilesAsync() =>
-        await BrowseAsync(foldersOnly: false, Strings.Get("picker.addFiles")) ?? [];
+    public async Task<IReadOnlyList<string>> PickFilesAsync(string? startIn) =>
+        await BrowseAsync(foldersOnly: false, Strings.Get("picker.addFiles"), startIn) ?? [];
 
-    public async Task<string?> PickFolderAsync() =>
-        (await BrowseAsync(foldersOnly: true, Strings.Get("picker.addFolder")))?.FirstOrDefault();
+    public async Task<string?> PickFolderAsync(string? startIn) =>
+        (await BrowseAsync(foldersOnly: true, Strings.Get("picker.addFolder"), startIn))?.FirstOrDefault();
 
     public Task<bool> ShowSettingsAsync(SettingsViewModel editor)
     {
@@ -44,9 +44,9 @@ public sealed class WebShell(Visual root) : IAppShell
         return ShowAsync(view, completion.Task);
     }
 
-    private Task<IReadOnlyList<string>?> BrowseAsync(bool foldersOnly, string title)
+    private Task<IReadOnlyList<string>?> BrowseAsync(bool foldersOnly, string title, string? startIn)
     {
-        var viewModel = new FileBrowserViewModel(foldersOnly, title);
+        var viewModel = new FileBrowserViewModel(foldersOnly, title, startIn);
         var view = new FileBrowserView { DataContext = viewModel };
         var completion = new TaskCompletionSource<IReadOnlyList<string>?>();
         viewModel.Completed += paths => completion.TrySetResult(paths);

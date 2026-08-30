@@ -10,9 +10,11 @@ namespace Moovie.App.Views;
 /// </summary>
 public interface IAppShell
 {
-    Task<IReadOnlyList<string>> PickFilesAsync();
+    /// <param name="startIn">Where to open, or null to let the host decide.</param>
+    Task<IReadOnlyList<string>> PickFilesAsync(string? startIn);
 
-    Task<string?> PickFolderAsync();
+    /// <param name="startIn">Where to open, or null to let the host decide.</param>
+    Task<string?> PickFolderAsync(string? startIn);
 
     Task<bool> ShowSettingsAsync(SettingsViewModel editor);
 

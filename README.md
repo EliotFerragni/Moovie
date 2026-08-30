@@ -213,6 +213,85 @@ Two consequences worth knowing before you rely on it:
   app idles at. Drawing itself is driven by input, so a server nobody has open does no work of its
   own beyond that.
 
+### On a NAS, in Docker
+
+`build/package-docker.sh` produces an image as a file you can carry to the NAS. No registry is
+involved, and the NAS never needs the source or the .NET SDK.
+
+```bash
+./build/package-docker.sh              # for this machine's architecture
+./build/package-docker.sh arm64        # for an ARM NAS
+```
+
+That publishes the binary, builds an image around it and writes
+`dist/moovie-<version>-<arch>.docker.tar.gz`, about 90 MB. Copy that to the NAS and load it:
+
+```bash
+docker load -i moovie-1.0.0-arm64.docker.tar.gz
+
+docker run -d --name moovie \
+  -p 8080:8080 \
+  -v /volume1/media:/media \
+  -v /volume1/docker/moovie:/config \
+  --user "$(id -u):$(id -g)" \
+  moovie:1.0.0
+```
+
+#### Or with compose
+
+Synology's Container Manager and QNAP's Container Station both prefer a compose file to a command
+line. Copy `docker/compose.yaml` to the NAS, change the two volume paths and the user, and:
+
+```bash
+docker compose up -d
+```
+
+**Load the image first.** There is no registry behind `moovie:1.0.0`, so on a machine that has not
+loaded it, compose fails with a pull error rather than building anything.
+
+The user is numeric and has to be the NAS's own. A bind mount passes ids straight through, and the
+container knows nothing of the host's user list, so `1000:1000` being right on a desktop says
+nothing about a NAS, where media is often owned by a user above 1024 in group `users` (gid 100).
+Ask the media itself, on the NAS, and use what it says:
+
+```bash
+stat -c '%u:%g' /volume1/media
+```
+
+Then, from the directory holding the file:
+
+```bash
+docker compose logs -f     # what it is doing
+docker compose down        # stop it and remove the container
+docker compose up -d       # start it again, or pick up a newly loaded image
+```
+
+Upgrading is: build a new tarball, `docker load` it on the NAS, then `docker compose up -d` again.
+The tag now points at a different image, so compose notices and recreates the container. Both
+volumes outlive that, so the TMDB key and the rename templates stay where they are.
+
+On Synology you can do the same without a shell: Container Manager, Project, Create, and point it
+at the folder holding `compose.yaml`.
+
+**Match the architecture to the NAS**, not to the machine building the image. `uname -m` on the
+NAS says which: `x86_64` means `amd64`, `aarch64` means `arm64`. Building for the other one
+produces an image that loads and then refuses to run.
+
+**`--user` is worth setting, though your library is safer than you might expect without it.**
+Tags are written through the file that is already there and renaming is a rename, so both keep
+the file's inode, and with it its owner and its mode. A container running as root rewriting a
+file owned by someone else leaves it owned by that someone else. That was measured, not assumed.
+
+What does not survive is anything *new*. `File.Copy` and `File.WriteAllText` create files owned by
+whoever is running, so with the container as root a `.bak` copy comes out owned by root, and so
+does `settings.json` under `/config`. The settings one has a sting in its tail: run once as root,
+then add `--user` later, and the app can no longer write its own settings file. Setting `--user`
+from the start avoids both.
+
+The image carries no X11 and no desktop, because `--web` needs neither: it draws into a frame
+buffer. On top of what .NET itself requires it needs only fontconfig and one font, without which
+Skia will not load and Avalonia has no default font family to fall back on.
+
 ## Filenames it understands
 
 Movies:
