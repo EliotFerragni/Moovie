@@ -1,11 +1,12 @@
 using Avalonia.Controls;
-using Avalonia.Interactivity;
 
 namespace Moovie.App.Views;
 
 public partial class AboutWindow : Window
 {
-    public AboutWindow() => InitializeComponent();
-
-    private void OnClose(object? sender, RoutedEventArgs e) => Close();
+    public AboutWindow()
+    {
+        InitializeComponent();
+        View.Completed += Close;
+    }
 }

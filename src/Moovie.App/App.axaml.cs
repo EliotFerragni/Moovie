@@ -14,15 +14,11 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        // In --web mode there is no lifetime: the web host builds the same view model below and
+        // hands it to a RemoteServer instead of to a window.
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var store = new SettingsStore();
-
-            // Before anything is constructed: the windows resolve their text as they load, so a
-            // language chosen after that point would only show up on the next run anyway.
-            Strings.Use(store.Load().AppLanguage);
-
-            var viewModel = new MainWindowViewModel(store);
+            var viewModel = CreateShellViewModel();
             var window = new MainWindow { DataContext = viewModel };
             desktop.MainWindow = window;
 
@@ -33,5 +29,17 @@ public partial class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>
+    /// The one view model both ways of running show. Reading the settings has to come first:
+    /// the views resolve their text as they load, so a language chosen after that point would
+    /// only show up on the next run anyway.
+    /// </summary>
+    public static MainWindowViewModel CreateShellViewModel()
+    {
+        var store = new SettingsStore();
+        Strings.Use(store.Load().AppLanguage);
+        return new MainWindowViewModel(store);
     }
 }
