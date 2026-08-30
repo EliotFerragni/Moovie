@@ -157,6 +157,45 @@ pure managed code, so the app ships as one file with no helper binaries alongsid
 
 ---
 
+## Running it on a server
+
+The app usually opens a window. It can instead run with no window at all and serve that same
+window to a browser:
+
+```bash
+Moovie --web                       # every interface, port 8080
+Moovie --web --port 9000 /media    # a port of your own, with a folder already loaded
+Moovie --web --host 192.168.1.50   # one interface only
+```
+
+Then open `http://<that machine>:8080/` and you get the interface below, in a tab.
+
+**The app runs on the server, not in your browser.** That is the whole point of the mode, and it
+is what makes it useful for a NAS: the file list, the tag writer and the rename engine all act on
+the machine serving the page, so **Add files…** browses *its* disks. A browser's own file dialog
+would have been wrong twice over — it offers the wrong machine's files, and it hands back a
+stream where the tag writer needs a path — so `--web` has its own file browser instead, which
+lists the server's filesystem.
+
+Nothing is duplicated to make this work. The interface is one set of views: a window hosts them on
+the desktop, and `--web` hands the very same tree to Avalonia's `RemoteServer`, which renders it
+into a frame buffer. The browser receives PNG frames and sends pointer and keyboard events back.
+Everything else — the view models, the parser, the diff, the writer — has no idea which is running.
+
+Two consequences worth knowing before you rely on it:
+
+- **It is one session, not one per viewer.** Every tab shows the same app, in the same state, and
+  each one can drive it. Two people on it at once will fight over the same cursor.
+- **A frame is a picture, so only the changed part of one is sent.** Typing a character costs
+  under 2 KB and lands in around 20 ms on a local network; a still window with a blinking caret
+  costs a few hundred bytes a second. Scrolling a long list redraws most of the window and is
+  genuinely expensive, so this is sized for a LAN rather than for the open internet. Nothing
+  authenticates the page either, so it belongs behind whatever already guards the machine.
+- **It costs about a tenth of a core to sit there.** That is Avalonia's headless dispatcher, not
+  the serving: it is the same with nobody connected, and it is the floor a bare headless Avalonia
+  app idles at. Drawing itself is driven by input, so a server nobody has open does no work of its
+  own beyond that.
+
 ## Filenames it understands
 
 Movies:
@@ -580,10 +619,18 @@ src/Moovie.Core/     no UI dependencies, fully unit-tested
 
 src/Moovie.App/      Avalonia UI
   ViewModels/  MainWindowViewModel, PreviewPaneViewModel, FieldEditor
-  Views/       MainWindow, PreviewPane, SettingsWindow
+  Views/       MainView, PreviewPane, SettingsView, AboutView, FileBrowserView
+               MainWindow, SettingsWindow, AboutWindow  (desktop frames for the views)
+               IAppShell, DesktopShell, WebShell        (pickers and dialogs, per host)
+  Web/         BrowserTransport, WebHost, FrameEncoder, WebClientPage.html
 
 tests/Moovie.Core.Tests/
 ```
+
+The split between a `*View` and its `*Window` is what lets `--web` reuse the interface rather than
+copy it: the view is the whole of it, and the window is a frame around it. `IAppShell` is the seam
+for the two things a view cannot do for itself — asking for files, and opening a dialog — which a
+desktop window answers with the platform's pickers and `WebShell` answers inside the single view.
 
 `Core` has no reference to Avalonia, and `ITmdbService` is an interface, so the parser, the
 matching policy, the tag writer and the rename engine are all tested without a UI, a network

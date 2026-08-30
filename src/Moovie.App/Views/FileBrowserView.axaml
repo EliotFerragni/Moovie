@@ -1,0 +1,50 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Moovie.App.Localization"
+             xmlns:vm="using:Moovie.App.ViewModels"
+             x:Class="Moovie.App.Views.FileBrowserView"
+             x:DataType="vm:FileBrowserViewModel"
+             Width="760" Height="580"
+             Background="{DynamicResource AppBackground}">
+
+  <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Margin="20,16">
+
+    <TextBlock Text="{Binding Title}" Classes="h1" Margin="0,0,0,10" />
+
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,*" ColumnSpacing="10">
+      <Button Content="{loc:T browser.up}" Command="{Binding GoUpCommand}" />
+      <TextBlock Grid.Column="1" Text="{Binding CurrentPath}" VerticalAlignment="Center"
+                 TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding CurrentPath}" />
+    </Grid>
+
+    <Border Grid.Row="2" Classes="notice" Margin="0,10,0,0" Padding="10,7"
+            IsVisible="{Binding HasError}">
+      <TextBlock Text="{Binding Error}" TextWrapping="Wrap" />
+    </Border>
+
+    <ListBox Grid.Row="3" Name="EntryList" Margin="0,10" ItemsSource="{Binding Entries}"
+             SelectionMode="Multiple" SelectionChanged="OnSelectionChanged"
+             DoubleTapped="OnEntryDoubleTapped">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:FileBrowserEntry">
+          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+            <TextBlock Text="📁" IsVisible="{Binding IsDirectory}" />
+            <TextBlock Text="🎬" IsVisible="{Binding !IsDirectory}" />
+            <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+
+    <TextBlock Grid.Row="3" Classes="subtle" Margin="24"
+               HorizontalAlignment="Center" VerticalAlignment="Center"
+               IsVisible="{Binding !Entries.Count}"
+               Text="{loc:T browser.empty}" />
+
+    <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+      <Button Content="{loc:T browser.cancel}" Command="{Binding CancelCommand}" IsCancel="True" />
+      <Button Content="{Binding AcceptLabel}" Command="{Binding AcceptCommand}"
+              Classes="accent" IsDefault="True" />
+    </StackPanel>
+  </Grid>
+</UserControl>

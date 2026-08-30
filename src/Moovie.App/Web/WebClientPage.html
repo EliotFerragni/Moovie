@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Moovie</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1e1e1e; }
+  #screen { display: block; width: 100vw; height: 100vh; outline: none; touch-action: none; }
+  #status {
+    position: fixed; inset: auto 0 0 0; padding: 6px 10px; font: 13px system-ui, sans-serif;
+    background: #b3261e; color: #fff; display: none;
+  }
+</style>
+</head>
+<body>
+<canvas id="screen" tabindex="0"></canvas>
+<div id="status"></div>
+<script>
+(() => {
+  const canvas = document.getElementById('screen');
+  const status = document.getElementById('status');
+  const ctx = canvas.getContext('2d');
+  let socket = null;
+
+  const show = text => { status.textContent = text; status.style.display = text ? 'block' : 'none'; };
+  const send = message => { if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message)); };
+
+  const modifiers = e => ({ alt: e.altKey, control: e.ctrlKey, shift: e.shiftKey, meta: e.metaKey });
+
+  // Avalonia lays out in logical pixels and scales by the DPI it is told, so the viewport goes
+  // over in CSS pixels and the device pixel ratio rides along as the DPI. Frames then come back
+  // at the physical size, which is what keeps text sharp on a HiDPI screen.
+  const sendSize = () => send({
+    type: 'size',
+    width: canvas.clientWidth,
+    height: canvas.clientHeight,
+    dpi: 96 * (window.devicePixelRatio || 1),
+  });
+
+  const pointerAt = (e, type) => {
+    const box = canvas.getBoundingClientRect();
+    return { type, x: e.clientX - box.left, y: e.clientY - box.top, button: e.button, ...modifiers(e) };
+  };
+
+  // A mouse reports far more moves than a window can be redrawn for, and every one of them costs
+  // a round trip and possibly a repaint. Only the latest is kept, and it goes out once a frame.
+  let pendingMove = null;
+  canvas.addEventListener('pointermove', e => {
+    const wasIdle = pendingMove === null;
+    pendingMove = pointerAt(e, 'pointer-moved');
+    if (wasIdle) requestAnimationFrame(() => { send(pendingMove); pendingMove = null; });
+  });
+  canvas.addEventListener('pointerdown', e => {
+    canvas.focus();
+    canvas.setPointerCapture(e.pointerId);
+    send(pointerAt(e, 'pointer-pressed'));
+  });
+  canvas.addEventListener('pointerup', e => {
+    canvas.releasePointerCapture(e.pointerId);
+    send(pointerAt(e, 'pointer-released'));
+  });
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const box = canvas.getBoundingClientRect();
+    // Avalonia counts scroll in lines; a browser reports pixels unless the user has a line-wise
+    // device, so a pixel delta is divided down to something that scrolls at a sane speed.
+    const scale = e.deltaMode === 0 ? 1 / 40 : 1;
+    send({
+      type: 'scroll', x: e.clientX - box.left, y: e.clientY - box.top,
+      deltaX: -e.deltaX * scale, deltaY: -e.deltaY * scale, ...modifiers(e),
+    });
+  }, { passive: false });
+
+  // A single printable character is sent as text as well as a key, because Avalonia fills a text
+  // box from text input events and uses key events only for editing and shortcuts. Anything with
+  // Control or Meta held is a shortcut rather than typing, so it goes as a key alone.
+  const isTyping = e => e.key.length === 1 && !e.ctrlKey && !e.metaKey;
+
+  window.addEventListener('keydown', e => {
+    // Tab would move focus out of the canvas and the browser's own shortcuts would shadow the
+    // app's, so everything except the reload keys is claimed here.
+    if (e.key !== 'F5' && !(e.ctrlKey && e.key === 'r')) e.preventDefault();
+
+    send({ type: 'key', down: true, code: e.code, key: e.key, ...modifiers(e) });
+    if (isTyping(e)) send({ type: 'text', text: e.key });
+  });
+
+  window.addEventListener('keyup', e => {
+    send({ type: 'key', down: false, code: e.code, key: e.key, ...modifiers(e) });
+  });
+
+  window.addEventListener('paste', e => {
+    const text = e.clipboardData?.getData('text');
+    if (text) { e.preventDefault(); send({ type: 'text', text }); }
+  });
+
+  window.addEventListener('resize', sendSize);
+
+  // Each message is a patch: the size of the whole window, where the patch belongs in it, and a
+  // PNG of just that part. Decoding is asynchronous, so the draws are chained rather than raced —
+  // two patches applied out of order would leave the window showing something that never was.
+  let drawing = Promise.resolve();
+
+  const draw = async data => {
+    const header = new DataView(data);
+    const frameWidth = header.getInt32(0, true);
+    const frameHeight = header.getInt32(4, true);
+    const count = header.getInt32(8, true);
+
+    const patches = [];
+    let at = 12;
+    for (let i = 0; i < count; i++) {
+      const x = header.getInt32(at, true);
+      const y = header.getInt32(at + 4, true);
+      const length = header.getInt32(at + 8, true);
+      patches.push({ x, y, blob: new Blob([data.slice(at + 12, at + 12 + length)], { type: 'image/png' }) });
+      at += 12 + length;
+    }
+
+    const bitmaps = await Promise.all(patches.map(p => createImageBitmap(p.blob)));
+
+    // Assigning either dimension clears the canvas, so it is only done when the size really
+    // changed — after which the server sends the whole window rather than a patch of it.
+    if (canvas.width !== frameWidth || canvas.height !== frameHeight) {
+      canvas.width = frameWidth;
+      canvas.height = frameHeight;
+    }
+
+    bitmaps.forEach((bitmap, i) => {
+      ctx.drawImage(bitmap, patches[i].x, patches[i].y);
+      bitmap.close();
+    });
+  };
+
+  const connect = () => {
+    socket = new WebSocket((location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host + '/ws');
+    socket.binaryType = 'arraybuffer';
+    socket.onopen = () => { show(''); sendSize(); canvas.focus(); };
+    socket.onmessage = e => { drawing = drawing.then(() => draw(e.data)).catch(() => {}); };
+    socket.onclose = () => { show('Disconnected — reconnecting…'); setTimeout(connect, 1000); };
+    socket.onerror = () => socket.close();
+  };
+
+  connect();
+})();
+</script>
+</body>
+</html>

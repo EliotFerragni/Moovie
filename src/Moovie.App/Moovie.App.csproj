@@ -17,11 +17,19 @@
   <ItemGroup>
     <!-- .axaml is picked up automatically; an image has to be named to be embedded. -->
     <AvaloniaResource Include="Assets/Icon/app-256.png" />
+
+    <!-- The page the web mode serves. Embedded rather than copied so the single-file build stays one file. -->
+    <EmbeddedResource Include="Web/WebClientPage.html" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="$(AvaloniaVersion)" />
     <PackageReference Include="Avalonia.Desktop" Version="$(AvaloniaVersion)" />
+    <!-- Web mode draws with Skia into a frame buffer instead of onto a window, which is what
+         the headless platform provides. Both ship with Avalonia itself; neither pulls in a
+         browser engine or a second UI stack. -->
+    <PackageReference Include="Avalonia.Headless" Version="$(AvaloniaVersion)" />
+    <PackageReference Include="Avalonia.Skia" Version="$(AvaloniaVersion)" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="$(AvaloniaVersion)" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="$(AvaloniaVersion)" />
     <PackageReference Include="Avalonia.Diagnostics" Version="$(AvaloniaVersion)" Condition="'$(Configuration)' == 'Debug'" />

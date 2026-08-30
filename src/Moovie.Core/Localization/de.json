@@ -233,5 +233,11 @@
   "token.resolution": "Auflösung des Videos selbst",
   "token.tmdbId": "TMDB-ID",
   "token.imdbId": "IMDb-ID",
-  "token.ext": "Dateiendung (wird automatisch ergänzt, wenn sie fehlt)"
+  "token.ext": "Dateiendung (wird automatisch ergänzt, wenn sie fehlt)",
+  "browser.up": "Nach oben",
+  "browser.cancel": "Abbrechen",
+  "browser.addFiles": "Ausgewählte Dateien hinzufügen",
+  "browser.addFolder": "Diesen Ordner hinzufügen",
+  "browser.empty": "Hier gibt es nichts hinzuzufügen.",
+  "browser.cannotOpen": "Dieser Ordner kann nicht geöffnet werden: {0}"
 }

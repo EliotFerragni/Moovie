@@ -233,5 +233,11 @@
   "token.resolution": "Risoluzione del video stesso",
   "token.tmdbId": "Id TMDB",
   "token.imdbId": "Id IMDb",
-  "token.ext": "Estensione del file (aggiunta automaticamente se la ometti)"
+  "token.ext": "Estensione del file (aggiunta automaticamente se la ometti)",
+  "browser.up": "Su",
+  "browser.cancel": "Annulla",
+  "browser.addFiles": "Aggiungi i file selezionati",
+  "browser.addFolder": "Aggiungi questa cartella",
+  "browser.empty": "Non c’è nulla da aggiungere qui.",
+  "browser.cannotOpen": "Impossibile aprire questa cartella: {0}"
 }
