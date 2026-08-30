@@ -170,6 +170,18 @@ Moovie --web --host 192.168.1.50   # one interface only
 
 Then open `http://<that machine>:8080/` and you get the interface below, in a tab.
 
+**On Windows**, two things differ. The executable is a Windows application, so it has no console
+of its own; it attaches to the one you launched it from, which means the command prompt returns
+immediately and the output appears after the new prompt. And Windows will not let a program
+running as an ordinary user listen on an address until that address has been reserved, so the
+first run reports what to do:
+
+```
+netsh http add urlacl url=http://+:8080/ user=Everyone
+```
+
+Run that once from an administrator prompt and `--web` works as an ordinary user from then on.
+
 **The app runs on the server, not in your browser.** That is the whole point of the mode, and it
 is what makes it useful for a NAS: the file list, the tag writer and the rename engine all act on
 the machine serving the page, so **Add files…** browses *its* disks. A browser's own file dialog

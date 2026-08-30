@@ -64,11 +64,44 @@ public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
         // "+" binds every interface. Unlike Avalonia's transport there is no Origin check here, so
         // the address the browser uses need not match the address bound — which is what makes
         // reaching this over a LAN by hostname work at all.
-        _listener.Prefixes.Add($"http://{host}:{port}/");
-        _listener.Start();
+        var prefix = $"http://{host}:{port}/";
+        _listener.Prefixes.Add(prefix);
+        Listen(prefix);
 
         _ = Task.Run(AcceptLoop);
         _ = Task.Run(SendLoop);
+    }
+
+    /// <summary>
+    /// Windows will not let a program that is not an administrator listen on an address unless
+    /// that address has been reserved for it, and says so with a bare "Access is denied" that
+    /// names neither the address nor the remedy. Every other platform simply binds.
+    /// </summary>
+    private void Listen(string prefix)
+    {
+        try
+        {
+            _listener.Start();
+        }
+        catch (HttpListenerException e) when (OperatingSystem.IsWindows())
+        {
+            throw new InvalidOperationException(
+                $"""
+                 Could not listen on {prefix} — {e.Message}
+
+                 Windows requires an address to be reserved before a program running as an
+                 ordinary user may listen on it. Either start this from an administrator prompt,
+                 or make the reservation once, from an administrator prompt, and it will work as
+                 an ordinary user from then on:
+
+                     netsh http add urlacl url={prefix} user=Everyone
+                 """, e);
+        }
+        catch (HttpListenerException e)
+        {
+            throw new InvalidOperationException(
+                $"Could not listen on {prefix} — {e.Message}. Another program may already be using that port.", e);
+        }
     }
 
     public event Action<IAvaloniaRemoteTransportConnection, object>? OnMessage;

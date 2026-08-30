@@ -16,6 +16,7 @@ internal static class Program
         }
         catch (ArgumentException e)
         {
+            Terminal.Attach();
             Console.Error.WriteLine(e.Message);
             Console.Error.WriteLine();
             Console.Error.WriteLine(CommandLine.Usage);
@@ -24,15 +25,30 @@ internal static class Program
 
         if (options.Help)
         {
+            Terminal.Attach();
             Console.WriteLine(CommandLine.Usage);
             return 0;
         }
 
         if (options.Web)
-            WebHost.Run(options.Host, options.Port, options.Paths);
-        else
-            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        {
+            Terminal.Attach();
+            try
+            {
+                WebHost.Run(options.Host, options.Port, options.Paths);
+            }
+            catch (Exception e)
+            {
+                // Without this the process would die silently, which on Windows — where it has no
+                // console of its own — is indistinguishable from it never having started.
+                Console.Error.WriteLine(e.Message);
+                return 1;
+            }
 
+            return 0;
+        }
+
+        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         return 0;
     }
 
