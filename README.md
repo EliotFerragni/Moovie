@@ -1,9 +1,13 @@
-<img src="src/Moovie.App/Assets/Icon/app-256.png" width="96" align="right" alt="">
+<h1 align="center">
+  <img src="src/Moovie.App/Assets/Icon/app-256.png" width="128" alt="">
+  <br>
+  Moovie
+</h1>
 
-# Moovie
-
-[![build](https://github.com/EliotFerragni/Video-metadata-filler/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/EliotFerragni/Video-metadata-filler/actions/workflows/build.yml)
-![Claude Code](https://img.shields.io/badge/Claude%20Code-%23D97757.svg?style=for-the-badge&logo=claudecode&logoColor=white)
+<p align="center">
+  <a href="https://github.com/EliotFerragni/Video-metadata-filler/actions/workflows/build.yml"><img src="https://github.com/EliotFerragni/Video-metadata-filler/actions/workflows/build.yml/badge.svg?branch=main" alt="build"></a>
+  <img src="https://img.shields.io/badge/Claude%20Code-%23D97757.svg?style=for-the-badge&logo=claudecode&logoColor=white" alt="Claude Code">
+</p>
 
 Fills the metadata of movie and TV files from
 [The Movie Database](https://www.themoviedb.org). Drop files in, review what was matched,
