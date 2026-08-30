@@ -65,8 +65,8 @@ public class VideoResolutionTests : IDisposable
     }
 
     /// <summary>
-    /// The bug this exists for: a name carrying no resolution token — which is what a rename
-    /// leaves behind unless the template asks for one — used to mean no resolution at all, and
+    /// The bug this exists for: a name carrying no resolution token (which is what a rename
+    /// leaves behind unless the template asks for one) used to mean no resolution at all, and
     /// an SD HD flag written over an HD file on the next pass. The container is asked instead,
     /// and it answers regardless of what the file is called.
     /// </summary>
@@ -154,7 +154,7 @@ public class VideoResolutionTests : IDisposable
 
     /// <summary>
     /// A copy of the fixture whose video sample entry declares <paramref name="width"/> by
-    /// <paramref name="height"/>. Only the declared frame size is rewritten — that is the field
+    /// <paramref name="height"/>. Only the declared frame size is rewritten: that is the field
     /// the probe reads, and encoding a real 4K clip to commit would be absurd for two numbers.
     /// </summary>
     private string DeclaringFrameSize(int width, int height, string name = "clip.mp4")

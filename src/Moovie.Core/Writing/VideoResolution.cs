@@ -54,8 +54,8 @@ public static class VideoResolution
 
     /// <summary>
     /// Orders the vocabulary so one resolution can be compared against another. Frame size is
-    /// what is being ranked, so <c>1080i</c> and <c>1080p</c> tie. Anything unrecognised — a
-    /// value typed into the field by hand, say — ranks 0 and compares as unknown, not as small.
+    /// what is being ranked, so <c>1080i</c> and <c>1080p</c> tie. Anything unrecognised (a
+    /// value typed into the field by hand, say) ranks 0 and compares as unknown, not as small.
     /// </summary>
     public static int Rank(string? label) =>
         label is not null && Ranks.TryGetValue(label.Trim(), out var rank) ? rank : 0;
@@ -80,7 +80,7 @@ public static class VideoResolution
     /// </summary>
     /// <remarks>
     /// Only the two that have one: 2160p is written <c>4k</c> and 4320p <c>8k</c>. Everything
-    /// below is already how people write it — nobody calls 1080p anything shorter — and 1440p is
+    /// below is already how people write it (nobody calls 1080p anything shorter) and 1440p is
     /// deliberately left alone, since "2K" properly means a 1080p-class frame and using it here
     /// would name the file wrongly. Anything unrecognised comes back untouched.
     /// </remarks>
@@ -96,7 +96,7 @@ public static class VideoResolution
     };
 
     /// <summary>
-    /// Whether <paramref name="resolution"/> is no larger than <paramref name="threshold"/> —
+    /// Whether <paramref name="resolution"/> is no larger than <paramref name="threshold"/>:
     /// the test behind leaving ordinary resolutions out of a filename.
     /// </summary>
     /// <remarks>
@@ -123,7 +123,7 @@ public static class VideoResolution
     /// <para>
     /// Height alone under-reports widescreen film, which is cropped rather than letterboxed: a
     /// 2.39:1 transfer is 1920×800, and 800 is not 720p. Width alone under-reports 4:3 and
-    /// anamorphic material, where the height is the honest number — 720×576 is 576p, not 480p.
+    /// anamorphic material, where the height is the honest number: 720×576 is 576p, not 480p.
     /// </para>
     /// <para>
     /// The two tables are separate rather than one converted into the other because the aspect

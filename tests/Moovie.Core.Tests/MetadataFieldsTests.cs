@@ -71,7 +71,7 @@ public class MetadataFieldsTests
     }
 
     /// <summary>
-    /// The writer falls back to the year when there is no date, so the two move together — moving
+    /// The writer falls back to the year when there is no date, so the two move together: moving
     /// only the date would leave a value the diff still reports as different.
     /// </summary>
     [Fact]

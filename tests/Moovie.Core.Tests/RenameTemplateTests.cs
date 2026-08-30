@@ -248,7 +248,7 @@ public class RenameTemplateTests
     /// <summary>
     /// The complaint this exists for: {tmdbId:00} rendered the id unchanged, three times, and a
     /// reference that lists three ways of writing the same number teaches the opposite of what it
-    /// is for. Case conversion is exempt — whether :title changes anything depends on the value,
+    /// is for. Case conversion is exempt: whether :title changes anything depends on the value,
     /// not on the token, so it stays offered even where a well-cased sample makes it look inert.
     /// </summary>
     [Theory]

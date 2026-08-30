@@ -15,7 +15,7 @@ public sealed partial class CandidateViewModel(Candidate candidate) : Observable
 
     public string Title => Candidate.Title;
 
-    public string Year => Candidate.Year?.ToString() ?? "—";
+    public string Year => Candidate.Year?.ToString() ?? "-";
 
     public string Kind => Candidate.Kind == MediaKind.TvEpisode ? Strings.Get("pane.tvShow") : Strings.Get("pane.movie");
 

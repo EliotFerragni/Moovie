@@ -144,7 +144,7 @@ public class LocalizationTests : IDisposable
         ];
 
         // Why the reasons are checked separately: a bad format reports as "'{season:zz}' is not
-        // valid — <reason>", and the wrapper around it was translated while the reason was not.
+        // valid: <reason>", and the wrapper around it was translated while the reason was not.
         // Comparing whole strings therefore saw a difference and passed the untranslated half.
         Strings.Use("en");
         var english = broken.Select(t => RenameTemplate.Validate(t).Errors.ToList()).ToList();

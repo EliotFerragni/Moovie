@@ -256,7 +256,7 @@ public class MetadataDiffTests
     }
 
     /// <summary>
-    /// The stored flag maps back to several resolutions — 1080i, 1080p and 1440p all write a 2 —
+    /// The stored flag maps back to several resolutions (1080i, 1080p and 1440p all write a 2),
     /// so there is no value the file's side could honestly hand back.
     /// </summary>
     [Fact]
@@ -275,7 +275,7 @@ public class MetadataDiffTests
     [Fact]
     public void A_hand_picked_cover_is_listed_even_when_it_is_not_a_change()
     {
-        // Same bytes as the file already holds, so applying writes nothing — but it is no longer
+        // Same bytes as the file already holds, so applying writes nothing, but it is no longer
         // the image the lookup chose, and putting that back has to stay possible.
         var current = new MediaMetadata { Kind = MediaKind.Movie, Title = "Arrival", ArtworkData = [1, 2, 3, 4] };
         var fetched = new MediaMetadata { Kind = MediaKind.Movie, Title = "Arrival", ArtworkPath = "/tmdb.jpg" };

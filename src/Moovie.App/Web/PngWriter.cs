@@ -6,7 +6,7 @@ namespace Moovie.App.Web;
 /// <summary>
 /// Writes 8-bit RGBA pixels as a PNG, in managed code and nothing else.
 ///
-/// Avalonia can do this — <see cref="Avalonia.Media.Imaging.WriteableBitmap"/> saves as PNG — but
+/// Avalonia can do this: <see cref="Avalonia.Media.Imaging.WriteableBitmap"/> saves as PNG, but
 /// that goes through Skia, and this runs on a background thread so as not to hold up drawing.
 /// Two threads in Skia at once is asking for trouble, and the bitmaps would be released on the
 /// finaliser thread, in Skia again, at a moment nothing controls. Nothing here is unmanaged, so

@@ -55,7 +55,7 @@ public static class RenameEngine
         stem = ApplySeparator(stem, separator);
 
         if (stem.Length == 0)
-            return string.Empty; // Nothing renderable — the caller keeps the original name.
+            return string.Empty; // Nothing renderable: the caller keeps the original name.
 
         return stem + extension;
     }

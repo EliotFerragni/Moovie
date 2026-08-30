@@ -23,7 +23,7 @@ public sealed class TagReadException(string message, Exception? inner = null)
 /// <param name="ArtworkByteCount">Size of that image, for saying so in the pane.</param>
 /// <param name="HdFlag">
 /// The <c>hdvd</c> value as stored. Kept as the flag rather than mapped back to a resolution,
-/// because the mapping loses information — 1080i, 1080p and 1440p all write a 2.
+/// because the mapping loses information: 1080i, 1080p and 1440p all write a 2.
 /// </param>
 public sealed record ExistingTags(
     MediaMetadata Metadata,
@@ -62,7 +62,7 @@ public sealed record ExistingTags(
 /// app can say what a file already holds instead of assuming it holds nothing.
 /// </summary>
 /// <remarks>
-/// Only the atoms the writer produces are understood, and only as fields — the derived ones
+/// Only the atoms the writer produces are understood, and only as fields: the derived ones
 /// (<c>©alb</c>, <c>©ART</c>, <c>soal</c>) are ignored, since they are restated elsewhere and
 /// reading them back would invent differences that do not exist.
 /// </remarks>
@@ -73,7 +73,7 @@ public sealed partial class Mp4TagReader
     /// not an error: it comes back as <see cref="ExistingTags.None"/>.
     /// </summary>
     /// <param name="includeArtwork">
-    /// Also return the embedded image bytes. Off by default — a batch only needs to know whether
+    /// Also return the embedded image bytes. Off by default: a batch only needs to know whether
     /// artwork is there, and holding a cover per file adds up quickly.
     /// </param>
     /// <exception cref="TagReadException">The file is missing, unsupported or damaged.</exception>

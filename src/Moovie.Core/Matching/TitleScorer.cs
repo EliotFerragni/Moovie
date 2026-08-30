@@ -10,7 +10,7 @@ namespace Moovie.Core.Matching;
 /// <remarks>
 /// The scale is what <see cref="MatchResolver"/>'s auto-select thresholds are calibrated against,
 /// so the anchor points matter: an exact match after normalisation is 1.0, a containment match
-/// lands in the 0.6–0.9 band depending on how much extra text there is, and unrelated titles
+/// lands in the 0.6-0.9 band depending on how much extra text there is, and unrelated titles
 /// sharing a word or two stay below 0.5.
 /// </remarks>
 public static class TitleScorer

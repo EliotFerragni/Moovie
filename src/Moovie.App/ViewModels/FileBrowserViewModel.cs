@@ -11,7 +11,7 @@ public sealed record FileBrowserEntry(string Name, string Path, bool IsDirectory
 /// <summary>
 /// Browses the filesystem of the machine the app is running on.
 ///
-/// The desktop build has no use for this — it asks the operating system for a picker. It exists
+/// The desktop build has no use for this: it asks the operating system for a picker. It exists
 /// for <c>--web</c>, where there is no operating system to ask: the browser's own file dialog
 /// would offer the files of whoever opened the page, and the whole point of that mode is to work
 /// on the files of the machine serving it.

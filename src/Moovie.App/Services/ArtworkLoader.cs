@@ -27,7 +27,7 @@ public sealed class ArtworkLoader : IDisposable
 
     /// <summary>
     /// Loads artwork for a TMDB-relative path. Returns null when there is no artwork, no API
-    /// access, or the download failed — callers show a placeholder instead.
+    /// access, or the download failed: callers show a placeholder instead.
     /// </summary>
     public async Task<Bitmap?> LoadAsync(
         ITmdbService? tmdb, string? artworkPath, string size, CancellationToken cancellationToken = default)
@@ -78,7 +78,7 @@ public sealed class ArtworkLoader : IDisposable
     }
 
     /// <summary>
-    /// Decodes an image already in hand — a cover read straight out of a file, which has no TMDB
+    /// Decodes an image already in hand: a cover read straight out of a file, which has no TMDB
     /// path to cache it under. The caller owns the bitmap and disposes it when done.
     /// </summary>
     /// <param name="decodeToHeight">

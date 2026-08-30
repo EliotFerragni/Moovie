@@ -35,7 +35,7 @@ public sealed record ParsedName
     /// </summary>
     public bool IsLowConfidence { get; init; }
 
-    /// <summary>How the kind/numbers were recognised — useful in the UI and in tests.</summary>
+    /// <summary>How the kind/numbers were recognised: useful in the UI and in tests.</summary>
     public string? MatchedPattern { get; init; }
 
     public int? FirstEpisode => Episodes.Count > 0 ? Episodes[0] : null;

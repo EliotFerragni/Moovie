@@ -93,7 +93,7 @@ public static class FilenameParser
     private static int MaxPlausibleYear => DateTime.Now.Year + 2;
 
     /// <summary>
-    /// Parses <paramref name="path"/>. Only the file and folder names are read — nothing touches disk.
+    /// Parses <paramref name="path"/>. Only the file and folder names are read: nothing touches disk.
     /// </summary>
     public static ParsedName Parse(string path)
     {
@@ -240,7 +240,7 @@ public static class FilenameParser
             if (month is < 1 or > 12 || day is < 1 or > 31 || year < 1900 || year > MaxPlausibleYear)
                 continue;
             if (match.Index == 0)
-                continue; // No show name in front of it — probably not an episode at all.
+                continue; // No show name in front of it: probably not an episode at all.
 
             var date = new DateTime(year, month, day, 0, 0, 0, DateTimeKind.Unspecified);
             return new ParsedName
@@ -343,7 +343,7 @@ public static class FilenameParser
     {
         var text = stem;
 
-        // Bracketed groups are release-group tags — drop them, unless that leaves nothing.
+        // Bracketed groups are release-group tags. Drop them, unless that leaves nothing.
         var withoutBrackets = BracketGroup.Replace(text, " ");
         if (withoutBrackets.Any(char.IsLetterOrDigit))
             text = withoutBrackets;
@@ -364,7 +364,7 @@ public static class FilenameParser
 
     /// <summary>
     /// Folder names from the closest ancestor outwards, at most three deep. A bare filename with
-    /// no directory part yields nothing — resolving it against the current directory would invent
+    /// no directory part yields nothing: resolving it against the current directory would invent
     /// folder hints that do not exist.
     /// </summary>
     private static List<string> AncestorNames(string path)
@@ -456,7 +456,7 @@ public static class FilenameParser
     }
 
     /// <summary>
-    /// Whether a recovered title is worth searching TMDB with. "1080p" is not, "2012" is —
+    /// Whether a recovered title is worth searching TMDB with. "1080p" is not, "2012" is:
     /// films really are named after nothing but a number.
     /// </summary>
     private static bool LooksLikeUsableTitle(string? title)

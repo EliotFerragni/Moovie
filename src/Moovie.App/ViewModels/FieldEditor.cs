@@ -93,7 +93,7 @@ public sealed partial class FieldEditor : ObservableObject
     public bool IsMultiline { get; }
 
     /// <summary>
-    /// True for fields that are inherently per-file — the episode number, above all. They are shown
+    /// True for fields that are inherently per-file: the episode number, above all. They are shown
     /// read-only while several files are selected rather than silently stamping one value over a
     /// whole season.
     /// </summary>

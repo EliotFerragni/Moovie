@@ -19,8 +19,8 @@ namespace Moovie.App.Web;
 /// <summary>
 /// Serves the app's rendered frames to a browser and feeds the browser's input back in.
 ///
-/// Avalonia already ships a transport of this shape — the one behind the XAML previewer's
-/// <c>--method html</c> — but its client sends pointer and wheel events only, and its parser
+/// Avalonia already ships a transport of this shape (the one behind the XAML previewer's
+/// <c>--method html</c>), but its client sends pointer and wheel events only, and its parser
 /// drops anything else, so a text field can be focused and never typed into. That is fatal for
 /// this app, which is mostly text fields, hence this replacement. It speaks the same
 /// <see cref="IAvaloniaRemoteTransportConnection"/> contract, so
@@ -62,7 +62,7 @@ public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
         _page = ReadEmbeddedPage();
 
         // "+" binds every interface. Unlike Avalonia's transport there is no Origin check here, so
-        // the address the browser uses need not match the address bound — which is what makes
+        // the address the browser uses need not match the address bound, which is what makes
         // reaching this over a LAN by hostname work at all.
         var prefix = $"http://{host}:{port}/";
         _listener.Prefixes.Add(prefix);
@@ -87,7 +87,7 @@ public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
         {
             throw new InvalidOperationException(
                 $"""
-                 Could not listen on {prefix} — {e.Message}
+                 Could not listen on {prefix}: {e.Message}
 
                  Windows requires an address to be reserved before a program running as an
                  ordinary user may listen on it. Either start this from an administrator prompt,
@@ -100,7 +100,7 @@ public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
         catch (HttpListenerException e)
         {
             throw new InvalidOperationException(
-                $"Could not listen on {prefix} — {e.Message}. Another program may already be using that port.", e);
+                $"Could not listen on {prefix}: {e.Message}. Another program may already be using that port.", e);
         }
     }
 
@@ -130,7 +130,7 @@ public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
     ///
     /// The frame is acknowledged straight away rather than when the browser has it. The top level
     /// will not draw again until the frame it just produced is acknowledged, so waiting on a
-    /// round trip would tie the app's frame rate to the network — and a tab closed between a send
+    /// round trip would tie the app's frame rate to the network, and a tab closed between a send
     /// and a draw would never answer at all, stopping the app from ever redrawing again.
     /// </summary>
     public Task Send(object data)
@@ -427,7 +427,7 @@ public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
     /// The browser's <c>KeyboardEvent.code</c> is the W3C physical key name and Avalonia names
     /// <see cref="Avalonia.Input.PhysicalKey"/> the same way, with two exceptions: a letter is
     /// <c>KeyA</c> there and plain <c>A</c> here, and the keypad is cased <c>NumPad</c> rather
-    /// than <c>Numpad</c>. Both have to be dealt with, or every letter key is silently dropped —
+    /// than <c>Numpad</c>. Both have to be dealt with, or every letter key is silently dropped:
     /// typing still works, because that arrives as text, but Ctrl+A and friends never fire.
     ///
     /// The logical key then comes from Avalonia's own QWERTY lookup. The protocol's enums are

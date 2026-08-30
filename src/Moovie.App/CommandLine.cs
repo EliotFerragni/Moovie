@@ -4,7 +4,7 @@ namespace Moovie.App;
 public sealed record CommandLine(bool Web, bool Help, string Host, int Port, IReadOnlyList<string> Paths)
 {
     public const string Usage = """
-        Moovie — fills the metadata of movie and TV files from TMDB.
+        Moovie: fills the metadata of movie and TV files from TMDB.
 
           Moovie [files or folders...]
           Moovie --web [--host <address>] [--port <number>] [files or folders...]

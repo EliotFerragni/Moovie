@@ -66,7 +66,7 @@ public sealed record MetadataChange(string Key, string Label, string? Current, s
 /// </summary>
 /// <remarks>
 /// Two rules keep the result honest. Only fields <see cref="Mp4TagWriter"/> actually writes are
-/// compared — a TMDB id has no atom, so listing it would promise a change that never happens —
+/// compared (a TMDB id has no atom, so listing it would promise a change that never happens),
 /// and every column is compared in its <em>written</em> form via <see cref="TagFormat"/>, so a
 /// date held as a year on one side and a full date on the other does not read as a difference
 /// when both write the same string.
@@ -80,7 +80,7 @@ public static class MetadataDiff
 {
     /// <summary>
     /// The rows worth showing. A field is listed when applying would change it, or when what
-    /// will be written is no longer what the lookup produced — that second case is how a field
+    /// will be written is no longer what the lookup produced: that second case is how a field
     /// taken over from the file, or typed by hand, stays on screen to be put back.
     /// </summary>
     /// <param name="fetched">

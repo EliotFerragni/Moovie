@@ -125,7 +125,7 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     /// <summary>
     /// Resolutions a name may leave out. Ordered smallest first so the list reads as a ladder,
-    /// with "never" — the default — at the top.
+    /// with "never" (the default) at the top.
     /// </summary>
     public IReadOnlyList<ResolutionFloorChoice> ResolutionFloors { get; } =
     [

@@ -39,8 +39,8 @@ internal static class Program
             }
             catch (Exception e)
             {
-                // Without this the process would die silently, which on Windows — where it has no
-                // console of its own — is indistinguishable from it never having started.
+                // Without this the process would die silently, which on Windows (where it has no
+                // console of its own) is indistinguishable from it never having started.
                 Console.Error.WriteLine(e.Message);
                 return 1;
             }

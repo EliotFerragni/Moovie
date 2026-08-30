@@ -59,7 +59,7 @@ public class MatchResolverTests
 
         Assert.Equal(FileStatus.NeedsChoice, outcome.Status);
         Assert.Equal(2, outcome.Candidates.Count);
-        Assert.Contains("pick one", outcome.Message);
+        Assert.Contains("pick one", outcome.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

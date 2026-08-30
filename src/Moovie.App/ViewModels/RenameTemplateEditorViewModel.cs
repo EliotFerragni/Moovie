@@ -23,8 +23,8 @@ public sealed record TokenChip(string Caption, string Insertion, string Descript
 /// Editor for one rename template, with a token palette, digit spinners and a live preview.
 /// </summary>
 /// <remarks>
-/// The point of the palette and the spinners is that the common adjustments — which fields appear,
-/// and how many digits the season and episode get — never require knowing the template syntax. The
+/// The point of the palette and the spinners is that the common adjustments (which fields appear,
+/// and how many digits the season and episode get) never require knowing the template syntax. The
 /// text box is still there for anything more involved.
 /// </remarks>
 public sealed partial class RenameTemplateEditorViewModel : ObservableObject
@@ -51,8 +51,8 @@ public sealed partial class RenameTemplateEditorViewModel : ObservableObject
 
     /// <summary>
     /// The same template rendered for a file at the omission threshold, shown only when one is
-    /// set. Without it the setting is invisible here — the samples are 2160p, so nothing in the
-    /// preview moves — and a template writing <c>[{resolution}]</c> outside an optional section
+    /// set. Without it the setting is invisible here (the samples are 2160p, so nothing in the
+    /// preview moves) and a template writing <c>[{resolution}]</c> outside an optional section
     /// would leave empty brackets behind with nothing to warn you.
     /// </summary>
     [ObservableProperty]
@@ -123,7 +123,7 @@ public sealed partial class RenameTemplateEditorViewModel : ObservableObject
             .Render(_sample, ".mp4", OmitResolutionAtOrBelow);
 
         // A sample with nothing in that field says so, rather than trailing off into blank space.
-        return string.IsNullOrEmpty(rendered) ? "—" : rendered;
+        return string.IsNullOrEmpty(rendered) ? "-" : rendered;
     }
 
     public string Title { get; }
@@ -234,7 +234,7 @@ public sealed partial class RenameTemplateEditorViewModel : ObservableObject
         Errors = parsed.Validation.IsValid ? null : string.Join("  ", parsed.Validation.Errors);
         Preview = parsed.Validation.IsValid
             ? RenameEngine.BuildFileName(parsed, _sample, ".mp4", Separator, OmitResolutionAtOrBelow)
-            : "—";
+            : "-";
         ThresholdPreview = BuildThresholdPreview(parsed);
     }
 

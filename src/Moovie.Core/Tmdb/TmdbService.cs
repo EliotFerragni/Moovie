@@ -16,7 +16,7 @@ public sealed class TmdbException(string message, Exception? inner = null) : Exc
 /// </summary>
 /// <remarks>
 /// Two things here exist purely to make batches of hundreds of files behave: a cache keyed on
-/// (id, language) so a 24-episode season costs one show lookup and one season lookup rather than
+/// (id, language), so a 24-episode season costs one show lookup and one season lookup rather than
 /// 24 searches, and a concurrency gate plus retry so TMDB's rate limiter is never tripped.
 /// </remarks>
 public sealed class TmdbService : ITmdbService, IDisposable
@@ -597,8 +597,8 @@ public sealed class TmdbService : ITmdbService, IDisposable
     /// <summary>
     /// Whether the original-language record is worth fetching as well. Two independent reasons:
     /// text TMDB has no translation for, and artwork that exists only under the original
-    /// language. The second is easy to overlook — a fully translated season can still have no
-    /// poster of its own — and without it the preferred artwork kind silently downgrades.
+    /// language. The second is easy to overlook (a fully translated season can still have no
+    /// poster of its own) and without it the preferred artwork kind silently downgrades.
     /// The extra fetch is cached per show and season, so a whole season costs it once.
     /// </summary>
     private static bool NeedsFallback(MediaMetadata metadata, string language) =>

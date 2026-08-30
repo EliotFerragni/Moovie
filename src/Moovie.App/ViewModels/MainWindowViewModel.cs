@@ -105,7 +105,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     /// </summary>
     public void DiscardManualChanges(FileItemViewModel file)
     {
-        // Nothing has been looked up, so there is no TMDB result to go back to — but there is
+        // Nothing has been looked up, so there is no TMDB result to go back to, but there is
         // still a state before the edits: the file's own tags, and its name for the gaps.
         if (file.FetchedMetadata is null)
         {
@@ -210,7 +210,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     /// <remarks>
     /// This runs on adding, which is the point. A file that has been tagged before opens with its
     /// own content in the form rather than a blank sheet, so there is something to review before
-    /// spending an API call — and after one, the difference between the two is visible instead of
+    /// spending an API call, and after one, the difference between the two is visible instead of
     /// implied.
     /// </remarks>
     private async Task ExamineAsync(IReadOnlyList<FileItemViewModel> items)
@@ -446,7 +446,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     /// <remarks>
     /// The resolution is the one field the container knows better than the name. A name only
     /// claims a resolution, and stops claiming it the moment the file is renamed by a template
-    /// without <c>{resolution}</c> — after which the next pass would find nothing and write an SD
+    /// without <c>{resolution}</c>, after which the next pass would find nothing and write an SD
     /// HD flag over a 4K film. Taking it from the video track fixes that, and mislabelled
     /// releases along with it. The name is still the fallback, for a file whose video track
     /// cannot be read.

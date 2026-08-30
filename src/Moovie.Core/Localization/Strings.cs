@@ -17,7 +17,7 @@ public sealed record LanguageChoice(string Tag, string DisplayName)
 /// <remarks>
 /// English is compiled in as the fallback, so a key missing from a translation shows the English
 /// text rather than a blank. Nothing is loaded until <see cref="Use"/> is called, which only the
-/// app does at startup — tests and any other caller get English deterministically, whatever the
+/// app does at startup: tests and any other caller get English deterministically, whatever the
 /// machine's locale happens to be.
 /// </remarks>
 public static class Strings

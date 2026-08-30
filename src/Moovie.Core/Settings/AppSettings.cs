@@ -38,7 +38,7 @@ public sealed class AppSettings
 
     /// <summary>
     /// Language of the app's own interface: a two-letter tag, or <c>system</c> to follow the
-    /// operating system. Deliberately separate from <see cref="Language"/> — wanting a French
+    /// operating system. Deliberately separate from <see cref="Language"/>: wanting a French
     /// interface and English metadata is a perfectly reasonable combination.
     /// </summary>
     public string AppLanguage { get; set; } = Strings.SystemTag;
@@ -54,7 +54,7 @@ public sealed class AppSettings
 
     public string TvRenameTemplate { get; set; } = DefaultTvTemplate;
 
-    /// <summary>Whether Apply also renames files. Off by default — writing tags is reversible enough, renaming is noisier.</summary>
+    /// <summary>Whether Apply also renames files. Off by default: writing tags is reversible enough, renaming is noisier.</summary>
     public bool RenameEnabled { get; set; }
 
     public SeparatorStyle Separator { get; set; } = SeparatorStyle.Space;
@@ -65,7 +65,7 @@ public sealed class AppSettings
     /// </summary>
     /// <remarks>
     /// Only the filename is affected. The resolution is still read, still shown in the pane, and
-    /// still decides the HD flag written into the file — hiding it from a name is a naming
+    /// still decides the HD flag written into the file: hiding it from a name is a naming
     /// preference, not a claim that the app does not know it.
     /// </remarks>
     public string OmitResolutionAtOrBelow { get; set; } = string.Empty;

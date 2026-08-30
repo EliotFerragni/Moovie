@@ -12,8 +12,8 @@ namespace Moovie.App.ViewModels;
 /// value the lookup returned, either of which can be clicked to become the one that gets written.
 /// </summary>
 /// <remarks>
-/// Both sides always have something to show — an absent value reads as "(empty)", an unmatched
-/// file as "(not looked up)" — so a row never looks like a rendering fault. The cover art row is
+/// Both sides always have something to show (an absent value reads as "(empty)", an unmatched
+/// file as "(not looked up)"), so a row never looks like a rendering fault. The cover art row is
 /// the same shape with images in place of the text.
 /// </remarks>
 public sealed partial class MetadataChangeViewModel : ObservableObject
@@ -87,7 +87,7 @@ public sealed partial class MetadataChangeViewModel : ObservableObject
     public bool IsText => !IsArtwork;
 
     /// <summary>
-    /// What will be written, spelled out only when it is neither of the two offered values —
+    /// What will be written, spelled out only when it is neither of the two offered values:
     /// which means the field was typed into by hand and neither side is highlighted.
     /// </summary>
     public string? WillWrite => IsCurrentChosen || IsFetchedChosen

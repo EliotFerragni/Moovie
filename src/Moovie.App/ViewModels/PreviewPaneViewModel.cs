@@ -755,7 +755,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
         }
     }
 
-    /// <summary>Applies a TMDB id typed in by hand — the escape hatch when search cannot find it.</summary>
+    /// <summary>Applies a TMDB id typed in by hand: the escape hatch when search cannot find it.</summary>
     [RelayCommand]
     private async Task ApplyTmdbIdAsync()
     {
@@ -823,7 +823,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
 
     /// <summary>
     /// Builds the form. Each entry pairs a label with how to read and write that field on
-    /// <see cref="MediaMetadata"/>; everything else — multi-selection, fallback hints, visibility —
+    /// <see cref="MediaMetadata"/>; everything else (multi-selection, fallback hints, visibility)
     /// is handled by <see cref="FieldEditor"/>.
     /// </summary>
     private ObservableCollection<FieldEditor> BuildFields()

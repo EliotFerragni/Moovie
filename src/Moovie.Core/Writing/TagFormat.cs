@@ -9,7 +9,7 @@ namespace Moovie.Core.Writing;
 /// </summary>
 /// <remarks>
 /// Shared deliberately. <see cref="Mp4TagWriter"/> produces these values, <see cref="Mp4TagReader"/>
-/// parses them back, and <see cref="MetadataDiff"/> compares them — so a change to how a date is
+/// parses them back, and <see cref="MetadataDiff"/> compares them, so a change to how a date is
 /// written cannot leave the reader or the diff behind.
 /// </remarks>
 internal static class TagFormat
@@ -51,8 +51,8 @@ internal static class TagFormat
     };
 
     /// <summary>
-    /// Names an HD flag for the diff. The flag is coarser than the resolution it came from —
-    /// 1080i and 1440p share one — so it is shown as the flag rather than pretending otherwise.
+    /// Names an HD flag for the diff. The flag is coarser than the resolution it came from:
+    /// 1080i and 1440p share one, so it is shown as the flag rather than pretending otherwise.
     /// </summary>
     internal static string HdFlagLabel(int flag) => flag switch
     {

@@ -21,7 +21,7 @@ public enum TokenValueKind
 /// Whether the formats implied by <paramref name="Kind"/> are worth offering for this token.
 /// False where they cannot change the value: a year is always four digits, an id is not a
 /// counted quantity, and a resolution or an IMDb id is a lowercase code that case conversion
-/// only mangles. The validator still accepts them, so no existing template breaks — this
+/// only mangles. The validator still accepts them, so no existing template breaks: this
 /// decides what the palette advertises, and a reference that lists three ways of writing the
 /// same number teaches the opposite of what it is for.
 /// </param>
@@ -66,8 +66,8 @@ public sealed record RenameToken(
     /// open set, so those are a representative handful rather than a complete list, and the
     /// palette says as much.
     /// <para>
-    /// The explicit spelling of a default is left out — <c>:0</c> is the bare token and
-    /// <c>:yyyy-MM-dd</c> is what a date already does — because a row that renders exactly what
+    /// The explicit spelling of a default is left out (<c>:0</c> is the bare token and
+    /// <c>:yyyy-MM-dd</c> is what a date already does) because a row that renders exactly what
     /// the row above it renders is not a second option, it is the same one written twice.
     /// </para>
     /// </remarks>

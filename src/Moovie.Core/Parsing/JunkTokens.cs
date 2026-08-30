@@ -8,12 +8,12 @@ namespace Moovie.Core.Parsing;
 /// </summary>
 /// <remarks>
 /// Tokens are split into two tiers because plenty of release words are also real title
-/// words — "Charlotte's Web", "The Italian Job", "Uncut Gems", "DC League of Super-Pets".
+/// words: "Charlotte's Web", "The Italian Job", "Uncut Gems", "DC League of Super-Pets".
 /// <list type="bullet">
 /// <item><b>Strong</b> tokens never appear in a title, so the parser cuts the name at the
 /// earliest one it finds.</item>
 /// <item><b>Weak</b> tokens are ambiguous, so they are only removed from the <i>tail</i> of
-/// what is left — by then a strong token or the year has already established that we are
+/// what is left: by then a strong token or the year has already established that we are
 /// past the title.</item>
 /// </list>
 /// </remarks>
@@ -88,7 +88,7 @@ public static class JunkTokens
 
     /// <summary>
     /// Removes every strong junk token, wherever it sits. Used to decide whether a name holds
-    /// anything beyond release noise — not for building a title.
+    /// anything beyond release noise, not for building a title.
     /// </summary>
     public static string RemoveAllStrong(string text) => StrongRegex.Value.Replace(text, " ");
 

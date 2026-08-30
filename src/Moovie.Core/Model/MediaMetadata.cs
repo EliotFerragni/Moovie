@@ -2,7 +2,7 @@ namespace Moovie.Core.Model;
 
 /// <summary>
 /// The editable metadata for one file: seeded from TMDB, then freely modified by the user
-/// before being written into the container. Mutable by design — the UI binds straight to it.
+/// before being written into the container. Mutable by design: the UI binds straight to it.
 /// </summary>
 public sealed class MediaMetadata
 {

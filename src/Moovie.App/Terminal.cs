@@ -7,8 +7,8 @@ namespace Moovie.App;
 ///
 /// The executable is built as a Windows application, which is what stops a console window
 /// flashing up behind the interface when somebody double-clicks it. The cost is that it has no
-/// console at all: run from a command prompt with <c>--web</c>, every line it writes — the
-/// address it is serving on, or why it could not start — goes nowhere, and it looks as though
+/// console at all: run from a command prompt with <c>--web</c>, every line it writes (the
+/// address it is serving on, or why it could not start) goes nowhere, and it looks as though
 /// nothing happened. Attaching to the console that launched it puts the output back in front of
 /// the person who typed the command, and makes the process a member of that console so Ctrl+C
 /// reaches it.

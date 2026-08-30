@@ -8,14 +8,14 @@ namespace Moovie.App.Web;
 
 /// <summary>
 /// Runs the app with no window, drawing into a frame buffer that <see cref="BrowserTransport"/>
-/// serves to a browser. The app itself is unchanged and, importantly, still runs here — on the
-/// machine holding the files — so the pickers, the tag writer and the rename engine all act on
+/// serves to a browser. The app itself is unchanged and, importantly, still runs here (on the
+/// machine holding the files), so the pickers, the tag writer and the rename engine all act on
 /// this machine's disks rather than on those of whoever opened the page.
 /// </summary>
 public static class WebHost
 {
     /// <summary>
-    /// Carries what moves on its own — a blinking caret, a progress bar. Everything else is drawn
+    /// Carries what moves on its own: a blinking caret, a progress bar. Everything else is drawn
     /// in response to input instead, so this can be slow enough not to matter.
     /// </summary>
     private const int AnimationTickMs = 33;
@@ -51,7 +51,7 @@ public static class WebHost
         // a remote window expensive at rest, so it is driven by input instead: a click or a key
         // schedules exactly one repaint, posted below the input itself so it runs once the app has
         // finished reacting. Nothing to react to costs nothing.
-        // What animates without being touched — a caret, a progress bar — still needs a heartbeat,
+        // What animates without being touched (a caret, a progress bar) still needs a heartbeat,
         // but only while somebody is there to see it. Merely waking to check is expensive enough
         // to be worth stopping outright, so a server nobody has open costs nothing at all.
         var animation = new DispatcherTimer(

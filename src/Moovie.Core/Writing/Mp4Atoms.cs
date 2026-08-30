@@ -21,7 +21,7 @@ internal static class Mp4Atoms
     private static ReadOnlyByteVector CopyrightFourcc(string code) =>
         new(Copyright, (byte)code[0], (byte)code[1], (byte)code[2]);
 
-    /// <summary>Title — the episode title for a TV file.</summary>
+    /// <summary>Title: the episode title for a TV file.</summary>
     internal static readonly ReadOnlyByteVector Title = CopyrightFourcc("nam");
 
     /// <summary>Release or air date.</summary>
@@ -42,7 +42,7 @@ internal static class Mp4Atoms
     /// <summary>Short description, capped at 255 characters by convention.</summary>
     internal static readonly ReadOnlyByteVector ShortDescription = Fourcc("desc");
 
-    /// <summary>Long description — the full overview.</summary>
+    /// <summary>Long description: the full overview.</summary>
     internal static readonly ReadOnlyByteVector LongDescription = Fourcc("ldes");
 
     /// <summary>Media type: 9 = movie, 10 = TV show.</summary>

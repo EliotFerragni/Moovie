@@ -100,7 +100,7 @@
   window.addEventListener('resize', sendSize);
 
   // Each message is a patch: the size of the whole window, where the patch belongs in it, and a
-  // PNG of just that part. Decoding is asynchronous, so the draws are chained rather than raced —
+  // PNG of just that part. Decoding is asynchronous, so the draws are chained rather than raced:
   // two patches applied out of order would leave the window showing something that never was.
   let drawing = Promise.resolve();
 
@@ -123,7 +123,7 @@
     const bitmaps = await Promise.all(patches.map(p => createImageBitmap(p.blob)));
 
     // Assigning either dimension clears the canvas, so it is only done when the size really
-    // changed — after which the server sends the whole window rather than a patch of it.
+    // changed, after which the server sends the whole window rather than a patch of it.
     if (canvas.width !== frameWidth || canvas.height !== frameHeight) {
       canvas.width = frameWidth;
       canvas.height = frameHeight;
@@ -140,7 +140,7 @@
     socket.binaryType = 'arraybuffer';
     socket.onopen = () => { show(''); sendSize(); canvas.focus(); };
     socket.onmessage = e => { drawing = drawing.then(() => draw(e.data)).catch(() => {}); };
-    socket.onclose = () => { show('Disconnected — reconnecting…'); setTimeout(connect, 1000); };
+    socket.onclose = () => { show('Disconnected: reconnecting…'); setTimeout(connect, 1000); };
     socket.onerror = () => socket.close();
   };
 

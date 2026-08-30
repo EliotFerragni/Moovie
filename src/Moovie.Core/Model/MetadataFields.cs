@@ -4,8 +4,8 @@ namespace Moovie.Core.Model;
 /// Copies one named field from one <see cref="MediaMetadata"/> onto another.
 /// </summary>
 /// <remarks>
-/// This is what the preview diff's per-field revert is built on. Both sources it offers — the
-/// tags read back out of the file and the snapshot the lookup returned — are plain
+/// This is what the preview diff's per-field revert is built on. Both sources it offers (the
+/// tags read back out of the file and the snapshot the lookup returned) are plain
 /// <see cref="MediaMetadata"/>, so pointing a field at either is the same operation with a
 /// different source, and nothing has to be parsed back out of the strings the diff displays.
 /// </remarks>

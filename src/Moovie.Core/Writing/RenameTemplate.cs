@@ -20,15 +20,15 @@ public sealed record TemplateValidation(IReadOnlyList<string> Errors)
 /// <remarks>
 /// Grammar:
 /// <list type="bullet">
-/// <item><c>{name}</c> or <c>{name:format}</c> — a value from <see cref="RenameTokens"/>.
+/// <item><c>{name}</c> or <c>{name:format}</c>: a value from <see cref="RenameTokens"/>.
 /// Numbers take digit padding (<c>{season:00}</c> → <c>01</c>), dates take .NET format strings
 /// (<c>{airDate:yyyy-MM-dd}</c>), text takes <c>upper</c>, <c>lower</c> or <c>title</c>, and
 /// <c>{resolution:short}</c> writes 2160p as <c>4k</c>.</item>
-/// <item><c>&lt; … &gt;</c> — an optional segment, dropped entirely when every token inside it
+/// <item><c>&lt; … &gt;</c>: an optional segment, dropped entirely when every token inside it
 /// is empty. This is what keeps <c>&lt; - {episodeTitle}&gt;</c> from leaving a dangling
 /// separator. Angle brackets were chosen because no filesystem allows them in a name, so
 /// square brackets stay free for the common <c>Movie (2019) [2160p]</c> style.</item>
-/// <item><c>{{</c> and <c>}}</c> — literal braces.</item>
+/// <item><c>{{</c> and <c>}}</c>: literal braces.</item>
 /// </list>
 /// </remarks>
 public sealed class RenameTemplate
@@ -245,7 +245,7 @@ public sealed class RenameTemplate
     }
 
     /// <summary>
-    /// Renders the template for <paramref name="metadata"/>. Returns the bare stem — no extension,
+    /// Renders the template for <paramref name="metadata"/>. Returns the bare stem: no extension,
     /// no separator substitution, no sanitisation; <see cref="RenameEngine"/> does those.
     /// </summary>
     /// <param name="omitResolutionAtOrBelow">
@@ -366,7 +366,7 @@ public sealed class RenameTemplate
 
     /// <summary>
     /// Renders one or more episode numbers. When the template put an episode marker right before
-    /// the token, a multi-episode file repeats it — <c>E{episode:00}</c> yields <c>E01-E02</c>,
+    /// the token, a multi-episode file repeats it: <c>E{episode:00}</c> yields <c>E01-E02</c>,
     /// the form media servers recognise. Any other prefix (the <c>x</c> of <c>1x01</c>) joins
     /// bare, as <c>1x01-02</c>.
     /// </summary>
