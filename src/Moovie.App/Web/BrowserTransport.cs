@@ -57,6 +57,8 @@ public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
 
     private readonly List<PixelRect> _owed = [];
 
+    private bool _drew;
+
     public BrowserTransport(string host, int port)
     {
         _page = ReadEmbeddedPage();
@@ -118,6 +120,19 @@ public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
     /// <summary>Whether any browser is currently looking, so idle work can be skipped entirely.</summary>
     public bool HasViewers => !_clients.IsEmpty;
 
+    /// <summary>
+    /// Whether the app has drawn anything since this was last asked, and reading it forgets it.
+    /// A frame arrives only when the app had something new to show, which makes this the host's
+    /// answer to "is anything happening", and so how often it should look. Both the drawing and
+    /// the asking happen on the UI thread.
+    /// </summary>
+    public bool DrewSinceLastAsked()
+    {
+        var drew = _drew;
+        _drew = false;
+        return drew;
+    }
+
     public void Start() =>
         OnMessage?.Invoke(this, new ClientSupportedPixelFormatsMessage
         {
@@ -141,6 +156,8 @@ public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
             // client to resize it. The browser is the authority on its own size, so they are dropped.
             return Task.CompletedTask;
         }
+
+        _drew = true;
 
         var any = false;
         try
