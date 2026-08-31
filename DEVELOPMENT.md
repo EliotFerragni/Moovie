@@ -137,6 +137,7 @@ src/Moovie.App/      Avalonia UI
                MainWindow, SettingsWindow, AboutWindow  (desktop frames for the views)
                IAppShell, DesktopShell, WebShell        (pickers and dialogs, per host)
   Web/         BrowserTransport, WebHost, FrameEncoder, WebClientPage.html
+               ClipboardBridge                            (copy and paste across the wire)
                DrawingClock, QuietDispatcher              (what the app draws and runs by)
 
 tests/Moovie.Core.Tests/
@@ -162,6 +163,43 @@ for itself, asking for files and opening a dialog, which a desktop window answer
 platform's pickers and `WebShell` answers inside the single view. A browser's own file dialog
 would have been wrong twice over: it offers the wrong machine's files, and it hands back a
 stream where the tag writer needs a path.
+
+### The clipboard is the browser's, and is met halfway
+
+Avalonia's text boxes copy and paste through `TopLevel.Clipboard`, and the remote top level has
+none: the platform behind `RemoteServer` offers no clipboard feature, so that property is null and
+every copy, cut and paste in the app silently does nothing — from the keyboard and from the box's
+own context menu alike. `ClipboardBridge` answers the three cancellable events Avalonia raises
+before it would touch the clipboard (`CopyingToClipboard`, `CuttingToClipboard`,
+`PastingFromClipboard`), which is the one hook that covers both, since the context menu's items
+call the very methods that raise them. A paste goes in as a text input event rather than through
+the text property, so it replaces the selection and the box's own read-only and length limits
+still apply.
+
+That fixes the app's half. The other half is that the clipboard worth having is the *browser's*,
+since that is the one the rest of the user's machine shares, and a page may only put text on it
+from inside a gesture the browser has just handled or over a secure connection — and a NAS on a
+LAN is not a secure connection, so `navigator.clipboard` does not exist there at all. A message
+arriving from a server is not a gesture either, so the app cannot simply ask.
+
+So the page does not ask. The app's selected text is pushed to it as it changes — and again
+whenever a tab arrives, which knows nothing it has not been told since — and kept selected in a
+hidden field, which also holds the keyboard's focus; the user's own Ctrl+C and Ctrl+X are
+then carried out by the browser itself, on exactly the right text, with no permission asked and
+nothing to fail. The page keeps the three shortcuts to itself — not preventing their default is
+the whole trick — and tells the app what happened: a cut so it can delete the selection, a copy
+so it remembers what to paste back, a paste with the text the browser handed over.
+
+What is left best-effort is a copy the app starts itself, from its own context menu: the page is
+told and tries `document.execCommand('copy')`, which Chrome allows for a few seconds after the
+click that asked for it and Firefox only from inside the gesture's own handler. When it fails the
+text is still in the field, so the user's Ctrl+C takes it. The app's *Paste* item can only paste
+what the page has told it about, since nothing may read the clipboard unasked.
+
+A masked box is never read: `SelectedText` hands back the cleartext of a `PasswordChar` box, and
+the app's one masked box holds the user's TMDB key, so `Copyable` refuses it — both for the
+selection pushed to the page and for a copy. That matches what Avalonia does on the desktop,
+where `CanCopy` is false for such a box.
 
 Costs, measured: typing a character sends under 2 KB and lands in around 20 ms on a LAN, since
 only the changed part of a frame goes out; a still window with a blinking caret costs a few

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.Remote;
 using Avalonia.Headless;
 using Avalonia.Threading;
@@ -65,6 +66,17 @@ public static class WebHost
         var view = new MainView { DataContext = viewModel };
         view.Shell = new WebShell(view);
         server.Content = view;
+
+        // The clipboard the user shares with the rest of their machine is the browser's, not this
+        // one's, so copying and pasting is a conversation with the page rather than something the
+        // app can do on its own. ClipboardBridge explains the split.
+        var clipboard = new ClipboardBridge(TopLevel.GetTopLevel(view)
+            ?? throw new InvalidOperationException("The view is not in a top level, so the selection cannot be read."));
+        clipboard.SelectionChanged += text => transport.Post(new { type = "selection", text });
+        clipboard.Copied += text => transport.Post(new { type = "copied", text });
+        transport.ClipboardRequested += (action, text) =>
+            Dispatcher.UIThread.Post(() => clipboard.Apply(action, text));
+        transport.ViewerArrived += () => Dispatcher.UIThread.Post(clipboard.Announce);
 
         transport.Start();
 

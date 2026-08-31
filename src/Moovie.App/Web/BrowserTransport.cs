@@ -57,6 +57,12 @@ public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
 
     private readonly List<PixelRect> _owed = [];
 
+    /// <summary>
+    /// A socket may not have two sends in flight at once, and frames and clipboard messages come
+    /// from different threads, so every send waits its turn here.
+    /// </summary>
+    private readonly SemaphoreSlim _sending = new(1, 1);
+
     private bool _drew;
 
     public BrowserTransport(string host, int port)
@@ -117,6 +123,18 @@ public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
     /// </summary>
     public event Action? InputReceived;
 
+    /// <summary>
+    /// Raised on the socket thread when the browser asks for a clipboard action. The text is the
+    /// browser's clipboard for a paste and empty otherwise.
+    /// </summary>
+    public event Action<ClipboardAction, string>? ClipboardRequested;
+
+    /// <summary>
+    /// Raised on the socket thread when a tab arrives. A new tab knows nothing the app has not
+    /// told it since, so anything it is owed besides the picture is owed here.
+    /// </summary>
+    public event Action? ViewerArrived;
+
     /// <summary>Whether any browser is currently looking, so idle work can be skipped entirely.</summary>
     public bool HasViewers => !_clients.IsEmpty;
 
@@ -138,6 +156,26 @@ public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
         {
             Formats = [Avalonia.Remote.Protocol.Viewport.PixelFormat.Rgba8888],
         });
+
+    /// <summary>
+    /// Sends a small JSON message to every browser looking. Frames go out as binary and
+    /// everything else as text, which is all the page needs to tell the two apart.
+    /// </summary>
+    public void Post(object message)
+    {
+        var json = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message, Json));
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await BroadcastAsync(json, WebSocketMessageType.Text).ConfigureAwait(false);
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                OnException?.Invoke(this, e);
+            }
+        });
+    }
 
     /// <summary>
     /// Takes a rendered frame off the drawing thread as quickly as possible. Only the comparison
@@ -275,8 +313,7 @@ public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
                     at += 12 + png.Length;
                 }
 
-                foreach (var client in _clients.Keys)
-                    await SendToAsync(client, message).ConfigureAwait(false);
+                await BroadcastAsync(message, WebSocketMessageType.Binary).ConfigureAwait(false);
             }
             catch (Exception e) when (e is not OperationCanceledException)
             {
@@ -285,12 +322,26 @@ public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
         }
     }
 
-    private async Task SendToAsync(WebSocket client, byte[] message)
+    private async Task BroadcastAsync(byte[] message, WebSocketMessageType type)
+    {
+        await _sending.WaitAsync(_stopping.Token).ConfigureAwait(false);
+        try
+        {
+            foreach (var client in _clients.Keys)
+                await SendToAsync(client, message, type).ConfigureAwait(false);
+        }
+        finally
+        {
+            _sending.Release();
+        }
+    }
+
+    private async Task SendToAsync(WebSocket client, byte[] message, WebSocketMessageType type)
     {
         try
         {
             if (client.State == WebSocketState.Open)
-                await client.SendAsync(message, WebSocketMessageType.Binary, true, _stopping.Token);
+                await client.SendAsync(message, type, true, _stopping.Token);
         }
         catch (Exception e) when (e is WebSocketException or OperationCanceledException or ObjectDisposedException)
         {
@@ -355,6 +406,7 @@ public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
         }
 
         _wake.Writer.TryWrite(true);
+        ViewerArrived?.Invoke();
 
         try
         {
@@ -384,30 +436,45 @@ public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
             if (result.MessageType == WebSocketMessageType.Close)
                 return;
 
-            var message = ParseClientMessage(Encoding.UTF8.GetString(buffer, 0, result.Count));
-            if (message is null)
+            var client = ReadClientMessage(Encoding.UTF8.GetString(buffer, 0, result.Count));
+            if (client is null)
                 continue;
 
-            OnMessage?.Invoke(this, message);
+            // A clipboard action is not part of the remote protocol and means nothing to the top
+            // level, so it goes to the app rather than through OnMessage.
+            if (ClipboardActionOf(client.Type) is { } clipboard)
+                ClipboardRequested?.Invoke(clipboard, client.Text ?? string.Empty);
+            else if (InputMessage(client) is { } message)
+                OnMessage?.Invoke(this, message);
+            else
+                continue;
+
             InputReceived?.Invoke();
         }
     }
 
-    private static object? ParseClientMessage(string text)
+    private static ClientMessage? ReadClientMessage(string text)
     {
-        ClientMessage? message;
         try
         {
-            message = JsonSerializer.Deserialize<ClientMessage>(text, Json);
+            return JsonSerializer.Deserialize<ClientMessage>(text, Json);
         }
         catch (JsonException)
         {
             return null;
         }
+    }
 
-        if (message is null)
-            return null;
+    private static ClipboardAction? ClipboardActionOf(string? type) => type switch
+    {
+        "copy" => ClipboardAction.Copy,
+        "cut" => ClipboardAction.Cut,
+        "paste" => ClipboardAction.Paste,
+        _ => null,
+    };
 
+    private static object? InputMessage(ClientMessage message)
+    {
         return message.Type switch
         {
             "size" => new ClientViewportAllocatedMessage

@@ -271,6 +271,14 @@ over the same cursor. And **it is sized for a LAN** rather than the open interne
 are pictures and scrolling a long list is genuinely expensive. Nothing authenticates the page
 either, so it belongs behind whatever already guards the machine.
 
+**Copy and paste use your own machine's clipboard**, not the server's. Ctrl+C, Ctrl+X and Ctrl+V
+work in the fields as they do in any other tab, and text copied here can be pasted into anything
+else on your desk. The field's own right-click menu works too, with one wrinkle: what its *Copy*
+item takes may not make it out of the app on Firefox and Safari, since a browser lets a page reach
+the clipboard only for a gesture it has just handled itself, and that click was answered on the
+other side of the wire. Ctrl+C always makes it out. The API key field is never copied from at all,
+exactly as on the desktop.
+
 Left running with nobody connected it does nothing and costs nothing: it draws only in answer to
 input, and it wakes about once every ten seconds, so it is not a process that keeps a NAS out of
 its idle states or its fan turning. Work already under way is not affected by closing the tab,

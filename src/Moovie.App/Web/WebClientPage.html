@@ -7,6 +7,12 @@
 <style>
   html, body { margin: 0; height: 100%; overflow: hidden; background: #1e1e1e; }
   #screen { display: block; width: 100vw; height: 100vh; outline: none; touch-action: none; }
+  /* Out of sight but still a field the browser will copy from and paste into. Not hidden and not
+     moved off the page: neither can hold the focus, and a field off the page is scrolled to. */
+  #clipboard {
+    position: fixed; top: 0; left: 0; width: 1px; height: 1px;
+    opacity: 0; border: 0; padding: 0; resize: none; pointer-events: none;
+  }
   #status {
     position: fixed; inset: auto 0 0 0; padding: 6px 10px; font: 13px system-ui, sans-serif;
     background: #b3261e; color: #fff; display: none;
@@ -15,10 +21,12 @@
 </head>
 <body>
 <canvas id="screen" tabindex="0"></canvas>
+<textarea id="clipboard" tabindex="-1" aria-hidden="true" autocomplete="off" spellcheck="false"></textarea>
 <div id="status"></div>
 <script>
 (() => {
   const canvas = document.getElementById('screen');
+  const clipboard = document.getElementById('clipboard');
   const status = document.getElementById('status');
   const ctx = canvas.getContext('2d');
   let socket = null;
@@ -38,6 +46,30 @@
     dpi: 96 * (window.devicePixelRatio || 1),
   });
 
+  // The clipboard worth having is the browser's, since that is the one the user's other programs
+  // share, and script may only put text on it from inside a gesture the browser has just handled
+  // or over a secure connection, which a page served from a NAS over plain HTTP is not. So the
+  // app's selected text is kept selected in the hidden field above, and the field is what holds
+  // the focus: the browser's own copy and cut then have exactly the right text to take, with
+  // nothing asked of it. Keys are read from the window, so the app still sees every one of them.
+  let selected = '';
+  const mirror = text => {
+    selected = text;
+    clipboard.value = text;
+    // Not select(), which in some browsers moves the focus as well.
+    clipboard.setSelectionRange(0, text.length);
+  };
+
+  // What the browser is believed to hold, so that text the app copies is not chased with a second,
+  // far less certain, attempt to put the same thing there again.
+  let onClipboard = '';
+
+  // A field with the focus raises the on-screen keyboard on a touch device, over the very window
+  // it would be typing into, so there the canvas keeps the focus as it always did and the
+  // clipboard is left to the browser's own long-press menu.
+  let physicalKeyboard = matchMedia('(pointer: fine)').matches;
+  const focusApp = () => (physicalKeyboard ? clipboard : canvas).focus();
+
   const pointerAt = (e, type) => {
     const box = canvas.getBoundingClientRect();
     return { type, x: e.clientX - box.left, y: e.clientY - box.top, button: e.button, ...modifiers(e) };
@@ -52,7 +84,8 @@
     if (wasIdle) requestAnimationFrame(() => { send(pendingMove); pendingMove = null; });
   });
   canvas.addEventListener('pointerdown', e => {
-    canvas.focus();
+    physicalKeyboard = e.pointerType !== 'touch';
+    focusApp();
     canvas.setPointerCapture(e.pointerId);
     send(pointerAt(e, 'pointer-pressed'));
   });
@@ -79,8 +112,29 @@
   // Control or Meta held is a shortcut rather than typing, so it goes as a key alone.
   const isTyping = e => e.key.length === 1 && !e.ctrlKey && !e.metaKey;
 
+  // Which of the three the user asked for, under any of their spellings, or nothing.
+  const clipboardAction = e => {
+    const command = (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey;
+    const letter = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    if (command && (letter === 'c' || letter === 'x' || letter === 'v'))
+      return { c: 'copy', x: 'cut', v: 'paste' }[letter];
+    if (e.key === 'Insert' && !e.altKey) return e.ctrlKey ? 'copy' : e.shiftKey ? 'paste' : null;
+    if (e.key === 'Delete' && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) return 'cut';
+    return null;
+  };
+
   window.addEventListener('keydown', e => {
-    // Tab would move focus out of the canvas and the browser's own shortcuts would shadow the
+    // These three are the browser's to carry out, on the hidden field: preventing the default
+    // here, as everything below does, is what stopped the clipboard working at all. A paste comes
+    // back as a paste event; the other two only have to be told to the app, which has the
+    // selection to cut and the text to remember.
+    const clipboardKey = clipboardAction(e);
+    if (clipboardKey) {
+      if (clipboardKey !== 'paste') send({ type: clipboardKey });
+      return;
+    }
+
+    // Tab would move focus out of the app and the browser's own shortcuts would shadow the
     // app's, so everything except the reload keys is claimed here.
     if (e.key !== 'F5' && !(e.ctrlKey && e.key === 'r')) e.preventDefault();
 
@@ -89,13 +143,37 @@
   });
 
   window.addEventListener('keyup', e => {
+    if (clipboardAction(e)) return;
     send({ type: 'key', down: false, code: e.code, key: e.key, ...modifiers(e) });
   });
 
   window.addEventListener('paste', e => {
+    e.preventDefault();
     const text = e.clipboardData?.getData('text');
-    if (text) { e.preventDefault(); send({ type: 'text', text }); }
+    if (text) { onClipboard = text; send({ type: 'paste', text }); }
   });
+
+  // The browser has just taken the field's contents, which is the app's selection.
+  const taken = () => { onClipboard = selected; };
+  window.addEventListener('copy', taken);
+  window.addEventListener('cut', taken);
+
+  // The app copied something from its own context menu rather than the user pressing anything.
+  // Whether the browser will take it depends on the browser: Chrome allows this for a few seconds
+  // after the click that asked for it, Firefox only from inside the handler of the gesture itself.
+  // So it is attempted, not relied on; the field holds the text either way, so the user's own
+  // Ctrl+C always works.
+  const offerCopy = text => {
+    mirror(text);
+    if (!text || text === onClipboard || !physicalKeyboard) return;
+    clipboard.focus();
+    try { document.execCommand('copy'); } catch { /* not allowed here, and nothing is lost */ }
+  };
+
+  const control = message => {
+    if (message.type === 'selection') mirror(message.text);
+    else if (message.type === 'copied') offerCopy(message.text);
+  };
 
   window.addEventListener('resize', sendSize);
 
@@ -138,8 +216,12 @@
   const connect = () => {
     socket = new WebSocket((location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host + '/ws');
     socket.binaryType = 'arraybuffer';
-    socket.onopen = () => { show(''); sendSize(); canvas.focus(); };
-    socket.onmessage = e => { drawing = drawing.then(() => draw(e.data)).catch(() => {}); };
+    socket.onopen = () => { show(''); sendSize(); focusApp(); };
+    // Frames are binary and everything the app has to say about the clipboard is text.
+    socket.onmessage = e => {
+      if (typeof e.data === 'string') control(JSON.parse(e.data));
+      else drawing = drawing.then(() => draw(e.data)).catch(() => {});
+    };
     socket.onclose = () => { show('Disconnected: reconnecting…'); setTimeout(connect, 1000); };
     socket.onerror = () => socket.close();
   };
