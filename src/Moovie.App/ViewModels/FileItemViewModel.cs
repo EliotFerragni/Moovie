@@ -1,5 +1,6 @@
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Moovie.Core.Localization;
 using Moovie.Core.Model;
@@ -40,9 +41,18 @@ public sealed partial class FileItemViewModel : ObservableObject
     [ObservableProperty]
     private string? _languageOverride;
 
-    /// <summary>The chosen artwork as shown in the list, loaded once the row is on screen.</summary>
+    /// <summary>
+    /// The chosen artwork as shown in the list, loaded once the row is on screen. Set it through
+    /// <see cref="ShowThumbnail"/> rather than directly, so the one it replaces is released.
+    /// </summary>
     [ObservableProperty]
     private Bitmap? _thumbnail;
+
+    /// <summary>
+    /// Whether <see cref="Thumbnail"/> is this row's own bitmap or one borrowed from the shared
+    /// artwork cache, which other rows and the preview pane may be showing at the same time.
+    /// </summary>
+    private bool _ownsThumbnail;
 
     /// <summary>
     /// Which artwork the thumbnail was loaded for, so a file that matches something else
@@ -61,6 +71,43 @@ public sealed partial class FileItemViewModel : ObservableObject
     /// a list that appears at once and a NAS that thrashes for a quarter of an hour.
     /// </summary>
     public bool IsOnScreen { get; set; }
+
+    /// <summary>
+    /// Shows a bitmap in this row, releasing the one it replaces if this row owned it.
+    ///
+    /// A row's artwork comes from two places with opposite rules. A cover read out of the file
+    /// itself is decoded for this row alone and nothing else will ever free it, so replacing it
+    /// without disposing it leaks a Skia surface, which is unmanaged and so cheap to hold that
+    /// nothing pushes the collector into reclaiming it. Artwork from TMDB comes out of the shared
+    /// cache, is very likely on screen somewhere else at the same time, and disposing it would
+    /// take down whatever is drawing it. So ownership has to travel with the bitmap.
+    /// </summary>
+    public void ShowThumbnail(Bitmap? bitmap, bool owned)
+    {
+        var replaced = _ownsThumbnail ? Thumbnail : null;
+
+        _ownsThumbnail = owned;
+        Thumbnail = bitmap;
+
+        if (replaced is null || ReferenceEquals(replaced, bitmap))
+            return;
+
+        // Not here, even though the binding has already moved on. A frame that was composed
+        // before this call can still be holding the old bitmap, and freeing a Skia surface out
+        // from under a draw in progress takes the window down rather than showing a stale tile.
+        // Background sits below render, so by the time this runs the frame that used it is done.
+        Dispatcher.UIThread.Post(replaced.Dispose, DispatcherPriority.Background);
+    }
+
+    /// <summary>
+    /// Lets go of the row's artwork, for a row leaving the list. The cache's images are left
+    /// alone; only a cover decoded for this row is freed.
+    /// </summary>
+    public void ReleaseThumbnail()
+    {
+        ShowThumbnail(null, owned: false);
+        ThumbnailPath = null;
+    }
 
     /// <summary>What the file would be renamed to, or null when renaming is off.</summary>
     [ObservableProperty]

@@ -22,8 +22,36 @@ public sealed class ArtworkLoader : IDisposable
     /// </summary>
     public const int ThumbnailHeight = 96;
 
-    private readonly Dictionary<string, Bitmap?> _decoded = [];
+    /// <summary>
+    /// How much decoded artwork to keep. A decoded bitmap costs four bytes a pixel whatever the
+    /// JPEG behind it weighed, so a w342 poster is about 700 KB and a w154 thumbnail about 140 KB.
+    /// This holds a few hundred of the latter, which is more than any one scroll through a
+    /// candidate list or a season needs, and it stops a session left open for a week from holding
+    /// every image it has ever shown.
+    /// </summary>
+    private const long Budget = 48L * 1024 * 1024;
+
+    /// <summary>
+    /// And a ceiling on entries, because a lookup that found no artwork is cached too, as the
+    /// cheapest way not to ask again, and those weigh nothing against <see cref="Budget"/>.
+    /// </summary>
+    private const int MaxEntries = 512;
+
+    private sealed class Entry
+    {
+        public Bitmap? Bitmap { get; init; }
+
+        /// <summary>Four bytes a pixel, or zero for a lookup that found nothing.</summary>
+        public long Bytes { get; init; }
+
+        public long LastUsed { get; set; }
+    }
+
+    private readonly Dictionary<string, Entry> _decoded = [];
     private readonly SemaphoreSlim _lock = new(1, 1);
+
+    private long _uses;
+    private long _held;
 
     /// <summary>
     /// Loads artwork for a TMDB-relative path. Returns null when there is no artwork, no API
@@ -41,7 +69,10 @@ public sealed class ArtworkLoader : IDisposable
         try
         {
             if (_decoded.TryGetValue(key, out var cached))
-                return cached;
+            {
+                cached.LastUsed = ++_uses;
+                return cached.Bitmap;
+            }
         }
         finally
         {
@@ -67,7 +98,7 @@ public sealed class ArtworkLoader : IDisposable
         await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            _decoded[key] = bitmap;
+            Keep(key, bitmap);
         }
         finally
         {
@@ -75,6 +106,50 @@ public sealed class ArtworkLoader : IDisposable
         }
 
         return bitmap;
+    }
+
+    /// <summary>
+    /// Files one decoded image and drops the least recently used ones until the cache is back
+    /// inside its limits. Call with <see cref="_lock"/> held.
+    /// </summary>
+    /// <remarks>
+    /// What is dropped is the reference, never the bitmap. A cached image is very likely to be on
+    /// screen at the moment it is evicted, because whatever asked for it usually still holds it,
+    /// and disposing a bitmap Avalonia is about to draw would take the window down. Letting go is
+    /// enough: nothing else refers to an image no view is showing, so the collector reclaims the
+    /// surface behind it in its own time, and what matters is that the cache no longer grows
+    /// without a bound.
+    /// </remarks>
+    private void Keep(string key, Bitmap? bitmap)
+    {
+        var bytes = bitmap is null
+            ? 0
+            : (long)bitmap.PixelSize.Width * bitmap.PixelSize.Height * 4;
+
+        if (_decoded.Remove(key, out var replaced))
+            _held -= replaced.Bytes;
+
+        _decoded[key] = new Entry { Bitmap = bitmap, Bytes = bytes, LastUsed = ++_uses };
+        _held += bytes;
+
+        while (_decoded.Count > MaxEntries || (_held > Budget && _decoded.Count > 1))
+        {
+            var oldest = key;
+            var oldestUse = long.MaxValue;
+            foreach (var (candidate, entry) in _decoded)
+            {
+                if (entry.LastUsed >= oldestUse)
+                    continue;
+
+                oldest = candidate;
+                oldestUse = entry.LastUsed;
+            }
+
+            if (!_decoded.Remove(oldest, out var evicted))
+                break;
+
+            _held -= evicted.Bytes;
+        }
     }
 
     /// <summary>
@@ -106,9 +181,11 @@ public sealed class ArtworkLoader : IDisposable
 
     public void Dispose()
     {
-        foreach (var bitmap in _decoded.Values)
-            bitmap?.Dispose();
+        foreach (var entry in _decoded.Values)
+            entry.Bitmap?.Dispose();
+
         _decoded.Clear();
+        _held = 0;
         _lock.Dispose();
     }
 }

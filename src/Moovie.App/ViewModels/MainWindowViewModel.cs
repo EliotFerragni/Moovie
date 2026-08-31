@@ -296,7 +296,10 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     private void RemoveSelected()
     {
         foreach (var file in SelectedFiles.ToList())
+        {
+            file.ReleaseThumbnail();
             Files.Remove(file);
+        }
         SelectedFiles.Clear();
         Preview.SetSelection([]);
         UpdateSummary();
@@ -305,6 +308,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     [RelayCommand(CanExecute = nameof(CanEditList))]
     private void ClearAll()
     {
+        foreach (var file in Files)
+            file.ReleaseThumbnail();
+
         Files.Clear();
         SelectedFiles.Clear();
         Preview.SetSelection([]);
@@ -699,12 +705,11 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
             if (file.FileTags is { HasArtwork: true } && file.ThumbnailPath != $"file:{file.Path}")
             {
                 file.ThumbnailPath = $"file:{file.Path}";
-                file.Thumbnail = await LoadEmbeddedThumbnailAsync(file.Path);
+                file.ShowThumbnail(await LoadEmbeddedThumbnailAsync(file.Path), owned: true);
             }
             else if (file.FileTags is not { HasArtwork: true })
             {
-                file.ThumbnailPath = null;
-                file.Thumbnail = null;
+                file.ReleaseThumbnail();
             }
 
             return;
@@ -716,14 +721,17 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
                 return;
 
             file.ThumbnailPath = marker;
-            file.Thumbnail = decode();
+            file.ShowThumbnail(decode(), owned: true);
         }
 
         if (file.ThumbnailPath == path)
             return;
 
         file.ThumbnailPath = path;
-        file.Thumbnail = await _artwork.LoadAsync(_tmdb, path, ArtworkLoader.ThumbnailSize);
+
+        // Straight from the cache, so it is not this row's to free: the same poster is very
+        // likely being shown by every other episode of the same show.
+        file.ShowThumbnail(await _artwork.LoadAsync(_tmdb, path, ArtworkLoader.ThumbnailSize), owned: false);
     }
 
     /// <summary>
@@ -1044,6 +1052,12 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
         _work?.Cancel();
         _work?.Dispose();
         _tmdb?.Dispose();
+
+        // The rows first, since a row's own cover is nobody else's to free, then the cache, which
+        // owns everything that came from TMDB.
+        foreach (var file in Files)
+            file.ReleaseThumbnail();
+
         _artwork.Dispose();
     }
 }
