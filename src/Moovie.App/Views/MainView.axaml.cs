@@ -87,8 +87,23 @@ public partial class MainView : UserControl
     /// </summary>
     private void OnFileRowPrepared(object? sender, ContainerPreparedEventArgs e)
     {
-        if (e.Container.DataContext is FileItemViewModel file && ViewModel is { } viewModel)
+        if (e.Container.DataContext is not FileItemViewModel file)
+            return;
+
+        file.IsOnScreen = true;
+        if (ViewModel is { } viewModel)
             _ = viewModel.EnsureThumbnailAsync(file);
+    }
+
+    /// <summary>
+    /// The other half of <see cref="OnFileRowPrepared"/>: a row whose container has gone back to
+    /// the pool is no longer anybody's business, so work that only makes sense for what is on
+    /// screen can skip it.
+    /// </summary>
+    private void OnFileRowCleared(object? sender, ContainerClearingEventArgs e)
+    {
+        if (e.Container.DataContext is FileItemViewModel file)
+            file.IsOnScreen = false;
     }
 
     /// <summary>

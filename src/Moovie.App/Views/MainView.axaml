@@ -82,7 +82,8 @@
           <ListBox Grid.Row="1" Name="FileList" Classes="fileList"
                    ItemsSource="{Binding Files}" SelectionMode="Multiple"
                    SelectionChanged="OnFileSelectionChanged"
-                   ContainerPrepared="OnFileRowPrepared">
+                   ContainerPrepared="OnFileRowPrepared"
+                   ContainerClearing="OnFileRowCleared">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:FileItemViewModel">
                 <Grid ColumnDefinitions="Auto,*,Auto" ToolTip.Tip="{Binding Path}">

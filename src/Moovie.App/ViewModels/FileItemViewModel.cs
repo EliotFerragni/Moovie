@@ -50,6 +50,18 @@ public sealed partial class FileItemViewModel : ObservableObject
     /// </summary>
     public string? ThumbnailPath { get; set; }
 
+    /// <summary>
+    /// Whether the list is currently showing this row, set by the view as it realises and
+    /// releases containers.
+    ///
+    /// It is here so that work triggered by something other than scrolling can ask whether
+    /// anybody can actually see the row. Reading a file's cover costs a second open of the file
+    /// and a decode, and a library can hold tens of thousands of rows, so the difference between
+    /// doing that for the ones on screen and doing it for all of them is the difference between
+    /// a list that appears at once and a NAS that thrashes for a quarter of an hour.
+    /// </summary>
+    public bool IsOnScreen { get; set; }
+
     /// <summary>What the file would be renamed to, or null when renaming is off.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasRenamePreview))]

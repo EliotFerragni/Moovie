@@ -262,7 +262,13 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
         UpdateSummary();
         Preview.Refresh();
 
-        foreach (var item in items)
+        // Only the rows somebody is looking at. The list realises its containers before this runs,
+        // so those rows asked for a thumbnail while their tags were still unread and got nothing;
+        // they are the ones that have to be asked again. Every other row will ask for itself when
+        // it is scrolled to, which is the whole point of doing this per row: a cover costs a
+        // second open of the file and a decode, and adding a library of twenty thousand should
+        // not do that twenty thousand times for a window showing fifteen of them.
+        foreach (var item in items.Where(i => i.IsOnScreen))
             _ = EnsureThumbnailAsync(item);
     }
 
