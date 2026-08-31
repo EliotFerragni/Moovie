@@ -33,6 +33,20 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     private MatchResolver? _resolver;
     private CancellationTokenSource? _work;
 
+    /// <summary>
+    /// Cancelled when the list is emptied, which is how reading a library's worth of files stops
+    /// when somebody decides they did not want it after all. Examining is not a command anybody
+    /// started and so has no other way to be called off.
+    /// </summary>
+    private CancellationTokenSource _listAlive = new();
+
+    /// <summary>
+    /// How many files are examined between handing results back to the list. Small enough that
+    /// emptying the list stops the work promptly and that nothing accumulates, large enough that
+    /// the hop back to the UI thread is not most of the cost.
+    /// </summary>
+    private const int ExamineBatch = 64;
+
     [ObservableProperty]
     private AppSettings _settings;
 
@@ -247,29 +261,61 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     /// </remarks>
     private async Task ExamineAsync(IReadOnlyList<FileItemViewModel> items)
     {
-        // Parsing is cheap, but the probe and the tag read each open the file, so this stays off
-        // the UI thread. Both are the same header, and a season's worth is still milliseconds.
-        var examined = await Task.Run(
-            () => items.Select(i => (Parsed: Examine(i.Path), Tags: ReadTags(i.Path))).ToList());
+        var token = _listAlive.Token;
 
-        for (var i = 0; i < items.Count; i++)
+        // A batch at a time, for three reasons. A library's worth of results is never all in
+        // memory at once; emptying the list stops this within a batch rather than after every
+        // file in the library has been opened; and the rows fill in as they are read instead of
+        // all at the end, which for twenty thousand files is the difference between a list that
+        // is doing something visible and one that looks stuck.
+        for (var start = 0; start < items.Count && !token.IsCancellationRequested; start += ExamineBatch)
         {
-            items[i].Parsed = examined[i].Parsed;
-            items[i].FileTags = examined[i].Tags;
-            Seed(items[i]);
+            var batch = new List<FileItemViewModel>(ExamineBatch);
+            for (var i = start; i < Math.Min(start + ExamineBatch, items.Count); i++)
+            {
+                if (!items[i].IsRemoved)
+                    batch.Add(items[i]);
+            }
+
+            if (batch.Count == 0)
+                continue;
+
+            // Parsing is cheap, but the probe and the tag read each open the file, so this stays
+            // off the UI thread. Both are the same header, and a batch is still milliseconds.
+            List<(ParsedName Parsed, ExistingTags Tags)> examined;
+            try
+            {
+                examined = await Task.Run(
+                    () => batch.Select(i => (Parsed: Examine(i.Path), Tags: ReadTags(i.Path))).ToList(),
+                    token);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+
+            for (var i = 0; i < batch.Count; i++)
+            {
+                if (batch[i].IsRemoved)
+                    continue;
+
+                batch[i].Parsed = examined[i].Parsed;
+                batch[i].FileTags = examined[i].Tags;
+                Seed(batch[i]);
+            }
+
+            UpdateSummary();
+            Preview.Refresh();
+
+            // Only the rows somebody is looking at. The list realises its containers before this
+            // runs, so those rows asked for a thumbnail while their tags were still unread and
+            // got nothing; they are the ones that have to be asked again. Every other row asks
+            // for itself when it is scrolled to, which is the point of doing this per row: a
+            // cover costs a second open of the file and a decode, and adding a library of twenty
+            // thousand should not do that twenty thousand times for a window showing fifteen.
+            foreach (var item in batch.Where(i => i.IsOnScreen))
+                _ = EnsureThumbnailAsync(item);
         }
-
-        UpdateSummary();
-        Preview.Refresh();
-
-        // Only the rows somebody is looking at. The list realises its containers before this runs,
-        // so those rows asked for a thumbnail while their tags were still unread and got nothing;
-        // they are the ones that have to be asked again. Every other row will ask for itself when
-        // it is scrolled to, which is the whole point of doing this per row: a cover costs a
-        // second open of the file and a decode, and adding a library of twenty thousand should
-        // not do that twenty thousand times for a window showing fifteen of them.
-        foreach (var item in items.Where(i => i.IsOnScreen))
-            _ = EnsureThumbnailAsync(item);
     }
 
     /// <summary>
@@ -297,6 +343,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     {
         foreach (var file in SelectedFiles.ToList())
         {
+            file.IsRemoved = true;
             file.ReleaseThumbnail();
             Files.Remove(file);
         }
@@ -308,8 +355,18 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     [RelayCommand(CanExecute = nameof(CanEditList))]
     private void ClearAll()
     {
+        // Nothing on the list means nothing in flight for it either: an examine reading its way
+        // through a library, and any lookup or apply already running, are all called off here.
+        _listAlive.Cancel();
+        _listAlive.Dispose();
+        _listAlive = new CancellationTokenSource();
+        _work?.Cancel();
+
         foreach (var file in Files)
+        {
+            file.IsRemoved = true;
             file.ReleaseThumbnail();
+        }
 
         Files.Clear();
         SelectedFiles.Clear();
@@ -1051,6 +1108,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     {
         _work?.Cancel();
         _work?.Dispose();
+        _listAlive.Cancel();
+        _listAlive.Dispose();
         _tmdb?.Dispose();
 
         // The rows first, since a row's own cover is nobody else's to free, then the cache, which

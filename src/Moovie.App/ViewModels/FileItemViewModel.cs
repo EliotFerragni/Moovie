@@ -73,6 +73,12 @@ public sealed partial class FileItemViewModel : ObservableObject
     public bool IsOnScreen { get; set; }
 
     /// <summary>
+    /// Set when the row has been taken off the list, so work already in flight for it can drop it
+    /// rather than finish into a row nobody will ever see again.
+    /// </summary>
+    public bool IsRemoved { get; set; }
+
+    /// <summary>
     /// Shows a bitmap in this row, releasing the one it replaces if this row owned it.
     ///
     /// A row's artwork comes from two places with opposite rules. A cover read out of the file
