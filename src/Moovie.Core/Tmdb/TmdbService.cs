@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using TMDbLib.Client;
 using TMDbLib.Objects.Exceptions;
 using TMDbLib.Objects.Movies;
@@ -33,13 +34,12 @@ public sealed class TmdbService : ITmdbService, IDisposable
     private readonly HttpClient _http;
     private readonly SemaphoreSlim _gate = new(MaxConcurrentRequests, MaxConcurrentRequests);
 
-    private readonly Dictionary<string, IReadOnlyList<Candidate>> _searchCache = [];
-    private readonly Dictionary<string, Movie?> _movieCache = [];
-    private readonly Dictionary<string, TvShow?> _showCache = [];
-    private readonly Dictionary<string, TvSeason?> _seasonCache = [];
-    private readonly Dictionary<string, byte[]?> _artworkCache = [];
-    private readonly Dictionary<string, IReadOnlyList<ArtworkOption>> _artworkOptionsCache = [];
-    private readonly SemaphoreSlim _cacheLock = new(1, 1);
+    private readonly ConcurrentDictionary<string, IReadOnlyList<Candidate>> _searchCache = [];
+    private readonly ConcurrentDictionary<string, Movie?> _movieCache = [];
+    private readonly ConcurrentDictionary<string, TvShow?> _showCache = [];
+    private readonly ConcurrentDictionary<string, TvSeason?> _seasonCache = [];
+    private readonly ConcurrentDictionary<string, byte[]?> _artworkCache = [];
+    private readonly ConcurrentDictionary<string, IReadOnlyList<ArtworkOption>> _artworkOptionsCache = [];
 
     private string? _imageBaseUrl;
 
@@ -56,8 +56,8 @@ public sealed class TmdbService : ITmdbService, IDisposable
         string query, int? year, string language, CancellationToken cancellationToken = default)
     {
         var key = CacheKey("movie-search", query, year?.ToString(), language);
-        if (TryGetCached(_searchCache, key, out var cached))
-            return cached!;
+        if (_searchCache.TryGetValue(key, out var cached))
+            return cached;
 
         var results = await SendAsync(
             () => _client.SearchMovieAsync(query, language, year: year ?? 0, cancellationToken: cancellationToken),
@@ -74,7 +74,7 @@ public sealed class TmdbService : ITmdbService, IDisposable
             candidates = SafeResults(unfiltered.Results).Select(ToCandidate).ToList();
         }
 
-        await StoreAsync(_searchCache, key, candidates).ConfigureAwait(false);
+        _searchCache[key] = candidates;
         return candidates;
     }
 
@@ -82,15 +82,15 @@ public sealed class TmdbService : ITmdbService, IDisposable
         string query, int? year, string language, CancellationToken cancellationToken = default)
     {
         var key = CacheKey("tv-search", query, year?.ToString(), language);
-        if (TryGetCached(_searchCache, key, out var cached))
-            return cached!;
+        if (_searchCache.TryGetValue(key, out var cached))
+            return cached;
 
         var results = await SendAsync(
             () => _client.SearchTvShowAsync(query, language, cancellationToken: cancellationToken),
             cancellationToken).ConfigureAwait(false);
 
         var candidates = SafeResults(results.Results).Select(ToCandidate).ToList();
-        await StoreAsync(_searchCache, key, candidates).ConfigureAwait(false);
+        _searchCache[key] = candidates;
         return candidates;
     }
 
@@ -182,8 +182,8 @@ public sealed class TmdbService : ITmdbService, IDisposable
         CancellationToken cancellationToken = default)
     {
         var key = CacheKey("art-options", $"{kind}-{tmdbId}-{season}-{episode}", language, null);
-        if (TryGetCached(_artworkOptionsCache, key, out var cached))
-            return cached!;
+        if (_artworkOptionsCache.TryGetValue(key, out var cached))
+            return cached;
 
         var options = new List<ArtworkOption>();
 
@@ -223,7 +223,7 @@ public sealed class TmdbService : ITmdbService, IDisposable
         }
 
         var ordered = OrderArtwork(options, language);
-        await StoreAsync(_artworkOptionsCache, key, ordered).ConfigureAwait(false);
+        _artworkOptionsCache[key] = ordered;
         return ordered;
     }
 
@@ -290,7 +290,7 @@ public sealed class TmdbService : ITmdbService, IDisposable
             return null;
 
         var key = CacheKey("art", artworkPath, size, null);
-        if (TryGetCached(_artworkCache, key, out var cached))
+        if (_artworkCache.TryGetValue(key, out var cached))
             return cached;
 
         var url = BuildImageUrl(artworkPath, size);
@@ -307,7 +307,7 @@ public sealed class TmdbService : ITmdbService, IDisposable
             // Artwork is a nice-to-have: a failed download must not fail the whole file.
         }
 
-        await StoreAsync(_artworkCache, key, bytes).ConfigureAwait(false);
+        _artworkCache[key] = bytes;
         return bytes;
     }
 
@@ -352,11 +352,8 @@ public sealed class TmdbService : ITmdbService, IDisposable
                     return await call().ConfigureAwait(false)
                            ?? throw new TmdbException(Strings.Get("tmdb.emptyResponse"));
                 }
-                catch (RequestLimitExceededException) when (attempt < MaxRetries)
-                {
-                    await Task.Delay(TimeSpan.FromSeconds(attempt), cancellationToken).ConfigureAwait(false);
-                }
-                catch (HttpRequestException) when (attempt < MaxRetries)
+                catch (Exception e) when (attempt < MaxRetries
+                                          && e is RequestLimitExceededException or HttpRequestException)
                 {
                     await Task.Delay(TimeSpan.FromSeconds(attempt), cancellationToken).ConfigureAwait(false);
                 }
@@ -391,7 +388,7 @@ public sealed class TmdbService : ITmdbService, IDisposable
     private async Task<Movie?> GetMovieRecordAsync(int movieId, string language, CancellationToken cancellationToken)
     {
         var key = CacheKey("movie", movieId.ToString(), language, null);
-        if (TryGetCached(_movieCache, key, out var cached))
+        if (_movieCache.TryGetValue(key, out var cached))
             return cached;
 
         var movie = await SendAsync(
@@ -401,14 +398,14 @@ public sealed class TmdbService : ITmdbService, IDisposable
                 cancellationToken: cancellationToken),
             cancellationToken).ConfigureAwait(false);
 
-        await StoreAsync(_movieCache, key, movie).ConfigureAwait(false);
+        _movieCache[key] = movie;
         return movie;
     }
 
     private async Task<TvShow?> GetShowRecordAsync(int showId, string language, CancellationToken cancellationToken)
     {
         var key = CacheKey("show", showId.ToString(), language, null);
-        if (TryGetCached(_showCache, key, out var cached))
+        if (_showCache.TryGetValue(key, out var cached))
             return cached;
 
         var show = await SendAsync(
@@ -419,7 +416,7 @@ public sealed class TmdbService : ITmdbService, IDisposable
                 cancellationToken: cancellationToken),
             cancellationToken).ConfigureAwait(false);
 
-        await StoreAsync(_showCache, key, show).ConfigureAwait(false);
+        _showCache[key] = show;
         return show;
     }
 
@@ -427,7 +424,7 @@ public sealed class TmdbService : ITmdbService, IDisposable
         int showId, int season, string language, CancellationToken cancellationToken)
     {
         var key = CacheKey("season", $"{showId}-{season}", language, null);
-        if (TryGetCached(_seasonCache, key, out var cached))
+        if (_seasonCache.TryGetValue(key, out var cached))
             return cached;
 
         TvSeason? record;
@@ -444,7 +441,7 @@ public sealed class TmdbService : ITmdbService, IDisposable
             record = null;
         }
 
-        await StoreAsync(_seasonCache, key, record).ConfigureAwait(false);
+        _seasonCache[key] = record;
         return record;
     }
 
@@ -642,36 +639,9 @@ public sealed class TmdbService : ITmdbService, IDisposable
     private static string CacheKey(string kind, string? a, string? b, string? c) =>
         string.Join('|', kind, a?.ToLowerInvariant(), b, c);
 
-    private bool TryGetCached<T>(Dictionary<string, T> cache, string key, out T? value)
-    {
-        _cacheLock.Wait();
-        try
-        {
-            return cache.TryGetValue(key, out value!);
-        }
-        finally
-        {
-            _cacheLock.Release();
-        }
-    }
-
-    private async Task StoreAsync<T>(Dictionary<string, T> cache, string key, T value)
-    {
-        await _cacheLock.WaitAsync().ConfigureAwait(false);
-        try
-        {
-            cache[key] = value;
-        }
-        finally
-        {
-            _cacheLock.Release();
-        }
-    }
-
     public void Dispose()
     {
         _gate.Dispose();
-        _cacheLock.Dispose();
         _http.Dispose();
     }
 }

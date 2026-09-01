@@ -106,7 +106,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasCandidates))]
     private ObservableCollection<CandidateViewModel> _candidates = [];
 
-    /// <summary>0 = Movie, 1 = TV show. Bound to the toggle at the top of the form.</summary>
+    /// <summary>Bound to the Type list at the top of the form; read through <see cref="SelectedKind"/>.</summary>
     [ObservableProperty]
     private int _kindIndex;
 
@@ -171,6 +171,22 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
     /// <summary>Mirrors how a field reads when the selected files disagree.</summary>
     public string? LanguagePlaceholder => LanguagesDiffer ? FieldEditor.MultipleValuesWatermark : null;
 
+    private const int MovieKindIndex = 0;
+    private const int TvKindIndex = 1;
+
+    private static MediaKind KindOf(int index) =>
+        index == TvKindIndex ? MediaKind.TvEpisode : MediaKind.Movie;
+
+    /// <summary>
+    /// The medium the form is set to. The one place a list index and a <see cref="MediaKind"/>
+    /// are treated as the same thing.
+    /// </summary>
+    private MediaKind SelectedKind
+    {
+        get => KindOf(KindIndex);
+        set => KindIndex = value == MediaKind.TvEpisode ? TvKindIndex : MovieKindIndex;
+    }
+
     /// <summary>
     /// Refills the whole pane for a new selection. Called on every selection change.
     /// </summary>
@@ -185,7 +201,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
             OnPropertyChanged(nameof(ShowDiff));
 
             var kind = DominantKind();
-            KindIndex = kind == MediaKind.TvEpisode ? 1 : 0;
+            SelectedKind = kind;
 
             foreach (var field in Fields)
                 field.Rebind(_selection, kind);
@@ -292,10 +308,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
 
     private async Task LoadPosterAsync()
     {
-        _posterLoad?.Cancel();
-        _posterLoad?.Dispose();
-        _posterLoad = new CancellationTokenSource();
-        var token = _posterLoad.Token;
+        var token = Cancellation.Restart(ref _posterLoad);
 
         var path = _selection.Count == 1 ? _selection[0].Metadata.ArtworkPath : null;
         UpdateArtworkCaption(path);
@@ -353,10 +366,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
     /// </summary>
     private async Task LoadDiffAsync()
     {
-        _diffLoad?.Cancel();
-        _diffLoad?.Dispose();
-        _diffLoad = new CancellationTokenSource();
-        var token = _diffLoad.Token;
+        var token = Cancellation.Restart(ref _diffLoad);
 
         _existing = null;
         _existingError = null;
@@ -525,7 +535,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
         _rebinding = true;
         try
         {
-            KindIndex = file.Metadata.Kind == MediaKind.TvEpisode ? 1 : 0;
+            SelectedKind = file.Metadata.Kind;
             foreach (var field in Fields)
                 field.Rebind(_selection, DominantKind());
         }
@@ -662,7 +672,13 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
     /// Puts one title onto every selected file, each keeping its own season and episode numbers,
     /// so a whole show that matched the wrong series is corrected in one go.
     /// </summary>
-    private async Task ApplyCandidateAsync(Candidate candidate)
+    private Task ApplyCandidateAsync(Candidate candidate) =>
+        ApplyToSelectionAsync(file => _lookup.ChooseCandidateAsync(file, candidate));
+
+    /// <summary>
+    /// Runs <paramref name="apply"/> over the whole selection behind the searching state.
+    /// </summary>
+    private async Task ApplyToSelectionAsync(Func<FileItemViewModel, Task> apply)
     {
         var targets = _selection.ToList();
         if (targets.Count == 0)
@@ -673,7 +689,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
         try
         {
             foreach (var file in targets)
-                await _lookup.ChooseCandidateAsync(file, candidate);
+                await apply(file);
 
             if (targets.Count > 1)
                 SearchMessage = Strings.Format("pane.appliedTo", targets.Count);
@@ -697,6 +713,9 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
         Refresh();
     }
 
+    /// <summary>How many hand-search results the pane offers.</summary>
+    private const int MaxSearchResults = 10;
+
     /// <summary>Searches TMDB by hand, for files whose names defeated the parser.</summary>
     [RelayCommand]
     private async Task SearchAsync()
@@ -716,12 +735,12 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
         {
             // The language the dropdown is showing, which is null when the files disagree.
             var language = SelectedLanguage?.Tag ?? _lookup.Language;
-            var results = KindIndex == 1
+            var results = SelectedKind == MediaKind.TvEpisode
                 ? await _lookup.Tmdb.SearchShowsAsync(SearchText, null, language)
                 : await _lookup.Tmdb.SearchMoviesAsync(SearchText, null, language);
 
             Candidates.Clear();
-            foreach (var candidate in results.Take(10))
+            foreach (var candidate in results.Take(MaxSearchResults))
                 Candidates.Add(new CandidateViewModel(candidate));
 
             OnPropertyChanged(nameof(HasCandidates));
@@ -751,27 +770,8 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
             return;
         }
 
-        var targets = _selection.ToList();
-        IsSearching = true;
-        SearchMessage = targets.Count > 1 ? Strings.Format("pane.applyingTo", targets.Count) : null;
-        try
-        {
-            var kind = KindIndex == 1 ? MediaKind.TvEpisode : MediaKind.Movie;
-            foreach (var file in targets)
-                await _lookup.ApplyTmdbIdAsync(file, id, kind);
-
-            if (targets.Count > 1)
-                SearchMessage = Strings.Format("pane.appliedTo", targets.Count);
-        }
-        catch (Exception e)
-        {
-            SearchMessage = e.Message;
-        }
-        finally
-        {
-            IsSearching = false;
-            Refresh();
-        }
+        var kind = SelectedKind;
+        await ApplyToSelectionAsync(file => _lookup.ApplyTmdbIdAsync(file, id, kind));
     }
 
     partial void OnKindIndexChanged(int value)
@@ -779,7 +779,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
         if (_rebinding || _selection.Count == 0)
             return;
 
-        var kind = value == 1 ? MediaKind.TvEpisode : MediaKind.Movie;
+        var kind = KindOf(value);
         foreach (var file in _selection)
         {
             file.Metadata.Kind = kind;

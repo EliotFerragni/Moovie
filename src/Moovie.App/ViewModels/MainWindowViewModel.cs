@@ -33,6 +33,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     private MatchResolver? _resolver;
     private CancellationTokenSource? _work;
 
+    private readonly TemplateMemo _movieTemplate = new();
+    private readonly TemplateMemo _tvTemplate = new();
+
     /// <summary>
     /// Cancelled when the list is emptied. Examining is not a command anybody started, so this is
     /// its only way to be called off.
@@ -404,10 +407,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
             return;
         }
 
-        _work?.Cancel();
-        _work?.Dispose();
-        _work = new CancellationTokenSource();
-        var token = _work.Token;
+        var token = Cancellation.Restart(ref _work);
 
         IsBusy = true;
         Progress = 0;
@@ -525,16 +525,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     private void ApplyOutcome(FileItemViewModel item, MatchOutcome outcome)
     {
         if (outcome.Metadata is not null)
-        {
-            ApplyArtworkPreference(outcome.Metadata);
-            item.RememberFetched(outcome.Metadata);
-
-            // A hand-picked image does not survive a fetch, so it stops counting as an edit.
-            item.ClearFieldEdit(nameof(MediaMetadata.ArtworkPath));
-
-            // Anything the user typed by hand outranks what TMDB just returned.
-            item.Metadata = MergeKeepingUserEdits(item, outcome.Metadata);
-        }
+            AcceptFetched(item, outcome.Metadata);
 
         item.Candidates = [.. outcome.Candidates];
         item.Status = item.UserEditedFields.Count > 0 && outcome.Status == FileStatus.Matched
@@ -546,9 +537,30 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     }
 
     /// <summary>
+    /// Takes a fresh TMDB result as the file's new starting point, keeping every field the user
+    /// typed. Both the automatic match and a title chosen by hand come through here.
+    /// </summary>
+    private void AcceptFetched(FileItemViewModel item, MediaMetadata fetched)
+    {
+        ApplyArtworkPreference(fetched);
+        item.RememberFetched(fetched);
+
+        // A hand-picked image does not survive a fetch, so it stops counting as an edit.
+        item.ClearFieldEdit(nameof(MediaMetadata.ArtworkPath));
+
+        // Anything the user typed by hand outranks what TMDB just returned.
+        item.Metadata = MergeKeepingUserEdits(item, fetched);
+    }
+
+    /// <summary>
     /// Overlays fresh TMDB metadata onto a file while preserving every field the user edited,
     /// which is what makes "refetch in another language" safe.
     /// </summary>
+    /// <remarks>
+    /// Deliberately not <see cref="MetadataFields"/>, which speaks the diff's vocabulary rather
+    /// than the form's: no id or original title, since the writer has no atom for them, and the
+    /// year moves with the release date, where the form edits the two separately.
+    /// </remarks>
     private static MediaMetadata MergeKeepingUserEdits(FileItemViewModel item, MediaMetadata fresh)
     {
         if (item.UserEditedFields.Count == 0)
@@ -603,32 +615,10 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
             MediaMetadata? metadata;
             if (candidate.Kind == MediaKind.TvEpisode)
             {
-                var season = file.Metadata.Season ?? file.Parsed?.Season ?? 1;
-                var episodes = file.Metadata.Episodes.Count > 0
-                    ? file.Metadata.Episodes
-                    : file.Parsed?.Episodes ?? [];
-
-                if (episodes.Count == 0 && file.Parsed?.AirDate is { } airDate)
-                {
-                    var located = await _tmdb.FindEpisodeByAirDateAsync(candidate.TmdbId, airDate, language);
-                    if (located is { } coordinate)
-                    {
-                        season = coordinate.Season;
-                        episodes = [coordinate.Episode];
-                    }
-                }
-
+                var (season, episodes) = await LocateEpisodeAsync(file, candidate, language);
                 if (episodes.Count == 0)
                 {
-                    // We know the show now; the user still has to say which episode.
-                    file.Metadata.Kind = MediaKind.TvEpisode;
-                    file.Metadata.ShowName = candidate.Title;
-                    file.Metadata.TmdbId = candidate.TmdbId;
-                    file.Metadata.ArtworkPath = candidate.PosterPath;
-                    file.Status = FileStatus.NeedsChoice;
-                    file.Message = Strings.Get("pane.setSeasonEpisode");
-                    file.RefreshSubtitle();
-                    NotifyMetadataChanged(file);
+                    AwaitEpisodeNumbers(file, candidate);
                     return;
                 }
 
@@ -647,10 +637,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
             }
 
             metadata.Resolution = file.Metadata.Resolution ?? file.Parsed?.Resolution;
-            ApplyArtworkPreference(metadata);
-            file.RememberFetched(metadata);
-            file.ClearFieldEdit(nameof(MediaMetadata.ArtworkPath));
-            file.Metadata = MergeKeepingUserEdits(file, metadata);
+            AcceptFetched(file, metadata);
             file.Status = file.UserEditedFields.Count > 0 ? FileStatus.Edited : FileStatus.Matched;
             file.Message = null;
             file.Candidates = [];
@@ -662,6 +649,40 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
             file.Status = FileStatus.Failed;
             file.Message = e.Message;
         }
+    }
+
+    /// <summary>
+    /// Where in the show this file sits: what the form and the filename say, or, for a daily show
+    /// giving only an air date, whichever episode TMDB aired that day. No episodes back means the
+    /// show is settled and the numbering is not.
+    /// </summary>
+    private async Task<(int Season, IReadOnlyList<int> Episodes)> LocateEpisodeAsync(
+        FileItemViewModel file, Candidate candidate, string language)
+    {
+        var season = file.Metadata.Season ?? file.Parsed?.Season ?? 1;
+        IReadOnlyList<int> episodes = file.Metadata.Episodes.Count > 0
+            ? file.Metadata.Episodes
+            : file.Parsed?.Episodes ?? [];
+
+        if (episodes.Count > 0 || file.Parsed?.AirDate is not { } airDate)
+            return (season, episodes);
+
+        return await _tmdb!.FindEpisodeByAirDateAsync(candidate.TmdbId, airDate, language) is { } aired
+            ? (aired.Season, [aired.Episode])
+            : (season, episodes);
+    }
+
+    /// <summary>Parks a file that has found its show but not its episode.</summary>
+    private void AwaitEpisodeNumbers(FileItemViewModel file, Candidate candidate)
+    {
+        file.Metadata.Kind = MediaKind.TvEpisode;
+        file.Metadata.ShowName = candidate.Title;
+        file.Metadata.TmdbId = candidate.TmdbId;
+        file.Metadata.ArtworkPath = candidate.PosterPath;
+        file.Status = FileStatus.NeedsChoice;
+        file.Message = Strings.Get("pane.setSeasonEpisode");
+        file.RefreshSubtitle();
+        NotifyMetadataChanged(file);
     }
 
     /// <summary>
@@ -711,51 +732,55 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     /// </summary>
     public async Task EnsureThumbnailAsync(FileItemViewModel file)
     {
-        var path = file.Metadata.ArtworkPath;
-
-        if (string.IsNullOrWhiteSpace(path))
+        var chosen = file.Metadata.ArtworkPath;
+        if (!string.IsNullOrWhiteSpace(chosen))
         {
-            // No path but bytes in hand means the file's own cover was kept from the preview
-            // diff, so the row shows that rather than emptying over a cover that is staying put.
-            // The length stands in for a path: it only has to tell this file's own covers apart.
-            if (file.Metadata.ArtworkData is { Length: > 0 } kept)
+            if (ClaimThumbnail(file, chosen))
             {
-                Take($"embedded:{kept.Length}", () => ArtworkLoader.Decode(kept, ArtworkLoader.ThumbnailHeight));
-                return;
+                // Straight from the cache, so it is not this row's to free: the same poster is
+                // very likely on every other episode of the same show.
+                file.ShowThumbnail(
+                    await _artwork.LoadAsync(_tmdb, chosen, ArtworkLoader.ThumbnailSize), owned: false);
             }
 
-            // Nothing chosen yet, but the file's own cover is what the row shows until a lookup
-            // offers a different one.
-            if (file.FileTags is { HasArtwork: true } && file.ThumbnailPath != $"file:{file.Path}")
-            {
-                file.ThumbnailPath = $"file:{file.Path}";
+            return;
+        }
+
+        // No path but bytes in hand means the file's own cover was kept from the preview diff, so
+        // the row shows that rather than emptying over a cover that is staying put. The length
+        // stands in for a path: it only has to tell this file's own covers apart.
+        if (file.Metadata.ArtworkData is { Length: > 0 } kept)
+        {
+            if (ClaimThumbnail(file, $"embedded:{kept.Length}"))
+                file.ShowThumbnail(ArtworkLoader.Decode(kept, ArtworkLoader.ThumbnailHeight), owned: true);
+
+            return;
+        }
+
+        // Nothing chosen yet, but the file's own cover is what the row shows until a lookup offers
+        // a different one.
+        if (file.FileTags is { HasArtwork: true })
+        {
+            if (ClaimThumbnail(file, $"file:{file.Path}"))
                 file.ShowThumbnail(await LoadEmbeddedThumbnailAsync(file.Path), owned: true);
-            }
-            else if (file.FileTags is not { HasArtwork: true })
-            {
-                file.ReleaseThumbnail();
-            }
 
             return;
         }
 
-        void Take(string marker, Func<Bitmap?> decode)
-        {
-            if (file.ThumbnailPath == marker)
-                return;
+        file.ReleaseThumbnail();
+    }
 
-            file.ThumbnailPath = marker;
-            file.ShowThumbnail(decode(), owned: true);
-        }
+    /// <summary>
+    /// Notes which image the row is about to show, and reports whether that is a change: a row
+    /// already showing it should not decode a second copy.
+    /// </summary>
+    private static bool ClaimThumbnail(FileItemViewModel file, string marker)
+    {
+        if (file.ThumbnailPath == marker)
+            return false;
 
-        if (file.ThumbnailPath == path)
-            return;
-
-        file.ThumbnailPath = path;
-
-        // Straight from the cache, so it is not this row's to free: the same poster is very
-        // likely on every other episode of the same show.
-        file.ShowThumbnail(await _artwork.LoadAsync(_tmdb, path, ArtworkLoader.ThumbnailSize), owned: false);
+        file.ThumbnailPath = marker;
+        return true;
     }
 
     /// <summary>
@@ -790,15 +815,11 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
         if (targets.Count == 0)
             return;
 
-        _work?.Cancel();
-        _work?.Dispose();
-        _work = new CancellationTokenSource();
-        var token = _work.Token;
+        var token = Cancellation.Restart(ref _work);
 
-        var movieTemplate = RenameTemplate.Parse(Settings.MovieRenameTemplate);
-        var tvTemplate = RenameTemplate.Parse(Settings.TvRenameTemplate);
-
-        if (Settings.RenameEnabled && (!movieTemplate.Validation.IsValid || !tvTemplate.Validation.IsValid))
+        if (Settings.RenameEnabled
+            && (!TemplateFor(MediaKind.Movie).Validation.IsValid
+                || !TemplateFor(MediaKind.TvEpisode).Validation.IsValid))
         {
             Banner = Strings.Get("main.badTemplate");
             return;
@@ -819,7 +840,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
                 ProgressText = Strings.Format("main.writingFile", index + 1, targets.Count, file.FileName);
                 Progress = (double)index / targets.Count * 100;
 
-                if (await ApplyOneAsync(file, movieTemplate, tvTemplate, token))
+                if (await ApplyOneAsync(file, token))
                     written++;
                 else
                     failed++;
@@ -842,8 +863,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
         }
     }
 
-    private async Task<bool> ApplyOneAsync(
-        FileItemViewModel file, RenameTemplate movieTemplate, RenameTemplate tvTemplate, CancellationToken token)
+    private async Task<bool> ApplyOneAsync(FileItemViewModel file, CancellationToken token)
     {
         file.Status = FileStatus.Applying;
         file.Message = null;
@@ -861,7 +881,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
 
             if (Settings.RenameEnabled)
             {
-                var template = file.Metadata.Kind == MediaKind.TvEpisode ? tvTemplate : movieTemplate;
+                var template = TemplateFor(file.Metadata.Kind);
                 var renamed = await Task.Run(
                     () => RenameEngine.Rename(
                         file.Path, template, file.Metadata,
@@ -1007,17 +1027,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
 
     private void RefreshRenamePreview(FileItemViewModel file)
     {
-        if (!Settings.RenameEnabled)
-        {
-            file.RenamePreview = null;
-            return;
-        }
+        var template = Settings.RenameEnabled ? TemplateFor(file.Metadata.Kind) : null;
 
-        var template = RenameTemplate.Parse(file.Metadata.Kind == MediaKind.TvEpisode
-            ? Settings.TvRenameTemplate
-            : Settings.MovieRenameTemplate);
-
-        if (!template.Validation.IsValid)
+        if (template is null || !template.Validation.IsValid)
         {
             file.RenamePreview = null;
             return;
@@ -1026,6 +1038,33 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
         var preview = RenameEngine.PreviewFileName(
             file.Path, template, file.Metadata, Settings.Separator, Settings.OmitResolutionAtOrBelow);
         file.RenamePreview = string.Equals(preview, file.FileName, StringComparison.Ordinal) ? null : preview;
+    }
+
+    /// <summary>The rename template for a medium, parsed once and reused until the setting changes.</summary>
+    private RenameTemplate TemplateFor(MediaKind kind) =>
+        kind == MediaKind.TvEpisode
+            ? _tvTemplate.Of(Settings.TvRenameTemplate)
+            : _movieTemplate.Of(Settings.MovieRenameTemplate);
+
+    /// <summary>
+    /// Holds the parsed form of one template. Previews are refreshed for every selected file on
+    /// every keystroke, so parsing afresh each time was real work on a library of any size.
+    /// </summary>
+    private sealed class TemplateMemo
+    {
+        private string? _text;
+        private RenameTemplate? _parsed;
+
+        public RenameTemplate Of(string text)
+        {
+            if (_parsed is null || _text != text)
+            {
+                _text = text;
+                _parsed = RenameTemplate.Parse(text);
+            }
+
+            return _parsed;
+        }
     }
 
     // ---------------------------------------------------------------- summary
