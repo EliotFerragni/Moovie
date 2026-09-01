@@ -18,13 +18,10 @@ public enum ChangeKind
 
 /// <summary>
 /// One row of the preview diff: a field, the value the file already carries, the value the lookup
-/// produced, and the value that will actually be written.
+/// produced, and the value that will actually be written. Three values rather than two because
+/// the pane lets each field be pointed at either source, and a field typed into by hand matches
+/// neither.
 /// </summary>
-/// <remarks>
-/// Three values rather than two, because the pane lets each field be pointed at either source.
-/// <see cref="Pending"/> is what applying writes; it normally equals one of the other two, and
-/// equals neither once the field has been typed into by hand.
-/// </remarks>
 public sealed record MetadataChange(string Key, string Label, string? Current, string? Pending)
 {
     /// <summary>What the lookup produced for this field, in written form.</summary>
@@ -65,16 +62,10 @@ public sealed record MetadataChange(string Key, string Label, string? Current, s
 /// write into it.
 /// </summary>
 /// <remarks>
-/// Two rules keep the result honest. Only fields <see cref="Mp4TagWriter"/> actually writes are
-/// compared (a TMDB id has no atom, so listing it would promise a change that never happens),
-/// and every column is compared in its <em>written</em> form via <see cref="TagFormat"/>, so a
-/// date held as a year on one side and a full date on the other does not read as a difference
-/// when both write the same string.
-/// <para>
-/// All three columns are gated by the <em>pending</em> media kind for the same reason. Switching
-/// a file to Movie stops the TV fields being written whatever the lookup returned, so showing
-/// TMDB's show name in that state would offer a value that clicking it could not produce.
-/// </para>
+/// Three rules keep the result honest: only fields <see cref="Mp4TagWriter"/> actually writes are
+/// compared, every column is compared in its <em>written</em> form via <see cref="TagFormat"/>,
+/// and all three columns are gated by the <em>pending</em> media kind. Otherwise a row would offer
+/// a value that applying could not produce.
 /// </remarks>
 public static class MetadataDiff
 {
@@ -85,7 +76,7 @@ public static class MetadataDiff
     /// </summary>
     /// <param name="fetched">
     /// The metadata as the lookup last returned it, or null for a file that has not been looked
-    /// up. Null leaves every row with only the file's side to offer.
+    /// up, which leaves every row with only the file's side to offer.
     /// </param>
     public static IReadOnlyList<MetadataChange> Between(
         ExistingTags current, MediaMetadata pending, MediaMetadata? fetched = null)
@@ -199,13 +190,10 @@ public static class MetadataDiff
 
     /// <summary>
     /// Artwork is the one field applying never empties: with no new image the writer leaves what
-    /// is there alone, so an absent cover is not reported as a change waiting to happen.
+    /// is there alone. When both sides hold the image itself the bytes settle it, which is what
+    /// lets a file read back straight after applying report nothing left to do; with only a TMDB
+    /// path on the pending side there is nothing to compare, so it counts as a write.
     /// </summary>
-    /// <remarks>
-    /// When both sides have the image itself the bytes settle it, which is what makes a file
-    /// read back straight after applying say there is nothing left to do. With only a TMDB path
-    /// on the pending side there is nothing to compare, so the cover is reported as a write.
-    /// </remarks>
     private static void AddArtworkChange(
         List<MetadataChange> changes, ExistingTags current, MediaMetadata pending, MediaMetadata? fetched)
     {

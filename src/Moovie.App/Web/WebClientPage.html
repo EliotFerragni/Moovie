@@ -37,8 +37,8 @@
   const modifiers = e => ({ alt: e.altKey, control: e.ctrlKey, shift: e.shiftKey, meta: e.metaKey });
 
   // Avalonia lays out in logical pixels and scales by the DPI it is told, so the viewport goes
-  // over in CSS pixels and the device pixel ratio rides along as the DPI. Frames then come back
-  // at the physical size, which is what keeps text sharp on a HiDPI screen.
+  // over in CSS pixels with the device pixel ratio as the DPI. Frames then come back at the
+  // physical size, which is what keeps text sharp on a HiDPI screen.
   const sendSize = () => send({
     type: 'size',
     width: canvas.clientWidth,
@@ -46,16 +46,14 @@
     dpi: 96 * (window.devicePixelRatio || 1),
   });
 
-  // The clipboard worth having is the browser's, since that is the one the user's other programs
-  // share, and script may only put text on it from inside a gesture the browser has just handled
+  // Script may only put text on the browser's clipboard from inside a gesture it has just handled
   // or over a secure connection, which a page served from a NAS over plain HTTP is not. So the
-  // app's selected text is kept selected in the hidden field above, and the field is what holds
-  // the focus: the browser's own copy and cut then have exactly the right text to take, with
-  // nothing asked of it. Keys are read from the window, so the app still sees every one of them.
+  // app's selected text is kept selected in the hidden field above, and that field holds the
+  // focus: the browser's own copy and cut then have the right text to take, with nothing asked of
+  // it. Keys are read from the window, so the app still sees every one of them.
   let selected = '';
 
-  // Fills the field with the app's selection and selects it, which is the state the browser's own
-  // copy and cut need to find it in.
+  // Leaves the field in the state the browser's own copy and cut need to find it in.
   const prime = () => {
     clipboard.value = selected;
     // Not select(), which in some browsers moves the focus as well.
@@ -64,20 +62,19 @@
 
   const mirror = text => { selected = text; prime(); };
 
-  // What the browser is believed to hold, so that text the app copies is not chased with a second,
-  // far less certain, attempt to put the same thing there again.
+  // What the browser is believed to hold, so the app does not chase its own copy with a second,
+  // far less certain, attempt to put the same text there.
   let onClipboard = '';
 
-  // A field with the focus raises the on-screen keyboard on a touch device, over the very window
-  // it would be typing into, so there the canvas keeps the focus as it always did and the
-  // clipboard is left to the browser's own long-press menu.
+  // A focused field raises the on-screen keyboard on a touch device, over the window it would be
+  // typing into, so there the canvas keeps the focus and the clipboard is left to the browser's
+  // own long-press menu.
   let physicalKeyboard = matchMedia('(pointer: fine)').matches;
   const focusApp = () => (physicalKeyboard ? clipboard : canvas).focus();
 
   // Which buttons are held goes over with every pointer message, not only the press, as the
-  // browser's own bitmask: 1 left, 2 right, 4 middle. A text box asks a move whether the left
-  // button is down before it extends its selection, so without this a drag across text selected
-  // nothing and there was then nothing for copy or cut to take.
+  // browser's bitmask: 1 left, 2 right, 4 middle. A text box will not extend its selection unless
+  // a move says the left button is down, so without this a drag across text selected nothing.
   const pointerAt = (e, type) => {
     const box = canvas.getBoundingClientRect();
     return {
@@ -102,24 +99,22 @@
   });
   canvas.addEventListener('pointerup', e => {
     canvas.releasePointerCapture(e.pointerId);
-    // A move still waiting for its frame happened before the release, and has to be sent before
-    // it: the drag it belongs to is over by the time the app sees the release.
+    // A move still waiting for its frame happened before the release and has to go out first.
     if (pendingMove) { send(pendingMove); pendingMove = null; }
     send(pointerAt(e, 'pointer-released'));
   });
   canvas.addEventListener('contextmenu', e => e.preventDefault());
 
-  // The default action of a mousedown is to focus what is under the cursor, and the canvas is
-  // focusable so that a touch device has somewhere to put the focus. Left alone, every click took
-  // the focus off the hidden field and the browser then had nothing to copy from. Pointer events
-  // are unaffected by this, and so is the app.
+  // A mousedown focuses what is under the cursor, and the canvas is focusable so a touch device
+  // has somewhere to put the focus. Left alone, every click took the focus off the hidden field
+  // and the browser had nothing to copy from. Pointer events are unaffected, and so is the app.
   canvas.addEventListener('mousedown', e => e.preventDefault());
 
   canvas.addEventListener('wheel', e => {
     e.preventDefault();
     const box = canvas.getBoundingClientRect();
-    // Avalonia counts scroll in lines; a browser reports pixels unless the user has a line-wise
-    // device, so a pixel delta is divided down to something that scrolls at a sane speed.
+    // Avalonia counts scroll in lines and a browser reports pixels unless the device is
+    // line-wise, so a pixel delta is divided down to something that scrolls at a sane speed.
     const scale = e.deltaMode === 0 ? 1 / 40 : 1;
     send({
       type: 'scroll', x: e.clientX - box.left, y: e.clientY - box.top,
@@ -127,9 +122,9 @@
     });
   }, { passive: false });
 
-  // A single printable character is sent as text as well as a key, because Avalonia fills a text
-  // box from text input events and uses key events only for editing and shortcuts. Anything with
-  // Control or Meta held is a shortcut rather than typing, so it goes as a key alone.
+  // A printable character is sent as text as well as a key: Avalonia fills a text box from text
+  // input events and uses key events only for editing and shortcuts. Control or Meta makes it a
+  // shortcut rather than typing, so that goes as a key alone.
   const isTyping = e => e.key.length === 1 && !e.ctrlKey && !e.metaKey;
 
   // Which of the three the user asked for, under any of their spellings, or nothing.
@@ -144,15 +139,13 @@
   };
 
   window.addEventListener('keydown', e => {
-    // These three are the browser's to carry out, on the hidden field: preventing the default
-    // here, as everything below does, is what stopped the clipboard working at all. A paste comes
-    // back as a paste event; the other two only have to be told to the app, which has the
-    // selection to cut and the text to remember.
+    // These three are the browser's to carry out on the hidden field, so they must not be
+    // prevented the way everything below is. A paste comes back as a paste event; the other two
+    // only have to be told to the app, which has the selection to cut and the text to remember.
     const clipboardKey = clipboardAction(e);
     if (clipboardKey) {
-      // The field is put back in order first. A key event is proof of a real keyboard, so the
-      // focus goes there whatever the last pointer was, and the app's selection may well have
-      // been pushed while something else held it.
+      // A key event is proof of a real keyboard, so the focus goes to the field whatever the last
+      // pointer was, and the selection may have been pushed while something else held it.
       prime();
       clipboard.focus();
 
@@ -179,14 +172,14 @@
     if (text) { onClipboard = text; send({ type: 'paste', text }); }
   });
 
-  // The browser is taking the app's selection. It is handed over explicitly rather than left to
-  // the field's own selection, which is one less thing to be wrong about; a cut deletes nothing
-  // here, since the app deletes its own selection and then pushes what is left.
+  // The browser is taking the app's selection. Handed over explicitly rather than left to the
+  // field's own selection; a cut deletes nothing here, since the app deletes its own selection
+  // and then pushes what is left.
   const take = e => {
     if (!selected) return;
 
-    // Every browser that fires this hands over a clipboardData; were one not to, the throw is
-    // harmless, since its own copy of the field would then go ahead and take the same text.
+    // A browser without clipboardData would throw harmlessly: its own copy of the field would
+    // then take the same text.
     e.clipboardData.setData('text/plain', selected);
     e.preventDefault();
     onClipboard = selected;
@@ -194,11 +187,10 @@
   window.addEventListener('copy', take);
   window.addEventListener('cut', take);
 
-  // The app copied something from its own context menu rather than the user pressing anything.
-  // Whether the browser will take it depends on the browser: Chrome allows this for a few seconds
-  // after the click that asked for it, Firefox only from inside the handler of the gesture itself.
-  // So it is attempted, not relied on; the field holds the text either way, so the user's own
-  // Ctrl+C always works.
+  // The app copied from its own context menu rather than the user pressing anything. Chrome
+  // allows this for a few seconds after the click that asked for it, Firefox only from inside the
+  // gesture's own handler, so it is attempted rather than relied on: the field holds the text
+  // either way, and the user's own Ctrl+C always works.
   const offerCopy = text => {
     mirror(text);
     if (!text || text === onClipboard || !physicalKeyboard) return;
@@ -214,8 +206,8 @@
   window.addEventListener('resize', sendSize);
 
   // Each message is a patch: the size of the whole window, where the patch belongs in it, and a
-  // PNG of just that part. Decoding is asynchronous, so the draws are chained rather than raced:
-  // two patches applied out of order would leave the window showing something that never was.
+  // PNG of that part. Decoding is asynchronous, so draws are chained rather than raced: two
+  // patches applied out of order would leave the window showing something that never was.
   let drawing = Promise.resolve();
 
   const draw = async data => {

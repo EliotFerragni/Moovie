@@ -8,11 +8,9 @@ namespace Moovie.Core.Files;
 public static class MediaFiles
 {
     /// <summary>
-    /// Directories a NAS keeps beside the media, which hold no library of their own.
-    ///
-    /// Synology's @eaDir is the one that matters: it sits in every shared folder, it is often
-    /// unreadable, and it holds transcoded copies that really are .mp4 files. Listed as if they
-    /// were the library's own, they would be tagged and renamed.
+    /// Directories a NAS keeps beside the media, which hold no library of their own. Synology's
+    /// @eaDir is the one that matters: it sits in every shared folder and holds transcoded copies
+    /// that really are .mp4 files, which would otherwise be tagged and renamed.
     /// </summary>
     private static readonly string[] PrivateFolders =
         ["@eaDir", "#recycle", "@Recycle", ".@__thumb", "$RECYCLE.BIN", "#snapshot", ".DS_Store"];
@@ -38,9 +36,8 @@ public static class MediaFiles
     }
 
     /// <summary>
-    /// The result is built inside the try rather than returned lazily. Enumeration is deferred, so
-    /// a guard around the call that composes the query catches nothing at all: the failure arrives
-    /// later, while somebody else is iterating.
+    /// The result is built inside the try rather than returned lazily: enumeration is deferred, so
+    /// a guard around the query that composes it would catch nothing.
     /// </summary>
     private static List<string> Under(string directory)
     {

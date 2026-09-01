@@ -81,9 +81,8 @@ public partial class MainView : UserControl
 
     /// <summary>
     /// Loads a row's poster as the row is realised, so a list of several hundred files fetches
-    /// only what somebody scrolls to. The list virtualises, so this fires again when a row comes
-    /// back; the view model makes the repeat call cheap rather than the view tracking what it
-    /// has already asked for.
+    /// only what somebody scrolls to. Virtualisation fires this again when a row comes back; the
+    /// view model makes the repeat call cheap rather than the view tracking what it has asked for.
     /// </summary>
     private void OnFileRowPrepared(object? sender, ContainerPreparedEventArgs e)
     {
@@ -97,8 +96,7 @@ public partial class MainView : UserControl
 
     /// <summary>
     /// The other half of <see cref="OnFileRowPrepared"/>: a row whose container has gone back to
-    /// the pool is no longer anybody's business, so work that only makes sense for what is on
-    /// screen can skip it.
+    /// the pool can be skipped by work that only makes sense for what is on screen.
     /// </summary>
     private void OnFileRowCleared(object? sender, ContainerClearingEventArgs e)
     {

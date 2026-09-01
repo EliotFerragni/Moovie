@@ -9,12 +9,9 @@ namespace Moovie.App.ViewModels;
 public sealed record FileBrowserEntry(string Name, string Path, bool IsDirectory);
 
 /// <summary>
-/// Browses the filesystem of the machine the app is running on.
-///
-/// The desktop build has no use for this: it asks the operating system for a picker. It exists
-/// for <c>--web</c>, where there is no operating system to ask: the browser's own file dialog
-/// would offer the files of whoever opened the page, and the whole point of that mode is to work
-/// on the files of the machine serving it.
+/// Browses the filesystem of the machine the app is running on. The desktop build asks the
+/// operating system for a picker instead; this exists for <c>--web</c>, where the browser's own
+/// file dialog would offer the files of whoever opened the page rather than the ones being served.
 /// </summary>
 public sealed partial class FileBrowserViewModel : ObservableObject
 {
@@ -69,8 +66,8 @@ public sealed partial class FileBrowserViewModel : ObservableObject
     [RelayCommand]
     private void Accept()
     {
-        // A folder is chosen by standing in it, which needs no selection and makes "the folder I
-        // am looking at" the answer. Files are chosen by selecting them.
+        // A folder is chosen by standing in it, so no selection is needed; files are chosen by
+        // selecting them.
         if (_foldersOnly)
         {
             Completed?.Invoke([CurrentPath]);
@@ -117,9 +114,8 @@ public sealed partial class FileBrowserViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Wherever the caller was last working, falling back to the home directory. The fallback is
-    /// the wrong answer in a container, where HOME is the app's own config directory rather than
-    /// anywhere the media is, which is exactly why the caller gets to say.
+    /// Wherever the caller was last working, falling back to the home directory. The caller gets
+    /// to say because in a container HOME is the app's own config directory, not the media.
     /// </summary>
     private static string StartingDirectory(string? startIn)
     {

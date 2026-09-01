@@ -9,9 +9,9 @@ namespace Moovie.Core.Parsing;
 /// holds a movie or a TV episode, and recovers the title plus season/episode numbers.
 /// </summary>
 /// <remarks>
-/// A cascade of patterns is tried in decreasing order of trustworthiness; the first one that
-/// matches wins. Everything the app does downstream depends on this, so the accompanying test
-/// corpus is the place to add regressions rather than tweaking patterns blind.
+/// A cascade of patterns is tried in decreasing order of trustworthiness; the first to match wins.
+/// Everything downstream depends on this, so add regressions to the test corpus rather than
+/// tweaking patterns blind.
 /// </remarks>
 public static class FilenameParser
 {
@@ -117,7 +117,7 @@ public static class FilenameParser
             parsed = WithShowFromFolders(parsed, folders);
 
         // Placeholder names ("video.mp4", "VTS_01_1.mp4") tell us nothing; the folder usually
-        // does, and it is very often "Title (Year)".
+        // does, and is very often "Title (Year)".
         if (parsed.Kind != MediaKind.TvEpisode
             && (!LooksLikeUsableTitle(parsed.Title) || GenericFileName.IsMatch(stem))
             && folders.Count > 0
@@ -139,8 +139,8 @@ public static class FilenameParser
         if (parsed.Kind == MediaKind.Unknown && LooksLikeUsableTitle(parsed.Title))
             parsed = parsed with { Kind = MediaKind.Movie };
 
-        // Still unknown means the leftover text was release noise, not a title. Reporting it as
-        // one would send the matcher off to search TMDB for "1080p".
+        // Leftover text that is release noise, not a title: reporting it would send the matcher
+        // off to search TMDB for "1080p".
         if (parsed.Kind == MediaKind.Unknown)
             parsed = parsed with { Title = string.Empty };
 
@@ -363,9 +363,8 @@ public static class FilenameParser
     }
 
     /// <summary>
-    /// Folder names from the closest ancestor outwards, at most three deep. A bare filename with
-    /// no directory part yields nothing: resolving it against the current directory would invent
-    /// folder hints that do not exist.
+    /// Folder names from the closest ancestor outwards, at most three deep. A bare filename yields
+    /// nothing: resolving it against the current directory would invent hints that do not exist.
     /// </summary>
     private static List<string> AncestorNames(string path)
     {

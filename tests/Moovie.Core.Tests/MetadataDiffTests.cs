@@ -211,9 +211,9 @@ public class MetadataDiffTests
     }
 
     /// <summary>
-    /// The row that makes the diff usable as a place to choose rather than only to read: once a
-    /// field has been pointed at the file's own value it is no longer a change, and would vanish
-    /// from a plain before/after list with no way back to what TMDB returned.
+    /// What makes the diff a place to choose rather than only to read: a field pointed at the
+    /// file's own value is no longer a change, and a plain before/after list would drop the row
+    /// along with the way back to what TMDB returned.
     /// </summary>
     [Fact]
     public void A_field_taken_over_from_the_file_is_still_listed()
@@ -313,8 +313,8 @@ public class MetadataDiffTests
     }
 
     /// <summary>
-    /// The diff has to stay limited to atoms the writer touches: promising a change that applying
-    /// never makes would be worse than saying nothing.
+    /// The diff stays limited to atoms the writer touches: promising a change that applying never
+    /// makes is worse than saying nothing.
     /// </summary>
     [Fact]
     public void Fields_with_no_atom_of_their_own_are_left_out()

@@ -16,19 +16,14 @@ public enum ClipboardAction
 /// <summary>
 /// Copy, cut and paste for <c>--web</c>.
 ///
-/// Avalonia's text boxes do all three through <see cref="TopLevel.Clipboard"/>, and the remote
-/// top level has none: the platform behind <see cref="Avalonia.Controls.Remote.RemoteServer"/>
-/// offers no clipboard, so that property is null and every copy, cut and paste in the app
-/// silently does nothing, from the keyboard and from the box's own context menu alike.
-///
-/// The clipboard that matters is the browser's, since that is the one the rest of the user's
-/// machine shares, and it is not the app's to write to: script may put text on it only from
-/// inside a gesture the browser has just handled, or over a secure connection, and a message
-/// arriving from a server is neither. So the page keeps the app's selected text ready in a hidden
-/// field and lets the browser's own Ctrl+C and Ctrl+V act on that, which asks no permission and
-/// works over plain HTTP on a LAN. This is the app's half of the arrangement: it answers the
-/// three events Avalonia raises before it would touch the clipboard, which is what makes the
-/// app's own menu items work, and it remembers the last text copied so the app can paste it back.
+/// Avalonia's text boxes work through <see cref="TopLevel.Clipboard"/>, which is null behind
+/// <see cref="Avalonia.Controls.Remote.RemoteServer"/>, so every copy, cut and paste in the app
+/// silently does nothing. The clipboard that matters is the browser's anyway, and the app cannot
+/// write to it: script may only do that from inside a gesture the browser has just handled, or
+/// over a secure connection. So the page keeps the app's selected text ready in a hidden field and
+/// lets the browser's own Ctrl+C and Ctrl+V act on that, which asks no permission and works over
+/// plain HTTP on a LAN. This is the app's half: it answers the three events Avalonia raises before
+/// it would touch the clipboard, and remembers the last text copied so the app can paste it back.
 ///
 /// The handlers are class handlers, so at most one of these may exist in a process; only
 /// <see cref="WebHost"/> makes one.
@@ -50,10 +45,9 @@ public sealed class ClipboardBridge
     {
         _top = top;
 
-        // Avalonia raises each of these before it would reach for the clipboard and drops its own
-        // handling when one comes back handled, which is the whole hook. The context menu's Cut,
-        // Copy and Paste items call the very methods that raise them, so answering the events
-        // serves the menu and the keyboard at once.
+        // Avalonia raises each of these before reaching for the clipboard and drops its own
+        // handling when one comes back handled. The context menu's items call the very methods
+        // that raise them, so answering the events serves the menu and the keyboard at once.
         TextBox.CopyingToClipboardEvent.AddClassHandler<TextBox>((box, e) =>
         {
             e.Handled = true;
@@ -89,9 +83,8 @@ public sealed class ClipboardBridge
             });
         });
 
-        // The page has to be holding the selection before the user reaches for Ctrl+C, because
-        // answering the keypress would already be too late, so every change is pushed as it
-        // happens rather than asked for.
+        // The page has to hold the selection before the user reaches for Ctrl+C, since answering
+        // the keypress would already be too late, so every change is pushed as it happens.
         TextBox.SelectionStartProperty.Changed.AddClassHandler<TextBox>((_, _) => PushSelection());
         TextBox.SelectionEndProperty.Changed.AddClassHandler<TextBox>((_, _) => PushSelection());
         TextBox.TextProperty.Changed.AddClassHandler<TextBox>((_, _) => PushSelection());
@@ -155,10 +148,9 @@ public sealed class ClipboardBridge
     }
 
     /// <summary>
-    /// Queues a push rather than making one. A single edit moves the selection more than once,
-    /// since replacing text selects it and then collapses the caret, and the page only wants
-    /// where it ended up: waiting for the dispatcher to run down costs nothing here, and it is
-    /// still long before the user's next keypress.
+    /// Queues a push rather than making one: a single edit moves the selection more than once
+    /// (replacing text selects it, then collapses the caret) and the page only wants where it
+    /// ended up. The dispatcher still runs down long before the user's next keypress.
     /// </summary>
     private void PushSelection()
     {

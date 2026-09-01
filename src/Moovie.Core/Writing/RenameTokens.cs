@@ -19,11 +19,9 @@ public enum TokenValueKind
 /// <summary>One placeholder usable in a rename template.</summary>
 /// <param name="OffersKindFormats">
 /// Whether the formats implied by <paramref name="Kind"/> are worth offering for this token.
-/// False where they cannot change the value: a year is always four digits, an id is not a
-/// counted quantity, and a resolution or an IMDb id is a lowercase code that case conversion
-/// only mangles. The validator still accepts them, so no existing template breaks: this
-/// decides what the palette advertises, and a reference that lists three ways of writing the
-/// same number teaches the opposite of what it is for.
+/// False where they cannot change the value: a year is always four digits, and a resolution or an
+/// IMDb id is a lowercase code that case conversion only mangles. This decides what the palette
+/// advertises; the validator still accepts them, so no existing template breaks.
 /// </param>
 public sealed record RenameToken(
     string Name,
@@ -62,14 +60,10 @@ public sealed record RenameToken(
     /// write after the colon. Null means the token with no format at all.
     /// </summary>
     /// <remarks>
-    /// Exhaustive for numbers and text, and for the extra formats a token adds; dates are an
-    /// open set, so those are a representative handful rather than a complete list, and the
-    /// palette says as much.
-    /// <para>
-    /// The explicit spelling of a default is left out (<c>:0</c> is the bare token and
-    /// <c>:yyyy-MM-dd</c> is what a date already does) because a row that renders exactly what
-    /// the row above it renders is not a second option, it is the same one written twice.
-    /// </para>
+    /// Exhaustive for numbers, text and a token's extra formats; dates are an open set, so those
+    /// are a representative handful and the palette says as much. A format that spells out a
+    /// default (<c>:0</c>, <c>:yyyy-MM-dd</c>) is left out, since it renders what the bare token
+    /// already renders.
     /// </remarks>
     public IReadOnlyList<string?> OfferedFormats
     {

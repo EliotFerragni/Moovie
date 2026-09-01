@@ -20,13 +20,10 @@ namespace Moovie.App.ViewModels;
 public sealed record TokenChip(string Caption, string Insertion, string Description, string Forms);
 
 /// <summary>
-/// Editor for one rename template, with a token palette, digit spinners and a live preview.
+/// Editor for one rename template, with a token palette, digit spinners and a live preview. The
+/// palette and spinners exist so the common adjustments never require knowing the template syntax;
+/// the text box is still there for anything more involved.
 /// </summary>
-/// <remarks>
-/// The point of the palette and the spinners is that the common adjustments (which fields appear,
-/// and how many digits the season and episode get) never require knowing the template syntax. The
-/// text box is still there for anything more involved.
-/// </remarks>
 public sealed partial class RenameTemplateEditorViewModel : ObservableObject
 {
     private readonly MediaKind _kind;
@@ -51,9 +48,8 @@ public sealed partial class RenameTemplateEditorViewModel : ObservableObject
 
     /// <summary>
     /// The same template rendered for a file at the omission threshold, shown only when one is
-    /// set. Without it the setting is invisible here (the samples are 2160p, so nothing in the
-    /// preview moves) and a template writing <c>[{resolution}]</c> outside an optional section
-    /// would leave empty brackets behind with nothing to warn you.
+    /// set. The samples are 2160p, so without this the setting is invisible here and a template
+    /// writing <c>[{resolution}]</c> outside an optional section would leave empty brackets.
     /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasThresholdPreview))]
@@ -107,8 +103,8 @@ public sealed partial class RenameTemplateEditorViewModel : ObservableObject
             .Select(format => (Written: token.Written(format), Value: RenderSample(token, format)))
             .ToList();
 
-        // Padded here rather than laid out in the view: a monospace tooltip lines the columns up
-        // with no measuring, and the tooltip stays a plain string.
+        // Padded here rather than in the view: a monospace tooltip lines the columns up with no
+        // measuring, and stays a plain string.
         var width = forms.Max(f => f.Written.Length);
         var lines = forms.Select(f => $"{f.Written.PadRight(width)}   {f.Value}");
 
@@ -248,8 +244,8 @@ public sealed partial class RenameTemplateEditorViewModel : ObservableObject
         var name = RenameEngine.BuildFileName(
             parsed, atThreshold, ".mp4", Separator, OmitResolutionAtOrBelow);
 
-        // A template with no resolution in it renders the same either way, so there is nothing
-        // to show and a second identical line would only be noise.
+        // A template with no resolution in it renders the same either way, so a second line would
+        // only repeat the first.
         return name == Preview
             ? null
             : Strings.Format("settings.previewAtThreshold", OmitResolutionAtOrBelow, name);

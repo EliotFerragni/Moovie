@@ -19,18 +19,13 @@ namespace Moovie.App.Web;
 /// <summary>
 /// Serves the app's rendered frames to a browser and feeds the browser's input back in.
 ///
-/// Avalonia already ships a transport of this shape (the one behind the XAML previewer's
-/// <c>--method html</c>), but its client sends pointer and wheel events only, and its parser
-/// drops anything else, so a text field can be focused and never typed into. That is fatal for
-/// this app, which is mostly text fields, hence this replacement. It speaks the same
+/// Avalonia ships a transport of this shape (behind the XAML previewer's <c>--method html</c>),
+/// but it handles pointer and wheel events only, so a text field can be focused and never typed
+/// into: fatal for an app that is mostly text fields. This replacement speaks the same
 /// <see cref="IAvaloniaRemoteTransportConnection"/> contract, so
 /// <see cref="Avalonia.Controls.Remote.RemoteServer"/> drives it unchanged; only the wire format
-/// and the client page differ.
-///
-/// Three other things the stock transport gets wrong for this use are fixed here: only the part
-/// of the window that changed is sent, and PNG-encoded rather than raw; the encoding happens off
-/// the thread that draws, so a slow frame cannot stall the interface; and the browser reports its
-/// own size, so the window follows the tab instead of being fixed at startup.
+/// and the client page differ. It also sends just the changed part of the window, PNG-encoded off
+/// the drawing thread, and lets the browser report its own size so the window follows the tab.
 /// </summary>
 public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
 {
@@ -48,9 +43,8 @@ public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
     private readonly CancellationTokenSource _stopping = new();
 
     /// <summary>
-    /// Holds one slot. Frames are not queued up behind a slow encode: a newer one simply widens
-    /// the rectangle still owed to the browser, so falling behind costs detail in one patch rather
-    /// than a backlog of them, and nothing is ever lost.
+    /// Holds one slot, so frames never queue up behind a slow encode: a newer one widens the
+    /// rectangle still owed to the browser instead of adding to a backlog.
     /// </summary>
     private readonly Channel<bool> _wake =
         Channel.CreateBounded<bool>(new BoundedChannelOptions(1) { FullMode = BoundedChannelFullMode.DropWrite });
@@ -69,9 +63,8 @@ public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
     {
         _page = ReadEmbeddedPage();
 
-        // "+" binds every interface. Unlike Avalonia's transport there is no Origin check here, so
-        // the address the browser uses need not match the address bound, which is what makes
-        // reaching this over a LAN by hostname work at all.
+        // No Origin check, unlike Avalonia's transport, so the address the browser uses need not
+        // match the address bound: that is what makes reaching this by LAN hostname work.
         var prefix = $"http://{host}:{port}/";
         _listener.Prefixes.Add(prefix);
         Listen(prefix);
@@ -81,9 +74,8 @@ public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
     }
 
     /// <summary>
-    /// Windows will not let a program that is not an administrator listen on an address unless
-    /// that address has been reserved for it, and says so with a bare "Access is denied" that
-    /// names neither the address nor the remedy. Every other platform simply binds.
+    /// Binds the listener. Windows refuses an unreserved address to a non-administrator with a
+    /// bare "Access is denied" naming neither the address nor the remedy, so it is spelled out.
     /// </summary>
     private void Listen(string prefix)
     {
@@ -117,9 +109,7 @@ public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
 
     /// <summary>
     /// Raised on the socket thread whenever the browser sends something. The host draws in
-    /// response to this rather than polling for it: the headless platform only draws when told
-    /// to, and being told the moment input lands is both quicker and far cheaper than asking
-    /// a hundred times a second whether anything has happened.
+    /// response rather than polling: the headless platform only draws when told to.
     /// </summary>
     public event Action? InputReceived;
 
@@ -139,10 +129,9 @@ public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
     public bool HasViewers => !_clients.IsEmpty;
 
     /// <summary>
-    /// Whether the app has drawn anything since this was last asked, and reading it forgets it.
-    /// A frame arrives only when the app had something new to show, which makes this the host's
-    /// answer to "is anything happening", and so how often it should look. Both the drawing and
-    /// the asking happen on the UI thread.
+    /// Whether the app has drawn anything since this was last asked; reading it forgets it. A
+    /// frame arrives only when there was something new to show, which makes this the host's
+    /// answer to "is anything happening". Drawing and asking both happen on the UI thread.
     /// </summary>
     public bool DrewSinceLastAsked()
     {
@@ -178,20 +167,18 @@ public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
     }
 
     /// <summary>
-    /// Takes a rendered frame off the drawing thread as quickly as possible. Only the comparison
-    /// against the last frame happens here; encoding and sending are somebody else's problem.
-    ///
-    /// The frame is acknowledged straight away rather than when the browser has it. The top level
-    /// will not draw again until the frame it just produced is acknowledged, so waiting on a
-    /// round trip would tie the app's frame rate to the network, and a tab closed between a send
-    /// and a draw would never answer at all, stopping the app from ever redrawing again.
+    /// Takes a rendered frame off the drawing thread: only the comparison against the last frame
+    /// happens here, encoding and sending elsewhere. The frame is acknowledged straight away
+    /// rather than when the browser has it, because the top level will not draw again until it is
+    /// acknowledged: waiting on the round trip would tie the frame rate to the network, and a tab
+    /// closed mid-send would never answer at all.
     /// </summary>
     public Task Send(object data)
     {
         if (data is not FrameMessage frame)
         {
-            // MeasureViewportMessage and RequestViewportResizeMessage are the top level asking the
-            // client to resize it. The browser is the authority on its own size, so they are dropped.
+            // MeasureViewportMessage and RequestViewportResizeMessage ask the client to resize.
+            // The browser is the authority on its own size, so they are dropped.
             return Task.CompletedTask;
         }
 
@@ -508,15 +495,12 @@ public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
     }
 
     /// <summary>
-    /// The browser's <c>KeyboardEvent.code</c> is the W3C physical key name and Avalonia names
-    /// <see cref="Avalonia.Input.PhysicalKey"/> the same way, with two exceptions: a letter is
-    /// <c>KeyA</c> there and plain <c>A</c> here, and the keypad is cased <c>NumPad</c> rather
-    /// than <c>Numpad</c>. Both have to be dealt with, or every letter key is silently dropped:
-    /// typing still works, because that arrives as text, but Ctrl+A and friends never fire.
-    ///
-    /// The logical key then comes from Avalonia's own QWERTY lookup. The protocol's enums are
-    /// distinct types from Avalonia's own but share their numeric values, which is why the remote
-    /// top level casts between them and why these casts are safe.
+    /// Translates a browser key event. <c>KeyboardEvent.code</c> is the W3C physical key name and
+    /// <see cref="Avalonia.Input.PhysicalKey"/> matches it but for a letter being <c>KeyA</c>
+    /// there and <c>A</c> here, and the keypad being cased <c>NumPad</c>. Without that fixup every
+    /// letter key is dropped: typing still works, since that arrives as text, but Ctrl+A does not.
+    /// The protocol's enums are distinct types from Avalonia's own but share their numeric values,
+    /// which is what makes the casts safe.
     /// </summary>
     private static object? KeyMessage(ClientMessage message)
     {
@@ -566,14 +550,10 @@ public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
         };
 
         /// <summary>
-        /// <see cref="InputModifiers"/> is declared <c>[Flags]</c> but numbered sequentially, so it
-        /// is an array of individual values rather than one OR-ed value.
-        ///
-        /// The mouse buttons belong in here as much as the keyboard's modifiers do, and this is the
-        /// only place the app is told which are held. A text box asks a pointer move whether the
-        /// left button is down before it will extend its selection, so a page reporting no button
-        /// made every move a hover: dragging across text in a field selected nothing, and copy and
-        /// cut, which take the selection, then had nothing to take.
+        /// <see cref="InputModifiers"/> is declared <c>[Flags]</c> but numbered sequentially, so
+        /// it is an array of individual values rather than one OR-ed value. The held mouse buttons
+        /// go in here too, and this is the only place the app is told about them: a text box will
+        /// not extend its selection unless a pointer move says the left button is down.
         /// </summary>
         public InputModifiers[] ModifierList
         {
@@ -585,8 +565,8 @@ public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
                 if (Shift) modifiers.Add(InputModifiers.Shift);
                 if (Meta) modifiers.Add(InputModifiers.Windows);
 
-                // The browser's bitmask, which is numbered unlike its own button index: 1 is left,
-                // 2 is right and 4 is middle, where Button calls them 0, 2 and 1.
+                // The bitmask is numbered unlike the button index: 1 is left, 2 is right and 4 is
+                // middle, where Button calls them 0, 2 and 1.
                 if ((Buttons & 1) != 0) modifiers.Add(InputModifiers.LeftMouseButton);
                 if ((Buttons & 2) != 0) modifiers.Add(InputModifiers.RightMouseButton);
                 if ((Buttons & 4) != 0) modifiers.Add(InputModifiers.MiddleMouseButton);

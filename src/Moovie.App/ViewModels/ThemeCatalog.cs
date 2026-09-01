@@ -25,12 +25,10 @@ public static class ThemeCatalog
     ];
 
     /// <summary>
-    /// Points the running app at a theme. <see cref="ThemeVariant.Default"/> is what follows the
-    /// operating system, and keeps following it if it changes while the app is open.
-    ///
-    /// Unlike the interface language, this needs no restart: the views resolve their text once as
-    /// they load, but they resolve their colours through DynamicResource every time, so the whole
-    /// window repaints on the spot.
+    /// Points the running app at a theme. <see cref="ThemeVariant.Default"/> follows the operating
+    /// system, and keeps following it while the app is open. Unlike the interface language this
+    /// needs no restart: colours are resolved through DynamicResource, so the window repaints on
+    /// the spot.
     /// </summary>
     public static void Apply(AppTheme theme)
     {

@@ -10,12 +10,9 @@ namespace Moovie.App.ViewModels;
 /// <summary>
 /// One row of the "what will be written" list: a field, the value already in the file, and the
 /// value the lookup returned, either of which can be clicked to become the one that gets written.
+/// Both sides always show something, so a row never looks like a rendering fault; the cover art
+/// row is the same shape with images in place of the text.
 /// </summary>
-/// <remarks>
-/// Both sides always have something to show (an absent value reads as "(empty)", an unmatched
-/// file as "(not looked up)"), so a row never looks like a rendering fault. The cover art row is
-/// the same shape with images in place of the text.
-/// </remarks>
 public sealed partial class MetadataChangeViewModel : ObservableObject
 {
     private readonly MetadataChange _change;
@@ -70,8 +67,8 @@ public sealed partial class MetadataChangeViewModel : ObservableObject
 
     /// <summary>
     /// A side that is neither chosen nor choosable, dimmed so a click that would do nothing does
-    /// not look available. The HD flag's file side is the only one: several resolutions share a
-    /// stored flag, so there is nothing to hand back.
+    /// not look available. The HD flag's file side is the only one, since several resolutions
+    /// share a stored flag.
     /// </summary>
     public bool IsCurrentUnavailable => !_change.CanAdoptCurrent && !IsCurrentChosen;
 
@@ -87,8 +84,8 @@ public sealed partial class MetadataChangeViewModel : ObservableObject
     public bool IsText => !IsArtwork;
 
     /// <summary>
-    /// What will be written, spelled out only when it is neither of the two offered values:
-    /// which means the field was typed into by hand and neither side is highlighted.
+    /// What will be written, spelled out only when it is neither of the two offered values, which
+    /// means the field was typed into by hand.
     /// </summary>
     public string? WillWrite => IsCurrentChosen || IsFetchedChosen
         ? null

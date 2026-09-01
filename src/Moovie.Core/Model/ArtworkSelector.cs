@@ -20,10 +20,9 @@ public static class ArtworkSelector
     }
 
     /// <summary>
-    /// Whether TMDB gave every artwork kind this medium can have. Artwork is not a translation:
-    /// a season can have a full French entry and no French poster, in which case the kind is
-    /// simply absent and <see cref="Resolve"/> would quietly drop to a different one. A caller
-    /// looking things up in another language uses this to decide whether the original-language
+    /// Whether TMDB gave every artwork kind this medium can have. Artwork is not a translation, so
+    /// a season can have a full French entry and no French poster, leaving <see cref="Resolve"/>
+    /// to drop quietly to another kind. A caller uses this to decide whether the original-language
     /// record is worth fetching too.
     /// </summary>
     public static bool HasEveryKind(MediaMetadata metadata)

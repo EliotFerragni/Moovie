@@ -23,10 +23,9 @@ public static class WebHost
     private const int MovingTickMs = 33;
 
     /// <summary>
-    /// And how often while nothing is. Only a change nobody asked for waits this long, because
-    /// input draws at once; a search result appearing a fifth of a second late is not something
-    /// anyone can see, while waking five times a second rather than thirty is the difference
-    /// between a machine that idles and a machine whose fan never stops.
+    /// And how often while nothing is. Only a change nobody asked for waits this long, since input
+    /// draws at once, and five wakes a second rather than thirty is the difference between a
+    /// machine that idles and one whose fan never stops.
     /// </summary>
     private const int StillTickMs = 200;
 
@@ -58,8 +57,8 @@ public static class WebHost
         using var server = new RemoteServer(transport);
 
         // Nothing the app itself times runs while nobody is connected: the heartbeat below stops
-        // itself, and work arriving from other threads arrives as a signal rather than a timer.
-        // So the only timers left to be late are Avalonia's own pool trimming, which does not care.
+        // itself, and work from other threads arrives as a signal rather than a timer. The only
+        // timers left to be late are Avalonia's own pool trimming, which does not care.
         loop?.CoalesceTimersWhile(() => !transport.HasViewers, TimeSpan.FromSeconds(IdleFloorSeconds));
 
         var viewModel = App.CreateShellViewModel();
@@ -67,9 +66,8 @@ public static class WebHost
         view.Shell = new WebShell(view);
         server.Content = view;
 
-        // The clipboard the user shares with the rest of their machine is the browser's, not this
-        // one's, so copying and pasting is a conversation with the page rather than something the
-        // app can do on its own. ClipboardBridge explains the split.
+        // The clipboard the user shares with the rest of their machine is the browser's, so
+        // copying and pasting is a conversation with the page. ClipboardBridge explains the split.
         var clipboard = new ClipboardBridge(TopLevel.GetTopLevel(view)
             ?? throw new InvalidOperationException("The view is not in a top level, so the selection cannot be read."));
         clipboard.SelectionChanged += text => transport.Post(new { type = "selection", text });
@@ -88,9 +86,8 @@ public static class WebHost
             }
             catch (Exception e)
             {
-                // Whatever went wrong reading one folder, a server that stays up with an empty
-                // list is worth far more than one that exits and is restarted forever by its
-                // supervisor. The page still opens and files can still be added by hand.
+                // A server that stays up with an empty list beats one its supervisor restarts
+                // forever: the page still opens and files can still be added by hand.
                 Console.Error.WriteLine($"Could not read everything under the paths given: {e.Message}");
             }
         }
@@ -98,12 +95,10 @@ public static class WebHost
         Console.WriteLine($"Moovie is serving its window on http://{(host == "+" ? "<this machine>" : host)}:{port}/");
         Console.WriteLine("The files it works on are this machine's. Press Ctrl+C to stop.");
 
-        // Input is the cheap half of knowing when to draw: a click or a key draws exactly one
-        // frame, posted below the input itself so it runs once the app has finished reacting.
-        // The rest has to be looked for, since a caret, a progress bar or a reply from the network
-        // all arrive without anybody asking. That is what the timer below does: quickly while the
-        // window is still changing, slowly once it has settled, and not at all while nobody has
-        // the page open.
+        // Input draws exactly one frame, posted below the input itself so it runs once the app
+        // has reacted. Everything else (a caret, a progress bar, a reply from the network) arrives
+        // without anybody asking, so the timer below looks for it: quickly while the window is
+        // still changing, slowly once it has settled, not at all with nobody watching.
         var sinceInput = Stopwatch.StartNew();
         var drewInARow = 0;
         DispatcherTimer heartbeat = null!;
@@ -120,10 +115,9 @@ public static class WebHost
 
                 clock.Draw();
 
-                // Something that draws tick after tick is an animation and worth following
-                // closely. A single frame on its own is not, and treating it as one would be
-                // expensive: a caret blinking twice a second would hold the window at thirty
-                // frames a second for as long as any field has the cursor in it.
+                // Drawing tick after tick is an animation and worth following closely. A single
+                // frame is not: a blinking caret would otherwise hold the window at thirty frames
+                // a second for as long as any field has the cursor in it.
                 drewInARow = transport.DrewSinceLastAsked() ? drewInARow + 1 : 0;
 
                 var moving = drewInARow > 1 || sinceInput.ElapsedMilliseconds < SettleMs;

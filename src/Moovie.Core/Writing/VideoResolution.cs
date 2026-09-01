@@ -7,10 +7,9 @@ namespace Moovie.Core.Writing;
 /// The frame size of the video itself, named the way a release would name it.
 /// </summary>
 /// <remarks>
-/// The filename is only a claim about resolution, and one that does not survive being renamed:
-/// a template without <c>{resolution}</c> drops the token, and the next pass over the same file
-/// would find nothing and write an SD <c>hdvd</c> flag over a 4K film. The container knows, so
-/// it is asked.
+/// Read from the container rather than the filename: a rename with a template that drops
+/// <c>{resolution}</c> would leave the next pass with nothing, and an SD <c>hdvd</c> flag
+/// written over a 4K film.
 /// </remarks>
 public static class VideoResolution
 {
@@ -44,18 +43,16 @@ public static class VideoResolution
 
     /// <summary>
     /// The vocabulary, smallest frame first. What the "leave it out at or below" setting offers.
+    /// <c>1080i</c> is understood but not offered: same frame size as <c>1080p</c>, so it would
+    /// be a threshold without a difference.
     /// </summary>
-    /// <remarks>
-    /// <c>1080i</c> is understood but not offered: it is the same frame size as <c>1080p</c>, so
-    /// picking between them as a threshold would be a distinction without a difference.
-    /// </remarks>
     public static IReadOnlyList<string> Ladder { get; } =
         ["360p", "480p", "576p", "720p", "1080p", "1440p", "2160p", "4320p"];
 
     /// <summary>
     /// Orders the vocabulary so one resolution can be compared against another. Frame size is
-    /// what is being ranked, so <c>1080i</c> and <c>1080p</c> tie. Anything unrecognised (a
-    /// value typed into the field by hand, say) ranks 0 and compares as unknown, not as small.
+    /// what is ranked, so <c>1080i</c> and <c>1080p</c> tie. Anything unrecognised ranks 0 and
+    /// compares as unknown, not as small.
     /// </summary>
     public static int Rank(string? label) =>
         label is not null && Ranks.TryGetValue(label.Trim(), out var rank) ? rank : 0;
@@ -76,14 +73,10 @@ public static class VideoResolution
     };
 
     /// <summary>
-    /// The short name a filename would use, for <c>{resolution:short}</c>.
+    /// The short name a filename would use, for <c>{resolution:short}</c>. Only 2160p and 4320p
+    /// have one; 1440p is left alone because "2K" properly means a 1080p-class frame. Anything
+    /// unrecognised comes back untouched.
     /// </summary>
-    /// <remarks>
-    /// Only the two that have one: 2160p is written <c>4k</c> and 4320p <c>8k</c>. Everything
-    /// below is already how people write it (nobody calls 1080p anything shorter) and 1440p is
-    /// deliberately left alone, since "2K" properly means a 1080p-class frame and using it here
-    /// would name the file wrongly. Anything unrecognised comes back untouched.
-    /// </remarks>
     public static string? Shorten(string? label) =>
         label is not null && ShortNames.TryGetValue(label.Trim(), out var name) ? name : label;
 
@@ -97,12 +90,9 @@ public static class VideoResolution
 
     /// <summary>
     /// Whether <paramref name="resolution"/> is no larger than <paramref name="threshold"/>:
-    /// the test behind leaving ordinary resolutions out of a filename.
+    /// the test behind leaving ordinary resolutions out of a filename. Either one unknown means
+    /// "no", so nothing is hidden on a guess.
     /// </summary>
-    /// <remarks>
-    /// Both unknowns mean "no": no threshold is the default and hides nothing, and a resolution
-    /// this app does not recognise is left alone rather than hidden on a guess.
-    /// </remarks>
     public static bool IsAtOrBelow(string? resolution, string? threshold)
     {
         var floor = Rank(threshold);
@@ -118,24 +108,11 @@ public static class VideoResolution
     /// filename parser recognises so both sources can feed the same field.
     /// </summary>
     /// <remarks>
-    /// Height and width are read as two separate opinions and the larger wins, because either
-    /// one alone is wrong for material that is common.
-    /// <para>
-    /// Height alone under-reports widescreen film, which is cropped rather than letterboxed: a
-    /// 2.39:1 transfer is 1920×800, and 800 is not 720p. Width alone under-reports 4:3 and
-    /// anamorphic material, where the height is the honest number: 720×576 is 576p, not 480p.
-    /// </para>
-    /// <para>
-    /// The two tables are separate rather than one converted into the other because the aspect
-    /// ratio to convert by is not a constant. HD is square-pixel 16:9, so a width does divide
-    /// cleanly into a height there; SD is not, and a DVD frame is 720 wide whether it holds
-    /// 480 lines, 576, or the 406 of a cropped widescreen transfer. Scaling 720 by 9/16 gives
-    /// 405, which is short of the 480p it plainly is.
-    /// </para>
-    /// <para>
-    /// Both tables sit below their nominal figures on purpose: encodes rounded to a multiple of
-    /// eight, like 1920×1072, are the same thing as the round number.
-    /// </para>
+    /// Height and width are two separate opinions and the larger wins: height alone
+    /// under-reports cropped widescreen film (1920×800 is not 720p), width alone under-reports
+    /// 4:3 and anamorphic material (720×576 is 576p, not 480p). The tables cannot be derived
+    /// from one another because SD pixels are not square: a DVD frame is 720 wide whether it
+    /// holds 480 lines or 576.
     /// </remarks>
     public static string? Label(int width, int height)
     {
@@ -147,6 +124,8 @@ public static class VideoResolution
         return Rank(byWidth) > Rank(byHeight) ? byWidth : byHeight;
     }
 
+    // Both tables sit below their nominal figures so encodes rounded to a multiple of eight,
+    // like 1920x1072, still count as the round number.
     private static string? ByHeight(int height) => height switch
     {
         >= 4000 => "4320p",
@@ -160,10 +139,8 @@ public static class VideoResolution
         _ => null,
     };
 
-    /// <summary>
-    /// The standard frame widths. 720 is where NTSC and PAL DVD share a width and differ in
-    /// height, so it claims only the lower of the two and lets the height promote it to 576p.
-    /// </summary>
+    // 720 is where NTSC and PAL DVD share a width and differ in height, so it claims only the
+    // lower of the two and lets the height promote it to 576p.
     private static string? ByWidth(int width) => width switch
     {
         >= 7000 => "4320p",

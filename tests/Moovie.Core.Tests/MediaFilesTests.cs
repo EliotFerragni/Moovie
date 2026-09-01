@@ -74,7 +74,7 @@ public class MediaFilesTests : IDisposable
 
     /// <summary>
     /// The one that took the container down: enumeration is deferred, so a guard around building
-    /// the query catches nothing, and the default options stop at the first unreadable directory.
+    /// the query catches nothing.
     /// </summary>
     [Fact]
     public void Walks_past_a_directory_it_cannot_read()
@@ -82,8 +82,8 @@ public class MediaFilesTests : IDisposable
         Make("before.mp4");
         Make("locked/hidden.mp4");
         Make("Season 1/after.mp4");
-        // Windows has no equivalent that is worth reaching for here, so there the directory stays
-        // readable and the assertions below take the other branch.
+        // Windows has no equivalent worth reaching for, so there the directory stays readable and
+        // the assertions below take the other branch.
         if (!OperatingSystem.IsWindows())
             File.SetUnixFileMode(Path.Combine(_root, "locked"), UnixFileMode.None);
 
@@ -101,9 +101,8 @@ public class MediaFilesTests : IDisposable
     }
 
     /// <summary>
-    /// The folder handed in being unreadable is the one case IgnoreInaccessible does not cover: it
-    /// skips what it finds inside, but the walk still has to start. That failure lands in the
-    /// guard, and the answer is an empty list rather than an exception.
+    /// The one case IgnoreInaccessible does not cover: it skips what it finds inside, but the walk
+    /// still has to start. That failure lands in the guard and answers with an empty list.
     /// </summary>
     [Fact]
     public void An_unreadable_folder_of_its_own_yields_nothing_rather_than_throwing()

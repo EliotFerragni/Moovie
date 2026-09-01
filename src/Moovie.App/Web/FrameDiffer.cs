@@ -5,12 +5,9 @@ namespace Moovie.App.Web;
 
 /// <summary>
 /// Keeps the last frame sent to the browser and works out what part of a new one actually differs.
-///
-/// This is the difference between a usable remote window and a slideshow. Avalonia hands over a
-/// whole repainted window every time anything changes, and most of those changes are tiny: a
-/// caret blinking, a button lighting up under the cursor, one character appearing in a field.
-/// Re-encoding and resending a megapixel for a blinking caret costs about 90 KB twice a second
-/// and stalls everything behind it, so only the changed rectangle is sent.
+/// Avalonia hands over a whole repainted window every time anything changes, and most changes are
+/// tiny: re-encoding a megapixel for a blinking caret costs about 90 KB twice a second and stalls
+/// everything behind it, so only the changed rectangle is sent.
 /// </summary>
 internal sealed class FrameDiffer
 {
@@ -22,9 +19,8 @@ internal sealed class FrameDiffer
 
     /// <summary>
     /// How many unchanged rows may sit inside one reported band. Typing a character changes the
-    /// field being typed in and, far away, the row in the file list that names it; one rectangle
-    /// around both would cover most of the window and cost as much as sending all of it. Bands
-    /// are kept separate unless the gap between them is too small to be worth another PNG.
+    /// field and, far away, the file list row naming it; one rectangle around both would cover
+    /// most of the window, so bands stay separate unless the gap is too small to be worth a PNG.
     /// </summary>
     private const int MaxGap = 12;
 
@@ -78,8 +74,8 @@ internal sealed class FrameDiffer
                 top = y;
             bottom = y;
 
-            // Narrowing the columns is only worth doing on rows already known to differ, and it is
-            // what makes a caret cost a sliver rather than the full width of the window.
+            // Only worth narrowing the columns on rows already known to differ, and it is what
+            // makes a caret cost a sliver rather than the full width of the window.
             var incomingPixels = MemoryMarshal.Cast<byte, uint>(incoming);
             var heldPixels = MemoryMarshal.Cast<byte, uint>(held);
 

@@ -12,13 +12,9 @@ namespace Moovie.App.ViewModels;
 
 /// <summary>
 /// The right-hand pane: previews the metadata for the current selection, lets every field be
-/// edited, and resolves ambiguous matches.
+/// edited, and resolves ambiguous matches. With several files selected each field shows the value
+/// they share and typing applies to all of them; see <see cref="FieldEditor"/> for the mechanics.
 /// </summary>
-/// <remarks>
-/// With one file selected this is a plain form. With several selected, each field shows the value
-/// they share, or blanks with a "multiple values" watermark when they differ; typing then applies
-/// to all of them. See <see cref="FieldEditor"/> for the mechanics.
-/// </remarks>
 public sealed partial class PreviewPaneViewModel : ObservableObject
 {
     private readonly IMediaLookup _lookup;
@@ -157,7 +153,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
 
     /// <summary>
     /// What applying would change in the file, compared against the tags it already carries.
-    /// Only shown for a single file: the answer is per-file, and a merged one would mean nothing.
+    /// Single file only: the answer is per-file, and a merged one would mean nothing.
     /// </summary>
     public ObservableCollection<MetadataChangeViewModel> Changes { get; } = [];
 
@@ -255,8 +251,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
 
         if (_selection.Count != 1)
         {
-            // Per-file suggestions differ from one another, so only a hand search makes sense
-            // across a selection: one title, applied to all of them.
+            // Per-file suggestions differ, so only a hand search makes sense across a selection.
             var needing = _selection.Count(f => f.Status == FileStatus.NeedsChoice);
             Notice = needing > 0
                 ? Strings.Format("pane.needsChoice", needing)
@@ -306,9 +301,8 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
         UpdateArtworkCaption(path);
         if (path is null)
         {
-            // Nothing to fetch, but the file's own cover is worth showing anyway: before a lookup
-            // it is what the file holds, and after keeping it from the diff it is what will stay
-            // there. Either way it is the bitmap the diff already decoded, not a second copy.
+            // Nothing to fetch, but the file's own cover is what is staying there, so show it.
+            // This is the bitmap the diff already decoded, not a second copy.
             Poster = _embeddedCover;
             PosterIsWide = _embeddedCover is { } own && own.PixelSize.Width > own.PixelSize.Height;
             if (_embeddedCover is not null)
@@ -318,8 +312,8 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
 
         try
         {
-            // The configured size, not a preview-only one: the pane is meant to show the exact
-            // image that will be written into the file.
+            // The configured size, not a preview-only one: the pane shows the exact image that
+            // will be written into the file.
             var bitmap = await _artwork.LoadAsync(_lookup.Tmdb, path, _lookup.ArtworkSize, token);
             if (!token.IsCancellationRequested)
             {
@@ -355,8 +349,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
 
     /// <summary>
     /// Reads what the selected file already holds, then works out what applying would change.
-    /// The read is the only expensive part and happens once per selection; editing a field
-    /// re-compares against the copy kept from it.
+    /// The read happens once per selection; editing a field re-compares against the copy kept.
     /// </summary>
     private async Task LoadDiffAsync()
     {
@@ -370,8 +363,8 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
         IsLoadingDiff = _selection.Count == 1;
         RecomputeDiff();
 
-        // The rows are gone, so nothing refers to the old cover but possibly the poster frame.
-        // Let go of it there too before the bitmap is destroyed under a live drawing.
+        // Nothing refers to the old cover now but possibly the poster frame; let go of it there
+        // too before the bitmap is destroyed under a live drawing.
         if (ReferenceEquals(Poster, _embeddedCover))
             Poster = null;
         _embeddedCover?.Dispose();
@@ -404,8 +397,8 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
 
         RecomputeDiff();
 
-        // The read is what produces the file's own cover, and it lands after the poster load has
-        // already given up on a file with no image chosen, so the frame is filled in now.
+        // The read produces the file's own cover, and lands after the poster load has given up on
+        // a file with no image chosen, so the frame is filled in now.
         if (Poster is null && _embeddedCover is not null)
             _ = LoadPosterAsync();
     }
@@ -418,8 +411,8 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
     {
         try
         {
-            // The cover is loaded too, for the one selected file: comparing the bytes is what
-            // lets a file that was just applied report that there is nothing left to write.
+            // The cover is read too: comparing the bytes is what lets a file that was just
+            // applied report that there is nothing left to write.
             return (_reader.Read(path, includeArtwork: true), null);
         }
         catch (TagReadException e)
@@ -458,8 +451,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
         if (_existing is not { } existing)
             return null;
 
-        // Nothing known about this file at all, from its tags or its name, so there is no "after"
-        // to compare against yet.
+        // Nothing known from its tags or its name, so there is no "after" to compare against.
         var file = _selection[0];
         var pending = file.Metadata;
         if (string.IsNullOrWhiteSpace(pending.Title) && string.IsNullOrWhiteSpace(pending.ShowName))
@@ -471,7 +463,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
         ShowCovers();
 
         // Rows are not all changes: one already pointed at the file's own value is listed so it
-        // can be pointed back, and saying "3 fields will change" over four rows would be a lie.
+        // can be pointed back.
         var changing = Changes.Count(c => c.IsChange);
         return changing == 0
             ? Strings.Get("diff.upToDate")
@@ -481,10 +473,9 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Puts the two covers on the artwork row: the one in the file, decoded from its own bytes,
-    /// and the one the lookup returned, fetched at thumbnail size. Seeing them side by side is
-    /// the only way to tell a replacement worth making from one that swaps a good cover for a
-    /// worse one.
+    /// Puts the two covers on the artwork row side by side: the one in the file and the one the
+    /// lookup returned, which is the only way to tell a replacement worth making from one that
+    /// swaps a good cover for a worse one.
     /// </summary>
     private void ShowCovers()
     {
@@ -502,23 +493,17 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
     {
         var bitmap = await _artwork.LoadAsync(_lookup.Tmdb, path, ArtworkLoader.ThumbnailSize);
 
-        // The row may have been rebuilt by an edit while this was in flight; the current one, if
-        // there still is one, is the one that should carry the image.
+        // The row may have been rebuilt by an edit while this was in flight.
         var live = Changes.FirstOrDefault(c => c.IsArtwork);
         if (live is not null)
             live.FetchedImage = bitmap;
     }
 
     /// <summary>
-    /// Points one field at the file's own value or at the lookup's, and refreshes everything that
-    /// depends on it. This is what makes the diff a place to mix the two sources rather than only
-    /// somewhere to read the outcome.
+    /// Points one field at the file's own value or at the lookup's, making the diff a place to
+    /// mix the two sources rather than only somewhere to read the outcome. Taking the file's
+    /// value counts as a hand edit; taking the lookup's clears that mark.
     /// </summary>
-    /// <remarks>
-    /// Taking the file's value counts as a hand edit, so a refetch keeps it and Discard puts it
-    /// back. Taking the lookup's value is the opposite: it clears that mark, since the field is
-    /// once again exactly what TMDB returned.
-    /// </remarks>
     private void Adopt(MetadataChange change, bool fromFile)
     {
         if (_selection.Count != 1)
@@ -536,8 +521,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
 
         _lookup.NotifyMetadataChanged(file);
 
-        // The form holds the same values, so it has to be re-read rather than left showing what
-        // was there before the swap.
+        // The form still shows what was there before the swap, so it has to be re-read.
         _rebinding = true;
         try
         {
@@ -675,9 +659,8 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Puts one title onto every selected file. Each keeps its own season and episode numbers
-    /// and fetches its own entry, so this is how a whole show that matched the wrong series is
-    /// corrected in one go rather than a file at a time.
+    /// Puts one title onto every selected file, each keeping its own season and episode numbers,
+    /// so a whole show that matched the wrong series is corrected in one go.
     /// </summary>
     private async Task ApplyCandidateAsync(Candidate candidate)
     {
@@ -934,7 +917,7 @@ public sealed partial class PreviewPaneViewModel : ObservableObject
 
     /// <summary>
     /// Reads an episode field: a single number, a range ("1-2") or a list ("1, 2"), so a
-    /// multi-episode file can be corrected by hand the same way it is written.
+    /// multi-episode file is corrected by hand the same way it is written.
     /// </summary>
     private static List<int> ParseEpisodes(string? text)
     {

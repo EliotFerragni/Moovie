@@ -8,10 +8,9 @@ namespace Moovie.Core.Matching;
 /// Scores how well a TMDB result matches the title recovered from a filename, on a 0..1 scale.
 /// </summary>
 /// <remarks>
-/// The scale is what <see cref="MatchResolver"/>'s auto-select thresholds are calibrated against,
-/// so the anchor points matter: an exact match after normalisation is 1.0, a containment match
-/// lands in the 0.6-0.9 band depending on how much extra text there is, and unrelated titles
-/// sharing a word or two stay below 0.5.
+/// <see cref="MatchResolver"/>'s auto-select thresholds are calibrated against this scale, so the
+/// anchor points matter: an exact match after normalisation is 1.0, a containment match lands
+/// between 0.6 and 0.9, and titles sharing only a word or two stay below 0.5.
 /// </remarks>
 public static class TitleScorer
 {
@@ -70,8 +69,8 @@ public static class TitleScorer
         if (left == right)
             return 1d;
 
-        // One title contained in the other: usually a subtitle or an edition suffix. How much
-        // was left over decides how confident we are.
+        // One title contained in the other, usually a subtitle or an edition suffix: how much was
+        // left over decides how confident we are.
         if (right.StartsWith(left, StringComparison.Ordinal) || left.StartsWith(right, StringComparison.Ordinal))
         {
             var ratio = (double)Math.Min(left.Length, right.Length) / Math.Max(left.Length, right.Length);

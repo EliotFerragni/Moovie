@@ -28,9 +28,7 @@ public sealed class AppSettings
     public const string DefaultMovieTemplate = "{title} ({year})";
     public const string DefaultTvTemplate = "{show} - S{season:00}E{episode:00}< - {episodeTitle}>";
 
-    /// <summary>
-    /// The user's own TMDB API key (the v3 "API Key", not the v4 read-access token).
-    /// </summary>
+    /// <summary>The user's own TMDB API key (the v3 "API Key", not the v4 read-access token).</summary>
     public string TmdbApiKey { get; set; } = string.Empty;
 
     /// <summary>Default TMDB language tag, e.g. <c>en-US</c>. Overridable per file.</summary>
@@ -62,12 +60,9 @@ public sealed class AppSettings
     /// <summary>
     /// A resolution at or below which <c>{resolution}</c> is left out of a rendered filename, for
     /// the ones a library treats as ordinary and does not bother naming. Empty writes them all.
+    /// Only the filename is affected: the resolution is still read, shown, and written as the HD
+    /// flag.
     /// </summary>
-    /// <remarks>
-    /// Only the filename is affected. The resolution is still read, still shown in the pane, and
-    /// still decides the HD flag written into the file: hiding it from a name is a naming
-    /// preference, not a claim that the app does not know it.
-    /// </remarks>
     public string OmitResolutionAtOrBelow { get; set; } = string.Empty;
 
     /// <summary>

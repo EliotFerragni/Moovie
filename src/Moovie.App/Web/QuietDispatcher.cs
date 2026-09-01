@@ -7,31 +7,22 @@ namespace Moovie.App.Web;
 /// <summary>
 /// The event loop the app's thread runs in, which this host owns rather than the platform.
 ///
-/// The headless platform runs on <c>ManagedDispatcherImpl</c>, whose loop sleeps properly on a
-/// wait handle with nothing to do, and sleeps on a timed wait when a timer is pending, with one
-/// exception: it declines to wait out the last millisecond before any timer and busy-waits it
-/// instead. Nothing left is waiting once <see cref="DrawingClock"/> has stopped the sixty ticks a
-/// second, but Avalonia's compositor keeps a one-second timer per buffer pool to trim the pool, so
-/// the loop still pays that spin a few times a second forever.
+/// The headless platform's <c>ManagedDispatcherImpl</c> sleeps properly with nothing to do, but
+/// declines to wait out the last millisecond before a timer and busy-waits it instead. Avalonia's
+/// compositor keeps a one-second timer per buffer pool, so even with <see cref="DrawingClock"/>
+/// holding still the loop pays that spin a few times a second forever: barely any processor time
+/// and, measured on the machine this was written for, five watts all day for an app nobody had
+/// open, because each spin ramps a core's clock and keeps a NAS out of its deep idle states.
 ///
-/// It costs almost no processor time, and far more power than that suggests: each spin is a
-/// millisecond and a half at full tilt, which is enough to ramp a core's clock and hold a NAS out
-/// of its deep idle states between one spin and the next. Measured on the machine this was written
-/// for, it was five watts, all day, for an app nobody had open.
+/// So this is the platform's loop minus the spin, sleeping a millisecond where it would busy-wait
+/// a sub-millisecond remainder. Timers still fire and continuations still run, which is why the
+/// loop is not simply stopped while nobody is connected: an apply reports its progress through
+/// dispatcher continuations, and closing the tab in the middle of one is ordinary.
 ///
-/// So the loop below is the platform's, minus the spin: where it would busy-wait a sub-millisecond
-/// remainder, this sleeps a millisecond instead. That is the whole difference. Timers still fire,
-/// continuations still run, and a batch still writes its way through a hundred files with nobody
-/// watching, which is why this and not simply stopping the loop while nobody is connected: the
-/// progress of an apply is a dispatcher continuation like any other, and closing the tab in the
-/// middle of one is an ordinary thing to do.
-///
-/// As with the clock, Avalonia allows application code no part in this. The interface may not be
-/// implemented outside Avalonia, and the registry the platform keeps it in is internal, though
-/// both are public in the assembly that ships. Hence the proxy and the reflection, and hence the
-/// care to make it optional: the takeover is refused unless every member is exactly the shape
-/// known here, and if it is refused the app runs on the platform's loop, which works perfectly
-/// well and merely costs more.
+/// Avalonia allows application code no part in this: the interface may not be implemented outside
+/// its assembly and the registry is internal, hence the proxy and the reflection. The takeover is
+/// refused unless every member is exactly the shape known here, in which case the app runs on the
+/// platform's loop, which works perfectly well and merely costs more.
 /// </summary>
 // Not sealed: DispatchProxy builds the instance by deriving from this.
 public class QuietDispatcher : DispatchProxy
@@ -69,25 +60,13 @@ public class QuietDispatcher : DispatchProxy
     }
 
     /// <summary>
-    /// Must run before the platform is set up, and on the thread that will run the loop.
-    ///
-    /// Unlike the clock there is no slot left open to fill: the platform binds its own loop to a
-    /// constant while setting itself up, overwriting whatever it finds. What it cannot undo is a
-    /// dispatcher that already exists, because the dispatcher resolves its loop once, on first
-    /// use, and keeps it. So this binds and then immediately asks for the dispatcher, which is
-    /// what makes the platform's later overwrite land on nothing anybody reads again.
-    /// </summary>
-    /// <summary>
     /// While <paramref name="idle"/> says so, no timer is waited for more precisely than
     /// <paramref name="floor"/>: a timer due sooner than that simply fires late.
     ///
-    /// This is for the pools, which are the only thing left ticking once nobody has the page open.
-    /// Trimming a pool nothing is allocating from is worth doing eventually and worth nothing on
-    /// time, so waking five times a second to do it is the wrong trade on a machine that would
-    /// rather be asleep. Work is not delayed with it: a signal wakes the loop at once whatever it
-    /// was waiting for, and everything that arrives from another thread (a lookup answering, a
-    /// batch finishing a file) arrives as a signal. Only timers go slow, and only while idle, so
-    /// this must not be left on while anything the app itself times is running.
+    /// This is for the buffer pools, the only thing left ticking once nobody has the page open.
+    /// Work is not delayed with it, since anything arriving from another thread (a lookup
+    /// answering, a batch finishing a file) comes in as a signal and wakes the loop at once. Only
+    /// timers go slow, so this must not be left on while anything the app itself times is running.
     /// </summary>
     public void CoalesceTimersWhile(Func<bool> idle, TimeSpan floor)
     {
@@ -95,6 +74,16 @@ public class QuietDispatcher : DispatchProxy
         _idleFloor = floor;
     }
 
+    /// <summary>
+    /// Takes the loop over. Must run before the platform is set up, and on the thread that will
+    /// run the loop.
+    ///
+    /// Unlike the clock there is no slot left open to fill: the platform binds its own loop while
+    /// setting itself up, overwriting whatever it finds. What it cannot undo is a dispatcher that
+    /// already exists, since a dispatcher resolves its loop once and keeps it. So this binds and
+    /// then immediately asks for the dispatcher, leaving the platform's overwrite to land on
+    /// something nobody reads again.
+    /// </summary>
     public static QuietDispatcher? TakeOver()
     {
         try
@@ -119,8 +108,8 @@ public class QuietDispatcher : DispatchProxy
                 ?? throw new MissingMemberException("DispatchProxy", "Create");
             ((QuietDispatcher)proxy)._loopThread = Thread.CurrentThread;
 
-            // Nothing above has changed any state Avalonia can see, so every way of failing so far
-            // leaves the platform to set itself up exactly as it would have. Past here it has.
+            // Nothing above changes state Avalonia can see, so failing until here leaves the
+            // platform to set itself up exactly as it would have. Past this point it does not.
             Bind(impl, proxy);
             _ = Dispatcher.UIThread;
             return (QuietDispatcher)proxy;
@@ -242,10 +231,8 @@ public class QuietDispatcher : DispatchProxy
                     continue;
                 }
 
-                // The platform spins the remainder when it is under a millisecond. Sleeping a
-                // whole millisecond instead is the point of this class: it can only make a timer
-                // late, by less than the millisecond it was already going to be rounded to, and
-                // it is never a spin however small the remainder gets.
+                // The whole point: where the platform spins out a sub-millisecond remainder, wait
+                // a millisecond. A timer can only be late by less than it was rounded to anyway.
                 var left = next.Value - _running.Elapsed;
                 if (left < TimeSpan.FromMilliseconds(1))
                     left = TimeSpan.FromMilliseconds(1);
@@ -263,8 +250,7 @@ public class QuietDispatcher : DispatchProxy
 
     /// <summary>
     /// Never throws: an exception here would come out of the event loop and hang the app, which is
-    /// more than a power saving is allowed to cost. Anything unexpected means "not idle", so the
-    /// worst a broken predicate can do is give back the wakes this class was there to remove.
+    /// more than a power saving is allowed to cost. A broken predicate reads as "not idle".
     /// </summary>
     private bool Idle()
     {

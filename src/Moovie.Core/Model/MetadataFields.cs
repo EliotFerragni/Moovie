@@ -1,14 +1,10 @@
 namespace Moovie.Core.Model;
 
 /// <summary>
-/// Copies one named field from one <see cref="MediaMetadata"/> onto another.
+/// Copies one named field from one <see cref="MediaMetadata"/> onto another, which is what the
+/// preview diff's per-field revert is built on. Both sources it offers are plain
+/// <see cref="MediaMetadata"/>, so nothing has to be parsed back out of the strings on screen.
 /// </summary>
-/// <remarks>
-/// This is what the preview diff's per-field revert is built on. Both sources it offers (the
-/// tags read back out of the file and the snapshot the lookup returned) are plain
-/// <see cref="MediaMetadata"/>, so pointing a field at either is the same operation with a
-/// different source, and nothing has to be parsed back out of the strings the diff displays.
-/// </remarks>
 public static class MetadataFields
 {
     /// <summary>
@@ -69,9 +65,9 @@ public static class MetadataFields
                 target.Network = source.Network;
                 return true;
 
-            // The date and the year are one field as far as the file is concerned: the writer
-            // falls back to the year when there is no date, so moving only one of them would
-            // leave a value the diff still reports as different.
+            // One field as far as the file is concerned: the writer falls back to the year when
+            // there is no date, so moving only one would leave the diff still reporting a
+            // difference.
             case nameof(MediaMetadata.ReleaseDate):
                 target.ReleaseDate = source.ReleaseDate;
                 target.Year = source.Year;
@@ -109,9 +105,8 @@ public static class MetadataFields
                 target.Resolution = source.Resolution;
                 return true;
 
-            // The chosen image and any bytes already held for it move together. Tags read out of
-            // a file carry the bytes and no path, which is exactly what "leave the cover alone"
-            // needs: the writer only replaces a cover it was given a different image for.
+            // The chosen image and any bytes held for it move together. Tags read out of a file
+            // carry bytes and no path, which is exactly what "leave the cover alone" needs.
             case nameof(MediaMetadata.ArtworkPath):
                 target.ArtworkPath = source.ArtworkPath;
                 target.ArtworkData = source.ArtworkData;

@@ -16,9 +16,8 @@ public sealed record LanguageChoice(string Tag, string DisplayName)
 /// </summary>
 /// <remarks>
 /// English is compiled in as the fallback, so a key missing from a translation shows the English
-/// text rather than a blank. Nothing is loaded until <see cref="Use"/> is called, which only the
-/// app does at startup: tests and any other caller get English deterministically, whatever the
-/// machine's locale happens to be.
+/// text rather than a blank. Nothing is loaded until <see cref="Use"/> is called, so tests and
+/// other callers get English whatever the machine's locale happens to be.
 /// </remarks>
 public static class Strings
 {
@@ -35,8 +34,7 @@ public static class Strings
 
     /// <summary>
     /// Built on each read, because the "same as the system" entry is itself translated and the
-    /// list is usually asked for after <see cref="Use"/> has run. Each language is named in its
-    /// own words, as language pickers conventionally are.
+    /// list is usually asked for after <see cref="Use"/> has run.
     /// </summary>
     public static IReadOnlyList<LanguageChoice> Available =>
     [

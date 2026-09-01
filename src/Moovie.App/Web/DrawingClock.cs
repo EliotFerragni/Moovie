@@ -9,23 +9,18 @@ namespace Moovie.App.Web;
 /// The clock the app draws by, which this host owns rather than the platform.
 ///
 /// The headless platform's own clock ticks sixty times a second for as long as the app runs,
-/// whether or not anything has changed and whether or not anybody is connected. The loop the app's
-/// thread runs in makes that far worse than it sounds, since it busy-waits through the last
-/// millisecond before any timer it is waiting for rather than sleeping into it, so each of those
-/// ticks costs a millisecond and a half. An untouched app with no page open anywhere cost a tenth
-/// of a core, which on a NAS is a fan that turns all night for nothing.
+/// connected or not. The app's event loop busy-waits the last millisecond before any timer rather
+/// than sleeping into it, so each tick costs a millisecond and a half: an untouched app with no
+/// page open cost a tenth of a core, which on a NAS is a fan that turns all night for nothing.
 ///
-/// So the platform is given this clock instead, and it ticks only when <see cref="WebHost"/> asks,
-/// which it does when the browser sends something and while the picture is still changing. With
-/// nobody watching, nothing asks, no timer is left running, and the app's thread sleeps until a
-/// browser knocks.
+/// This clock ticks only when <see cref="WebHost"/> asks, which it does when the browser sends
+/// something and while the picture is still changing. With nobody watching, the app's thread
+/// sleeps until a browser knocks.
 ///
-/// Avalonia allows application code no part in this: the interface below may not be implemented
-/// outside Avalonia, and the registry the platform keeps its clock in is internal, though both are
-/// public in the assembly that ships. Hence the proxy and the reflection, and hence the care to
-/// make it optional: the takeover is refused unless the clock is exactly the shape known here, and
-/// if it is refused the app draws the way it did before, on the platform's clock, which works
-/// perfectly well and merely costs more.
+/// Avalonia allows application code no part in this: the interface may not be implemented outside
+/// its assembly and the registry is internal, hence the proxy and the reflection. The takeover is
+/// refused unless the clock is exactly the shape known here, in which case the app draws on the
+/// platform's clock, which works perfectly well and merely costs more.
 /// </summary>
 // Not sealed: DispatchProxy builds the instance by deriving from this.
 public class DrawingClock : DispatchProxy

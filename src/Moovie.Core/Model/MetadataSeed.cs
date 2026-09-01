@@ -5,14 +5,9 @@ namespace Moovie.Core.Model;
 
 /// <summary>
 /// Builds the metadata a file starts with, before anything is looked up: the tags it already
-/// carries, with the filename filling in whatever it does not.
+/// carries, with the filename filling in whatever it does not. The order is the whole point, as
+/// tags a previous pass wrote are real data and outrank a guess pulled out of a filename.
 /// </summary>
-/// <remarks>
-/// The order is the whole point. Tags a previous pass wrote are real data and outrank a guess
-/// pulled out of a filename, so a file that has been tagged before opens showing its own content
-/// rather than a blank sheet. The filename is there to supply what is missing, which for an
-/// untagged file is everything.
-/// </remarks>
 public static class MetadataSeed
 {
     public static MediaMetadata From(ExistingTags? tags, ParsedName? parsed)
@@ -25,7 +20,7 @@ public static class MetadataSeed
         if (metadata.Kind == MediaKind.Unknown)
         {
             // A file with no type of its own is a movie unless the name says otherwise, which is
-            // what the rest of the app assumes and what the form has to lay itself out for.
+            // what the form has to lay itself out for.
             metadata.Kind = parsed.Kind == MediaKind.Unknown ? MediaKind.Movie : parsed.Kind;
         }
 

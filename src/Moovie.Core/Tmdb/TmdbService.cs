@@ -12,13 +12,11 @@ namespace Moovie.Core.Tmdb;
 public sealed class TmdbException(string message, Exception? inner = null) : Exception(message, inner);
 
 /// <summary>
-/// <see cref="ITmdbService"/> over TMDbLib.
+/// <see cref="ITmdbService"/> over TMDbLib. Two things here exist purely to make batches of
+/// hundreds of files behave: a cache keyed on (id, language), so a 24-episode season costs one
+/// show lookup and one season lookup rather than 24 searches, and a concurrency gate plus retry
+/// so TMDB's rate limiter is never tripped.
 /// </summary>
-/// <remarks>
-/// Two things here exist purely to make batches of hundreds of files behave: a cache keyed on
-/// (id, language), so a 24-episode season costs one show lookup and one season lookup rather than
-/// 24 searches, and a concurrency gate plus retry so TMDB's rate limiter is never tripped.
-/// </remarks>
 public sealed class TmdbService : ITmdbService, IDisposable
 {
     /// <summary>TMDB tolerates far more, but there is nothing to gain from flooding it.</summary>
@@ -156,7 +154,7 @@ public sealed class TmdbService : ITmdbService, IDisposable
             return null;
 
         // Daily shows are usually organised by year, so try the seasons whose start date sits
-        // closest to the one we are looking for before widening the search.
+        // closest to the one wanted before widening the search.
         var ordered = show.Seasons
             .Where(s => s.SeasonNumber > 0)
             .OrderBy(s => s.AirDate is null ? 1 : 0)
@@ -517,8 +515,8 @@ public sealed class TmdbService : ITmdbService, IDisposable
         ContentRating = ShowCertification(show),
         TmdbId = show.Id,
         ImdbId = show.ExternalIds?.ImdbId,
-        // An episode still is more useful than the show poster, but not every episode has one.
-        // The real choice is made later against the user's preferred kind; this is the fallback.
+        // An episode still beats the show poster, but not every episode has one. The real choice
+        // is made later against the user's preferred kind; this is only the fallback.
         ArtworkPath = episode.StillPath ?? show.PosterPath,
         ArtworkByKind = EpisodeArtwork(show, seasonRecord, episode),
         Language = language,
@@ -593,13 +591,12 @@ public sealed class TmdbService : ITmdbService, IDisposable
         return string.IsNullOrWhiteSpace(preferred?.Rating) ? null : preferred.Rating;
     }
 
-    /// <summary>True when the requested language left the text fields that matter empty.</summary>
     /// <summary>
-    /// Whether the original-language record is worth fetching as well. Two independent reasons:
-    /// text TMDB has no translation for, and artwork that exists only under the original
-    /// language. The second is easy to overlook (a fully translated season can still have no
-    /// poster of its own) and without it the preferred artwork kind silently downgrades.
-    /// The extra fetch is cached per show and season, so a whole season costs it once.
+    /// Whether the original-language record is worth fetching as well, for two independent
+    /// reasons: text TMDB has no translation for, and artwork that exists only under the original
+    /// language. The second is easy to overlook, since a fully translated season can still have no
+    /// poster of its own, and without it the preferred artwork kind silently downgrades. The extra
+    /// fetch is cached per show and season, so a whole season costs it once.
     /// </summary>
     private static bool NeedsFallback(MediaMetadata metadata, string language) =>
         !language.StartsWith("en", StringComparison.OrdinalIgnoreCase)
@@ -637,8 +634,8 @@ public sealed class TmdbService : ITmdbService, IDisposable
             target.FallbackFields.Add(nameof(target.ShowName));
         }
 
-        // Artwork is deliberately not recorded as a fallback field: the pane uses those to
-        // explain untranslated text, and a poster with no words on it is not a translation gap.
+        // Artwork is deliberately not recorded as a fallback field: those explain untranslated
+        // text, and a poster with no words on it is not a translation gap.
         ArtworkSelector.FillMissingKinds(target, source);
     }
 

@@ -24,10 +24,8 @@ public sealed class ArtworkLoader : IDisposable
 
     /// <summary>
     /// How much decoded artwork to keep. A decoded bitmap costs four bytes a pixel whatever the
-    /// JPEG behind it weighed, so a w342 poster is about 700 KB and a w154 thumbnail about 140 KB.
-    /// This holds a few hundred of the latter, which is more than any one scroll through a
-    /// candidate list or a season needs, and it stops a session left open for a week from holding
-    /// every image it has ever shown.
+    /// JPEG behind it weighed, so this holds a few hundred w154 thumbnails: more than one scroll
+    /// through a candidate list needs, and short of holding every image a week-old session showed.
     /// </summary>
     private const long Budget = 48L * 1024 * 1024;
 
@@ -113,12 +111,9 @@ public sealed class ArtworkLoader : IDisposable
     /// inside its limits. Call with <see cref="_lock"/> held.
     /// </summary>
     /// <remarks>
-    /// What is dropped is the reference, never the bitmap. A cached image is very likely to be on
-    /// screen at the moment it is evicted, because whatever asked for it usually still holds it,
-    /// and disposing a bitmap Avalonia is about to draw would take the window down. Letting go is
-    /// enough: nothing else refers to an image no view is showing, so the collector reclaims the
-    /// surface behind it in its own time, and what matters is that the cache no longer grows
-    /// without a bound.
+    /// What is dropped is the reference, never the bitmap: whatever asked for an image usually
+    /// still holds it, and disposing one Avalonia is about to draw would take the window down.
+    /// Letting go is enough, since the collector reclaims a surface no view is showing.
     /// </remarks>
     private void Keep(string key, Bitmap? bitmap)
     {

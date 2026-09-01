@@ -61,14 +61,9 @@ public sealed partial class FileItemViewModel : ObservableObject
     public string? ThumbnailPath { get; set; }
 
     /// <summary>
-    /// Whether the list is currently showing this row, set by the view as it realises and
-    /// releases containers.
-    ///
-    /// It is here so that work triggered by something other than scrolling can ask whether
-    /// anybody can actually see the row. Reading a file's cover costs a second open of the file
-    /// and a decode, and a library can hold tens of thousands of rows, so the difference between
-    /// doing that for the ones on screen and doing it for all of them is the difference between
-    /// a list that appears at once and a NAS that thrashes for a quarter of an hour.
+    /// Whether the list is currently showing this row, set by the view as it realises and releases
+    /// containers. Work triggered by something other than scrolling asks this before reading a
+    /// file's cover, which costs a second open and a decode across a library of tens of thousands.
     /// </summary>
     public bool IsOnScreen { get; set; }
 
@@ -79,14 +74,10 @@ public sealed partial class FileItemViewModel : ObservableObject
     public bool IsRemoved { get; set; }
 
     /// <summary>
-    /// Shows a bitmap in this row, releasing the one it replaces if this row owned it.
-    ///
-    /// A row's artwork comes from two places with opposite rules. A cover read out of the file
-    /// itself is decoded for this row alone and nothing else will ever free it, so replacing it
-    /// without disposing it leaks a Skia surface, which is unmanaged and so cheap to hold that
-    /// nothing pushes the collector into reclaiming it. Artwork from TMDB comes out of the shared
-    /// cache, is very likely on screen somewhere else at the same time, and disposing it would
-    /// take down whatever is drawing it. So ownership has to travel with the bitmap.
+    /// Shows a bitmap in this row, releasing the one it replaces if this row owned it. Ownership
+    /// has to travel with the bitmap: a cover decoded out of the file belongs to this row alone
+    /// and leaks an unmanaged Skia surface if it is dropped undisposed, while artwork from the
+    /// shared cache is very likely on screen elsewhere and disposing it takes that drawing down.
     /// </summary>
     public void ShowThumbnail(Bitmap? bitmap, bool owned)
     {
@@ -98,10 +89,9 @@ public sealed partial class FileItemViewModel : ObservableObject
         if (replaced is null || ReferenceEquals(replaced, bitmap))
             return;
 
-        // Not here, even though the binding has already moved on. A frame that was composed
-        // before this call can still be holding the old bitmap, and freeing a Skia surface out
-        // from under a draw in progress takes the window down rather than showing a stale tile.
-        // Background sits below render, so by the time this runs the frame that used it is done.
+        // Not disposed here: a frame composed before this call may still hold the old bitmap, and
+        // freeing a Skia surface under a draw in progress takes the window down. Background sits
+        // below render, so by the time this runs that frame is done.
         Dispatcher.UIThread.Post(replaced.Dispose, DispatcherPriority.Background);
     }
 
@@ -138,9 +128,8 @@ public sealed partial class FileItemViewModel : ObservableObject
     public ParsedName? Parsed { get; set; }
 
     /// <summary>
-    /// The tags the file itself carries, read when it was added. The form starts from these, so a
-    /// file that is already tagged shows its own content rather than a blank sheet, and a lookup
-    /// only fills what is missing or replaces what the user lets it.
+    /// The tags the file itself carries, read when it was added. The form starts from these, so an
+    /// already tagged file shows its own content rather than a blank sheet.
     /// </summary>
     public ExistingTags? FileTags { get; set; }
 
@@ -148,14 +137,10 @@ public sealed partial class FileItemViewModel : ObservableObject
     private bool DescribedByFileTags => FileTags is { IsEmpty: false };
 
     /// <summary>
-    /// Whether a lookup has run for this file, whatever came of it.
+    /// Whether a lookup has run for this file, whatever came of it. The status cannot answer this:
+    /// editing a field before a lookup moves a file out of Pending. A fetched snapshot is the
+    /// evidence, plus the three statuses that cost a round trip and leave no snapshot behind.
     /// </summary>
-    /// <remarks>
-    /// Not a question the status can answer any more: editing a field before a lookup moves a file
-    /// out of Pending, so "not Pending" would claim a lookup that never happened. A fetched
-    /// snapshot is the real evidence; the three statuses beside it are the outcomes that leave no
-    /// snapshot behind but did cost a round trip.
-    /// </remarks>
     public bool HasBeenLookedUp =>
         FetchedMetadata is not null
         || Status is FileStatus.NotFound or FileStatus.Failed or FileStatus.NeedsChoice;
@@ -182,12 +167,11 @@ public sealed partial class FileItemViewModel : ObservableObject
 
     public bool HasRenamePreview => !string.IsNullOrWhiteSpace(RenamePreview);
 
-    /// <summary>The one-line description under the filename: what we think this file holds.</summary>
-    /// <remarks>
-    /// A description guessed from the filename alone says so with a trailing question mark. One
-    /// read out of the file's own tags does not: it is what the file actually claims to hold,
-    /// whether or not a lookup has confirmed it against TMDB.
-    /// </remarks>
+    /// <summary>
+    /// The one-line description under the filename: what we think this file holds. A description
+    /// guessed from the filename alone says so with a trailing question mark; one read out of the
+    /// file's own tags does not, confirmed against TMDB or not.
+    /// </summary>
     public string Subtitle
     {
         get
@@ -196,8 +180,8 @@ public sealed partial class FileItemViewModel : ObservableObject
             if (description is null)
                 return Strings.Get("status.notRecognised");
 
-            // A lookup that found nothing leaves the guess a guess, so the snapshot is what
-            // settles this rather than whether a lookup happened to run.
+            // A lookup that found nothing leaves the guess a guess, so the snapshot settles this
+            // rather than whether a lookup happened to run.
             return FetchedMetadata is not null || DescribedByFileTags ? description : $"{description}?";
         }
     }
@@ -234,12 +218,11 @@ public sealed partial class FileItemViewModel : ObservableObject
         return $" {season}E{episodes}";
     }
 
-    /// <summary>Records that the user changed <paramref name="fieldName"/> by hand.</summary>
-    /// <remarks>
-    /// A file waiting to be looked up counts too. The form is filled from its own tags, so an edit
-    /// there is a deliberate change to real content, and leaving it unappliable would be refusing
-    /// to write something the user just typed in front of the value it replaces.
-    /// </remarks>
+    /// <summary>
+    /// Records that the user changed <paramref name="fieldName"/> by hand. A file still waiting to
+    /// be looked up counts too: its form was filled from its own tags, so an edit there is a
+    /// deliberate change to real content and has to stay appliable.
+    /// </summary>
     public void MarkFieldEdited(string fieldName)
     {
         _userEditedFields.Add(fieldName);
@@ -259,9 +242,9 @@ public sealed partial class FileItemViewModel : ObservableObject
     public bool HasManualChanges => _userEditedFields.Count > 0;
 
     /// <summary>
-    /// Forgets one hand-edit, for a change that a fresh fetch has already undone. Artwork is the
-    /// case that matters: a hand-picked image is deliberately not carried across a refetch, so
-    /// leaving it marked would show the file as edited when nothing of the user's survives.
+    /// Forgets one hand-edit that a fresh fetch has already undone. Artwork is the case that
+    /// matters: a hand-picked image does not survive a refetch, so leaving it marked would show
+    /// the file as edited when nothing of the user's is left.
     /// </summary>
     public void ClearFieldEdit(string fieldName)
     {

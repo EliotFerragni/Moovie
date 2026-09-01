@@ -34,16 +34,15 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     private CancellationTokenSource? _work;
 
     /// <summary>
-    /// Cancelled when the list is emptied, which is how reading a library's worth of files stops
-    /// when somebody decides they did not want it after all. Examining is not a command anybody
-    /// started and so has no other way to be called off.
+    /// Cancelled when the list is emptied. Examining is not a command anybody started, so this is
+    /// its only way to be called off.
     /// </summary>
     private CancellationTokenSource _listAlive = new();
 
     /// <summary>
-    /// How many files are examined between handing results back to the list. Small enough that
-    /// emptying the list stops the work promptly and that nothing accumulates, large enough that
-    /// the hop back to the UI thread is not most of the cost.
+    /// How many files are examined between handing results back to the list: small enough that
+    /// emptying the list stops the work promptly, large enough that the hop back to the UI thread
+    /// is not most of the cost.
     /// </summary>
     private const int ExamineBatch = 64;
 
@@ -100,7 +99,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     public ArtworkKind PreferredArtwork(MediaKind kind) => Settings.PreferredArtwork(kind);
 
     /// <summary>
-    /// A hand-picked image wins over the preferred kind until the file is refetched. Any artwork
+    /// A hand-picked image wins over the preferred kind until the file is refetched. Artwork
     /// already downloaded is dropped so the new path is fetched on the next Apply.
     /// </summary>
     public void SetArtwork(FileItemViewModel file, string artworkPath)
@@ -120,8 +119,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     /// </summary>
     public void DiscardManualChanges(FileItemViewModel file)
     {
-        // Nothing has been looked up, so there is no TMDB result to go back to, but there is
-        // still a state before the edits: the file's own tags, and its name for the gaps.
+        // With no TMDB result to go back to there is still a state before the edits: the file's
+        // own tags, and its name for the gaps.
         if (file.FetchedMetadata is null)
         {
             if (!file.HasManualChanges)
@@ -148,7 +147,6 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
 
     public bool HasBanner => !string.IsNullOrWhiteSpace(Banner);
 
-    /// <summary>Drives the empty-state hint in the file pane.</summary>
     public bool HasFiles => Files.Count > 0;
 
     /// <summary>Files may only be added or removed while nothing is in flight.</summary>
@@ -190,17 +188,15 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     }
 
     /// <summary>
-    /// Where the next picker should open. Taken from whatever was last added, which on a first run
-    /// means the folder named on the command line: the container is started pointing at the
-    /// library, and without this the picker would open on the app's own config directory instead,
-    /// that being where HOME points.
+    /// Where the next picker should open. On a first run this is the folder named on the command
+    /// line, without which the container's picker would open on HOME, the app's config directory.
     /// </summary>
     private string? _lastFolder;
 
     private void RememberFolder(IReadOnlyList<string> paths)
     {
-        // Taken from what was asked for rather than from what was added, so pointing at a folder
-        // holding nothing taggable still opens there next time rather than somewhere unrelated.
+        // What was asked for rather than what was added, so a folder holding nothing taggable
+        // still opens there next time.
         foreach (var path in paths)
         {
             if (Directory.Exists(path))
@@ -218,14 +214,10 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     }
 
     /// <summary>
-    /// Adds files and folders, expanding folders recursively and keeping only containers we can tag.
-    /// Used by the toolbar and by drag-and-drop alike.
+    /// Adds files and folders, expanding folders recursively and keeping only containers we can
+    /// tag. Used by the toolbar and by drag-and-drop alike. Adding looks nothing up: dropping a
+    /// folder is not a decision to spend an API call on every file in it.
     /// </summary>
-    /// <remarks>
-    /// Adding does not look anything up. Dropping a folder is how you get files into the list, not
-    /// a decision to spend an API call on every one of them and overwrite whatever they already
-    /// carry; the list says how many are waiting and Look up all starts it.
-    /// </remarks>
     public void AddPaths(IEnumerable<string> paths)
     {
         var requested = paths as IReadOnlyList<string> ?? paths.ToList();
@@ -251,23 +243,15 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
 
     /// <summary>
     /// Reads everything about a file that does not need the network: the tags it already carries,
-    /// what its name says, and how big its video really is.
+    /// what its name says, and how big its video really is. Runs on adding, so a file that has
+    /// been tagged before opens with its own content in the form rather than a blank sheet.
     /// </summary>
-    /// <remarks>
-    /// This runs on adding, which is the point. A file that has been tagged before opens with its
-    /// own content in the form rather than a blank sheet, so there is something to review before
-    /// spending an API call, and after one, the difference between the two is visible instead of
-    /// implied.
-    /// </remarks>
     private async Task ExamineAsync(IReadOnlyList<FileItemViewModel> items)
     {
         var token = _listAlive.Token;
 
-        // A batch at a time, for three reasons. A library's worth of results is never all in
-        // memory at once; emptying the list stops this within a batch rather than after every
-        // file in the library has been opened; and the rows fill in as they are read instead of
-        // all at the end, which for twenty thousand files is the difference between a list that
-        // is doing something visible and one that looks stuck.
+        // A batch at a time: nothing accumulates, emptying the list stops the work within a
+        // batch, and the rows fill in as they are read rather than all at the end.
         for (var start = 0; start < items.Count && !token.IsCancellationRequested; start += ExamineBatch)
         {
             var batch = new List<FileItemViewModel>(ExamineBatch);
@@ -280,8 +264,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
             if (batch.Count == 0)
                 continue;
 
-            // Parsing is cheap, but the probe and the tag read each open the file, so this stays
-            // off the UI thread. Both are the same header, and a batch is still milliseconds.
+            // The probe and the tag read each open the file, so this stays off the UI thread.
             List<(ParsedName Parsed, ExistingTags Tags)> examined;
             try
             {
@@ -307,12 +290,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
             UpdateSummary();
             Preview.Refresh();
 
-            // Only the rows somebody is looking at. The list realises its containers before this
-            // runs, so those rows asked for a thumbnail while their tags were still unread and
-            // got nothing; they are the ones that have to be asked again. Every other row asks
-            // for itself when it is scrolled to, which is the point of doing this per row: a
-            // cover costs a second open of the file and a decode, and adding a library of twenty
-            // thousand should not do that twenty thousand times for a window showing fifteen.
+            // Only the rows somebody is looking at: they asked for a thumbnail before their tags
+            // were read and got nothing, so they have to be asked again. Every other row asks for
+            // itself when it is scrolled to, which is the point of doing this per row.
             foreach (var item in batch.Where(i => i.IsOnScreen))
                 _ = EnsureThumbnailAsync(item);
         }
@@ -355,8 +335,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     [RelayCommand(CanExecute = nameof(CanEditList))]
     private void ClearAll()
     {
-        // Nothing on the list means nothing in flight for it either: an examine reading its way
-        // through a library, and any lookup or apply already running, are all called off here.
+        // Nothing on the list means nothing in flight for it either.
         _listAlive.Cancel();
         _listAlive.Dispose();
         _listAlive = new CancellationTokenSource();
@@ -394,9 +373,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     [RelayCommand(CanExecute = nameof(CanEditList))]
     private async Task LookUpSelectedAsync() => await ScanAsync(SelectedFiles.ToList(), force: true);
 
-    /// <summary>
-    /// Parses each filename and looks the result up on TMDB, a few at a time.
-    /// </summary>
+    /// <summary>Parses each filename and looks the result up on TMDB, a few at a time.</summary>
     /// <param name="force">Re-look-up files that already have metadata, discarding hand edits.</param>
     private async Task ScanAsync(IReadOnlyList<FileItemViewModel> items, bool force = false)
     {
@@ -405,7 +382,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
 
         if (_resolver is null)
         {
-            // Parsing is cheap but the probe opens every file, so it does not run on the UI thread.
+            // The probe opens every file, so it does not run on the UI thread.
             await Task.Run(() =>
             {
                 foreach (var item in items)
@@ -480,14 +457,12 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
 
         item.Parsed = await Task.Run(() => Examine(item.Path), token);
 
-        // Re-read on a forced pass: the file may have been written since it was added, and the
-        // form is about to be rebuilt on top of whatever it holds now.
+        // Re-read on a forced pass: the file may have been written since it was added.
         if (force || item.FileTags is null)
             item.FileTags = await Task.Run(() => ReadTags(item.Path), token);
 
-        // A forced pass over a file that has already been looked up is "start this one over", so
-        // hand edits go with it. On one that never has, they are the only thing the user has told
-        // us and the lookup is being asked for the first time, so they stay and outrank the result.
+        // Forcing a file that has already been looked up means "start this one over", so hand
+        // edits go with it. On one that never has, they are all the user has told us: they stay.
         if (force && item.FetchedMetadata is not null)
             item.ClearUserEdits();
 
@@ -515,16 +490,10 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     }
 
     /// <summary>
-    /// What the path says about a file, corrected by what the file itself says.
+    /// What the path says about a file, corrected by what the file itself says. The resolution is
+    /// the one field the container knows better than the name; the name stays the fallback for a
+    /// video track that cannot be read.
     /// </summary>
-    /// <remarks>
-    /// The resolution is the one field the container knows better than the name. A name only
-    /// claims a resolution, and stops claiming it the moment the file is renamed by a template
-    /// without <c>{resolution}</c>, after which the next pass would find nothing and write an SD
-    /// HD flag over a 4K film. Taking it from the video track fixes that, and mislabelled
-    /// releases along with it. The name is still the fallback, for a file whose video track
-    /// cannot be read.
-    /// </remarks>
     private static ParsedName Examine(string path)
     {
         var parsed = FilenameParser.Parse(path);
@@ -545,8 +514,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
 
     /// <summary>
     /// Points freshly fetched metadata at the artwork kind the user asked for, since TMDB hands
-    /// back its own default. Every path that takes metadata from TMDB has to go through this, or
-    /// the preference applies to some files and not others depending on how they were matched.
+    /// back its own default. Every path taking metadata from TMDB must go through this, or the
+    /// preference applies to some files and not others depending on how they were matched.
     /// </summary>
     private void ApplyArtworkPreference(MediaMetadata metadata) =>
         metadata.ArtworkPath =
@@ -577,8 +546,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     }
 
     /// <summary>
-    /// Overlays fresh TMDB metadata onto a file while preserving every field the user edited.
-    /// This is what makes "refetch in another language" safe.
+    /// Overlays fresh TMDB metadata onto a file while preserving every field the user edited,
+    /// which is what makes "refetch in another language" safe.
     /// </summary>
     private static MediaMetadata MergeKeepingUserEdits(FileItemViewModel item, MediaMetadata fresh)
     {
@@ -736,11 +705,9 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     }
 
     /// <summary>
-    /// Loads the thumbnail for one row, which is the same image the file is going to carry, so
-    /// the list never shows one picture and the preview another. Called when a row scrolls into
-    /// view and again whenever a file's artwork changes, so a list of several hundred only pays
-    /// for the rows somebody has actually looked at, and the second call for an unchanged file
-    /// costs a string comparison.
+    /// Loads the thumbnail for one row: the same image the file is going to carry, so the list
+    /// never shows one picture and the preview another. Called when a row scrolls into view and
+    /// whenever a file's artwork changes; an unchanged file costs a string comparison.
     /// </summary>
     public async Task EnsureThumbnailAsync(FileItemViewModel file)
     {
@@ -757,8 +724,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
                 return;
             }
 
-            // Nothing chosen yet, but the file may already carry a cover of its own, which is
-            // what the row shows until a lookup offers a different one.
+            // Nothing chosen yet, but the file's own cover is what the row shows until a lookup
+            // offers a different one.
             if (file.FileTags is { HasArtwork: true } && file.ThumbnailPath != $"file:{file.Path}")
             {
                 file.ThumbnailPath = $"file:{file.Path}";
@@ -787,13 +754,13 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
         file.ThumbnailPath = path;
 
         // Straight from the cache, so it is not this row's to free: the same poster is very
-        // likely being shown by every other episode of the same show.
+        // likely on every other episode of the same show.
         file.ShowThumbnail(await _artwork.LoadAsync(_tmdb, path, ArtworkLoader.ThumbnailSize), owned: false);
     }
 
     /// <summary>
     /// The cover embedded in one file, at tile size. Read per row rather than for the whole list:
-    /// adding a folder should not decode three hundred covers before one has been looked at.
+    /// adding a folder should not decode three hundred covers before one is looked at.
     /// </summary>
     private async Task<Bitmap?> LoadEmbeddedThumbnailAsync(string path)
     {

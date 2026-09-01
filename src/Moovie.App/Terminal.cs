@@ -5,13 +5,11 @@ namespace Moovie.App;
 /// <summary>
 /// Gives the app somewhere to print on Windows.
 ///
-/// The executable is built as a Windows application, which is what stops a console window
-/// flashing up behind the interface when somebody double-clicks it. The cost is that it has no
-/// console at all: run from a command prompt with <c>--web</c>, every line it writes (the
-/// address it is serving on, or why it could not start) goes nowhere, and it looks as though
-/// nothing happened. Attaching to the console that launched it puts the output back in front of
-/// the person who typed the command, and makes the process a member of that console so Ctrl+C
-/// reaches it.
+/// Building the executable as a Windows application is what stops a console window flashing up
+/// when somebody double-clicks it, at the cost of having no console at all: run with <c>--web</c>
+/// from a command prompt, every line it writes goes nowhere. Attaching to the console that
+/// launched it puts the output back in front of whoever typed the command, and makes the process
+/// a member of that console so Ctrl+C reaches it.
 ///
 /// Nothing to do anywhere else: every other platform hands a console to a process that wants one.
 /// </summary>

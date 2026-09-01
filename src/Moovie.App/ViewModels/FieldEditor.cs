@@ -13,18 +13,12 @@ public enum FieldScope
 }
 
 /// <summary>
-/// One editable metadata field, bound to however many files are selected.
+/// One editable metadata field, bound to however many files are selected. On every selection
+/// change it reads the field from each file: agreement shows the value, disagreement blanks out
+/// and says so. Typing writes to every selected file at once and marks each of them edited.
+/// Everything is handled as text, including numbers and dates, so the whole form is built from one
+/// list and one template; the typed round-trip lives in each field's read/write pair.
 /// </summary>
-/// <remarks>
-/// This is what makes multi-selection editing work. On every selection change the editor reads the
-/// field from each selected file: if they all agree it shows that value, otherwise it blanks out and
-/// says so. Typing a value writes it to every selected file at once and marks each of them edited.
-/// <para>
-/// Everything is handled as text, including numbers and dates, so the whole form can be built from
-/// one list and one template. The typed round-trip lives in the read/write pair each field is
-/// constructed with.
-/// </para>
-/// </remarks>
 public sealed partial class FieldEditor : ObservableObject
 {
     /// <summary>Shown instead of a value when the selected files disagree.</summary>
@@ -155,7 +149,6 @@ public sealed partial class FieldEditor : ObservableObject
         if (_rebinding || _targets.Count == 0)
             return;
 
-        // The user typed: fan the value out to every selected file.
         foreach (var target in _targets)
         {
             _write(target.Metadata, Normalize(value));

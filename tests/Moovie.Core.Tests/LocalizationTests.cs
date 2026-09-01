@@ -118,8 +118,8 @@ public class LocalizationTests : IDisposable
 
     /// <summary>
     /// Every message a bad template produces has to be translated. Key parity cannot catch this:
-    /// the key can sit in all four files while the parser goes on returning a hardcoded English
-    /// sentence, which is exactly what it did.
+    /// the key can sit in all four files while the parser returns a hardcoded English sentence,
+    /// which is exactly what it did.
     /// </summary>
     [Theory]
     [InlineData("fr")]
@@ -143,9 +143,9 @@ public class LocalizationTests : IDisposable
             "{resolution:sideways}",
         ];
 
-        // Why the reasons are checked separately: a bad format reports as "'{season:zz}' is not
-        // valid: <reason>", and the wrapper around it was translated while the reason was not.
-        // Comparing whole strings therefore saw a difference and passed the untranslated half.
+        // The reasons are checked separately because a bad format reports as "'{season:zz}' is
+        // not valid: <reason>": the wrapper was translated while the reason was not, so comparing
+        // whole strings saw a difference and passed the untranslated half.
         Strings.Use("en");
         var english = broken.Select(t => RenameTemplate.Validate(t).Errors.ToList()).ToList();
         var englishReasons = new[]
