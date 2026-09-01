@@ -53,12 +53,16 @@
   // the focus: the browser's own copy and cut then have exactly the right text to take, with
   // nothing asked of it. Keys are read from the window, so the app still sees every one of them.
   let selected = '';
-  const mirror = text => {
-    selected = text;
-    clipboard.value = text;
+
+  // Fills the field with the app's selection and selects it, which is the state the browser's own
+  // copy and cut need to find it in.
+  const prime = () => {
+    clipboard.value = selected;
     // Not select(), which in some browsers moves the focus as well.
-    clipboard.setSelectionRange(0, text.length);
+    clipboard.setSelectionRange(0, selected.length);
   };
+
+  const mirror = text => { selected = text; prime(); };
 
   // What the browser is believed to hold, so that text the app copies is not chased with a second,
   // far less certain, attempt to put the same thing there again.
@@ -70,9 +74,16 @@
   let physicalKeyboard = matchMedia('(pointer: fine)').matches;
   const focusApp = () => (physicalKeyboard ? clipboard : canvas).focus();
 
+  // Which buttons are held goes over with every pointer message, not only the press, as the
+  // browser's own bitmask: 1 left, 2 right, 4 middle. A text box asks a move whether the left
+  // button is down before it extends its selection, so without this a drag across text selected
+  // nothing and there was then nothing for copy or cut to take.
   const pointerAt = (e, type) => {
     const box = canvas.getBoundingClientRect();
-    return { type, x: e.clientX - box.left, y: e.clientY - box.top, button: e.button, ...modifiers(e) };
+    return {
+      type, x: e.clientX - box.left, y: e.clientY - box.top,
+      button: e.button, buttons: e.buttons, ...modifiers(e),
+    };
   };
 
   // A mouse reports far more moves than a window can be redrawn for, and every one of them costs
@@ -81,7 +92,7 @@
   canvas.addEventListener('pointermove', e => {
     const wasIdle = pendingMove === null;
     pendingMove = pointerAt(e, 'pointer-moved');
-    if (wasIdle) requestAnimationFrame(() => { send(pendingMove); pendingMove = null; });
+    if (wasIdle) requestAnimationFrame(() => { if (pendingMove) { send(pendingMove); pendingMove = null; } });
   });
   canvas.addEventListener('pointerdown', e => {
     physicalKeyboard = e.pointerType !== 'touch';
@@ -91,9 +102,18 @@
   });
   canvas.addEventListener('pointerup', e => {
     canvas.releasePointerCapture(e.pointerId);
+    // A move still waiting for its frame happened before the release, and has to be sent before
+    // it: the drag it belongs to is over by the time the app sees the release.
+    if (pendingMove) { send(pendingMove); pendingMove = null; }
     send(pointerAt(e, 'pointer-released'));
   });
   canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+  // The default action of a mousedown is to focus what is under the cursor, and the canvas is
+  // focusable so that a touch device has somewhere to put the focus. Left alone, every click took
+  // the focus off the hidden field and the browser then had nothing to copy from. Pointer events
+  // are unaffected by this, and so is the app.
+  canvas.addEventListener('mousedown', e => e.preventDefault());
 
   canvas.addEventListener('wheel', e => {
     e.preventDefault();
@@ -130,6 +150,12 @@
     // selection to cut and the text to remember.
     const clipboardKey = clipboardAction(e);
     if (clipboardKey) {
+      // The field is put back in order first. A key event is proof of a real keyboard, so the
+      // focus goes there whatever the last pointer was, and the app's selection may well have
+      // been pushed while something else held it.
+      prime();
+      clipboard.focus();
+
       if (clipboardKey !== 'paste') send({ type: clipboardKey });
       return;
     }
@@ -153,10 +179,20 @@
     if (text) { onClipboard = text; send({ type: 'paste', text }); }
   });
 
-  // The browser has just taken the field's contents, which is the app's selection.
-  const taken = () => { onClipboard = selected; };
-  window.addEventListener('copy', taken);
-  window.addEventListener('cut', taken);
+  // The browser is taking the app's selection. It is handed over explicitly rather than left to
+  // the field's own selection, which is one less thing to be wrong about; a cut deletes nothing
+  // here, since the app deletes its own selection and then pushes what is left.
+  const take = e => {
+    if (!selected) return;
+
+    // Every browser that fires this hands over a clipboardData; were one not to, the throw is
+    // harmless, since its own copy of the field would then go ahead and take the same text.
+    e.clipboardData.setData('text/plain', selected);
+    e.preventDefault();
+    onClipboard = selected;
+  };
+  window.addEventListener('copy', take);
+  window.addEventListener('cut', take);
 
   // The app copied something from its own context menu rather than the user pressing anything.
   // Whether the browser will take it depends on the browser: Chrome allows this for a few seconds

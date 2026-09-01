@@ -548,6 +548,7 @@ public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
         public double Height { get; set; }
         public double Dpi { get; set; } = 96;
         public int Button { get; set; }
+        public int Buttons { get; set; }
         public bool Down { get; set; }
         public string? Code { get; set; }
         public string? Key { get; set; }
@@ -567,16 +568,29 @@ public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
         /// <summary>
         /// <see cref="InputModifiers"/> is declared <c>[Flags]</c> but numbered sequentially, so it
         /// is an array of individual values rather than one OR-ed value.
+        ///
+        /// The mouse buttons belong in here as much as the keyboard's modifiers do, and this is the
+        /// only place the app is told which are held. A text box asks a pointer move whether the
+        /// left button is down before it will extend its selection, so a page reporting no button
+        /// made every move a hover: dragging across text in a field selected nothing, and copy and
+        /// cut, which take the selection, then had nothing to take.
         /// </summary>
         public InputModifiers[] ModifierList
         {
             get
             {
-                var modifiers = new List<InputModifiers>(4);
+                var modifiers = new List<InputModifiers>(7);
                 if (Alt) modifiers.Add(InputModifiers.Alt);
                 if (Control) modifiers.Add(InputModifiers.Control);
                 if (Shift) modifiers.Add(InputModifiers.Shift);
                 if (Meta) modifiers.Add(InputModifiers.Windows);
+
+                // The browser's bitmask, which is numbered unlike its own button index: 1 is left,
+                // 2 is right and 4 is middle, where Button calls them 0, 2 and 1.
+                if ((Buttons & 1) != 0) modifiers.Add(InputModifiers.LeftMouseButton);
+                if ((Buttons & 2) != 0) modifiers.Add(InputModifiers.RightMouseButton);
+                if ((Buttons & 4) != 0) modifiers.Add(InputModifiers.MiddleMouseButton);
+
                 return modifiers.ToArray();
             }
         }

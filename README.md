@@ -273,11 +273,12 @@ either, so it belongs behind whatever already guards the machine.
 
 **Copy and paste use your own machine's clipboard**, not the server's. Ctrl+C, Ctrl+X and Ctrl+V
 work in the fields as they do in any other tab, and text copied here can be pasted into anything
-else on your desk. The field's own right-click menu works too, with one wrinkle: what its *Copy*
-item takes may not make it out of the app on Firefox and Safari, since a browser lets a page reach
-the clipboard only for a gesture it has just handled itself, and that click was answered on the
-other side of the wire. Ctrl+C always makes it out. The API key field is never copied from at all,
-exactly as on the desktop.
+else on your desk. The field's own right-click menu works too, with one wrinkle: a browser
+only lets a page put text on the clipboard for a gesture it has just handled, and the menu's click
+was answered on the other side of the wire, so its *Copy* is asking a favour. Firefox grants it,
+and Chrome's rule for this is the same; where a browser refuses, that copy still works within the
+app, and Ctrl+C is the way out that never depends on it. The API key field is never copied from at
+all, exactly as on the desktop.
 
 Left running with nobody connected it does nothing and costs nothing: it draws only in answer to
 input, and it wakes about once every ten seconds, so it is not a process that keeps a NAS out of

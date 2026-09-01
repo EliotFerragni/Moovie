@@ -157,6 +157,13 @@ and `--web` hands the very same tree to Avalonia's `RemoteServer`, which renders
 frame buffer. The browser receives PNG frames and sends pointer and keyboard events back.
 Everything else (view models, parser, diff, writer) has no idea which is running.
 
+A pointer message carries which buttons are held as well as where the cursor is: the browser's
+own `buttons` bitmask, translated into the modifiers the remote protocol carries them in. That is
+not a detail. A text box asks a move whether the left button is down before it will extend its
+selection, so while the page sent only the position, dragging across text in a field selected
+nothing, and copy and cut, which take the selection, had nothing to take. It looked like a broken
+clipboard and was a broken selection.
+
 That is what the `*View` / `*Window` split is for: the view is the whole of the interface and
 the window is a frame around it. `IAppShell` is the seam for the two things a view cannot do
 for itself, asking for files and opening a dialog, which a desktop window answers with the
@@ -190,11 +197,19 @@ nothing to fail. The page keeps the three shortcuts to itself — not preventing
 the whole trick — and tells the app what happened: a cut so it can delete the selection, a copy
 so it remembers what to paste back, a paste with the text the browser handed over.
 
+Two traps in that, both paid for. The default action of a `mousedown` is to focus whatever is
+under the cursor, and the canvas is focusable so that a touch device has somewhere to put the
+focus: left alone, every click took the focus off the hidden field and the browser then had
+nothing to copy from, which looked exactly like copy being broken while paste worked. The canvas
+cancels `mousedown` for that reason. And the focus is put back on the field, with the selection in
+it, on the keypress itself, since a key event is proof of a keyboard whatever the last pointer was.
+
 What is left best-effort is a copy the app starts itself, from its own context menu: the page is
-told and tries `document.execCommand('copy')`, which Chrome allows for a few seconds after the
-click that asked for it and Firefox only from inside the gesture's own handler. When it fails the
-text is still in the field, so the user's Ctrl+C takes it. The app's *Paste* item can only paste
-what the page has told it about, since nothing may read the clipboard unasked.
+told and tries `document.execCommand('copy')`, which a browser allows only while it still counts a
+gesture as recent. Firefox 136 allows it a moment after the click that asked for it, tested, and
+Chrome's window for this is five seconds. Where a browser refuses, the text is still in the field,
+so the user's Ctrl+C takes it. The app's *Paste* item can only paste what the page has told it
+about, since nothing may read the clipboard unasked.
 
 A masked box is never read: `SelectedText` hands back the cleartext of a `PasswordChar` box, and
 the app's one masked box holds the user's TMDB key, so `Copyable` refuses it — both for the
