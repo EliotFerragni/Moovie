@@ -9,12 +9,12 @@ on:
   workflow_dispatch:
     inputs:
       target:
-        description: "Which target to build"
+        description: "Which target to build (none: only whatever else is ticked)"
         type: choice
         default: linux-x64
-        options: [linux-x64, linux-arm64, win-x64, win-arm64, osx-x64, osx-arm64, all]
+        options: [linux-x64, linux-arm64, win-x64, win-arm64, osx-x64, osx-arm64, all, none]
       docker:
-        description: "Also build a Docker image"
+        description: "Also build the Docker image (linux-x64)"
         type: boolean
         default: true
       cross_platform_tests:
@@ -101,7 +101,7 @@ jobs:
   publish:
     name: publish (${{ github.event_name == 'release' && 'all' || inputs.target }})
     needs: test
-    if: github.event_name == 'workflow_dispatch' || github.event_name == 'release'
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.target != 'none')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -159,22 +159,30 @@ jobs:
         run: gh release upload "${{ github.event.release.tag_name }}" dist/* --clobber
 
   # The image compiles nothing: build/publish.sh produces the binary and the Dockerfile copies it
-  # in, so this costs about a minute on top of a publish it already does.
+  # in, so the whole job is about a minute. It runs on its own rather than off the publish job, so
+  # a manual run can ask for the image with the target set to none.
   #
-  # amd64 only. arm64 has no native runner on a private repo, so it would go through QEMU; an ARM
-  # NAS is served by running build/package-docker.sh arm64 locally.
+  # linux-x64 only. arm64 has no native runner on a private repo, so it would go through QEMU; an
+  # ARM NAS is served by running build/package-docker.sh arm64 locally.
   #
   # Output is a loadable tarball rather than a registry push, which is what the readme documents
   # and what a NAS with no registry access can use.
   docker:
-    name: docker (amd64)
-    needs: publish
+    name: docker (linux-x64)
+    needs: test
     if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.docker)
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
+
+      # Repeated from publish rather than inherited through a needs, so that the image can be
+      # built on its own. Same reason as there: a release cut from a tree that was never bumped
+      # would ship an asset labelled with the old version.
+      - name: Check the tag matches the declared version
+        if: github.event_name == 'release'
+        run: ./build/check-version.sh "${{ github.event.release.tag_name }}"
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -194,7 +202,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
-          name: Moovie-docker-amd64
+          name: Moovie-docker-linux-x64
           path: dist/*.docker.tar.gz
           if-no-files-found: error
           retention-days: 3
