@@ -13,6 +13,10 @@ on:
         type: choice
         default: linux-x64
         options: [linux-x64, linux-arm64, win-x64, win-arm64, osx-x64, osx-arm64, all]
+      docker:
+        description: "Also build a Docker image"
+        type: boolean
+        default: true
       cross_platform_tests:
         description: "Also run the tests on Windows and macOS (slow: bills at 2x and 10x)"
         type: boolean
@@ -153,3 +157,50 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "${{ github.event.release.tag_name }}" dist/* --clobber
+
+  # The image compiles nothing: build/publish.sh produces the binary and the Dockerfile copies it
+  # in, so this costs about a minute on top of a publish it already does.
+  #
+  # amd64 only. arm64 has no native runner on a private repo, so it would go through QEMU; an ARM
+  # NAS is served by running build/package-docker.sh arm64 locally.
+  #
+  # Output is a loadable tarball rather than a registry push, which is what the readme documents
+  # and what a NAS with no registry access can use.
+  docker:
+    name: docker (amd64)
+    needs: publish
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.docker)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-publish-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: ${{ runner.os }}-nuget-publish-
+
+      - name: Build the image
+        run: ./build/package-docker.sh amd64
+
+      - name: Upload the image
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Moovie-docker-amd64
+          path: dist/*.docker.tar.gz
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Attach the image to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" dist/*.docker.tar.gz --clobber
