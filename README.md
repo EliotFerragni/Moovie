@@ -62,6 +62,8 @@ coarse HD flag rather than a frame size.
 
 ## The window
 
+![The main window: a matched season in the file list with the new name under each file, one episode selected, its metadata and season poster in the pane on the right](docs/screenshots/main-window.png)
+
 The left pane lists your files, each with a status icon:
 
 | Icon | Meaning |
@@ -151,6 +153,8 @@ Renaming is off by default. Turn it on with the checkbox at the bottom of the wi
 file list shows `→ new name` under each file before anything happens. Movies and TV shows get
 their own template, both editable in Settings with a clickable field palette, digit spinners
 and a live preview, so everyday adjustments need no knowledge of the syntax.
+
+![The two rename template editors in Settings, each with its field palette and a live preview of the name it would produce](docs/screenshots/rename-editor.png)
 
 ```
 Movies:    {title} ({year})
