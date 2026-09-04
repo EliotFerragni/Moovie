@@ -27,14 +27,26 @@ Only `.mp4` and `.m4v` files are handled.
    [themoviedb.org](https://www.themoviedb.org/signup), then go to Settings → API and copy the
    **API Key (v3 auth)**.
 2. Open **Settings…** in the app, paste the key, and press **Test key**.
-3. Drop some files onto the left pane, or use **Add files…** / **Add folder…**. Folders are
-   searched recursively, so a whole season can go in at once.
+3. Drop some files onto the left pane, or use **Add files…** / **Add folder…**. A folder brings
+   in what is inside it, so a whole season can go in at once.
 4. Press **Look up all**, or select a few files and press **Look up selected**.
 5. Review the list, sorting out anything marked `?` or `✕`.
 6. Press **Apply to all ready files**.
 
 Adding files does not look them up: dropping a folder is how files get into the list, not a
 decision to spend an API call on every one of them.
+
+**How far a folder is opened** is up to you. The small arrow beside **Add folder…** opens the
+choice, with a line explaining it: nothing but what is directly inside the folder, a fixed
+number of levels of subfolders, or everything below it. It saves as soon as you pick, and it is
+in the window rather than in a file picker, so the desktop and `--web` builds behave alike. The
+depth applies to folders however they arrive: added, dropped, or named on the command line. A
+file you point at yourself is always taken.
+
+It starts at **This folder only**, deliberately. Pointing a fresh install at the root of a NAS
+share is an easy thing to do by accident, and the shallow default means that costs you one
+short listing rather than a walk of the whole array. Widen it once you can see what you are
+aiming at.
 
 What needs no network happens on adding. Each file is opened, its existing tags are read, its
 name is parsed and its video track probed, and the form is filled from all three, **the file's

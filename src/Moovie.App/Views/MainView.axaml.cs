@@ -1,7 +1,9 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.VisualTree;
 using Moovie.App.ViewModels;
 using Moovie.Core.Writing;
 
@@ -46,6 +48,16 @@ public partial class MainView : UserControl
         viewModel.PickFolderAsync = shell.PickFolderAsync;
         viewModel.ShowSettingsAsync = shell.ShowSettingsAsync;
         viewModel.ShowAboutAsync = shell.ShowAboutAsync;
+    }
+
+    /// <summary>
+    /// Closes the scan depth flyout once a depth is clicked. Bound to the pointer rather than to
+    /// SelectionChanged, which also fires as the flyout opens and would shut it again at once.
+    /// </summary>
+    private void OnScanDepthPicked(object? sender, PointerReleasedEventArgs e)
+    {
+        if (e.Source is Visual source && source.FindAncestorOfType<ListBoxItem>(includeSelf: true) is not null)
+            ScanDepthButton.Flyout?.Hide();
     }
 
     /// <summary>

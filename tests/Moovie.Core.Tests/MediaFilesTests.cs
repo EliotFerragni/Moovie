@@ -1,4 +1,5 @@
 using Moovie.Core.Files;
+using Moovie.Core.Settings;
 using Xunit;
 
 namespace Moovie.Core.Tests;
@@ -133,6 +134,73 @@ public class MediaFilesTests : IDisposable
             .ToList();
 
         Assert.Contains("keep.mp4", found);
+    }
+
+    [Fact]
+    public void Depth_zero_takes_only_what_is_directly_inside()
+    {
+        Make("top.mp4");
+        Make("Season 1/one.mp4");
+        Make("Season 1/Extras/two.mp4");
+
+        var found = MediaFiles.Expand([_root], 0).Select(Path.GetFileName).ToList();
+
+        Assert.Equal(["top.mp4"], found);
+    }
+
+    [Fact]
+    public void Depth_one_opens_the_subfolders_but_not_theirs()
+    {
+        Make("top.mp4");
+        Make("Season 1/one.mp4");
+        Make("Season 1/Extras/two.mp4");
+
+        var found = MediaFiles.Expand([_root], 1).Select(Path.GetFileName).OrderBy(n => n).ToList();
+
+        Assert.Equal(["one.mp4", "top.mp4"], found);
+    }
+
+    [Fact]
+    public void An_unlimited_depth_goes_all_the_way_down()
+    {
+        Make("top.mp4");
+        Make("a/b/c/deep.mp4");
+
+        var found = MediaFiles
+            .Expand([_root], AppSettings.UnlimitedScanDepth)
+            .Select(Path.GetFileName)
+            .OrderBy(n => n)
+            .ToList();
+
+        Assert.Equal(["deep.mp4", "top.mp4"], found);
+    }
+
+    /// <summary>No depth given is no limit, which is not the same as the app's own default.</summary>
+    [Fact]
+    public void The_whole_tree_is_taken_when_no_depth_is_named()
+    {
+        Make("a/b/c/deep.mp4");
+
+        Assert.Single(MediaFiles.Expand([_root]));
+    }
+
+    [Fact]
+    public void A_limited_depth_still_skips_the_private_folders()
+    {
+        Make("keep.mp4");
+        Make("@eaDir/SYNOVIDEO_TRANSCODE.mp4");
+
+        var found = MediaFiles.Expand([_root], 1).Select(Path.GetFileName).ToList();
+
+        Assert.Equal(["keep.mp4"], found);
+    }
+
+    [Fact]
+    public void A_file_named_directly_is_taken_however_shallow_the_scan()
+    {
+        var file = Make("Season 1/Extras/deep.mp4");
+
+        Assert.Equal([file], MediaFiles.Expand([file], 0));
     }
 
     [Fact]

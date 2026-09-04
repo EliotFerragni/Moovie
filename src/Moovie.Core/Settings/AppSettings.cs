@@ -28,6 +28,12 @@ public sealed class AppSettings
     public const string DefaultMovieTemplate = "{title} ({year})";
     public const string DefaultTvTemplate = "{show} - S{season:00}E{episode:00}< - {episodeTitle}>";
 
+    /// <summary>The <see cref="ScanDepth"/> that goes all the way down, however deep that is.</summary>
+    public const int UnlimitedScanDepth = -1;
+
+    /// <summary>The deepest <see cref="ScanDepth"/> that can be picked before "all the way down".</summary>
+    public const int MaxNamedScanDepth = 5;
+
     /// <summary>The user's own TMDB API key (the v3 "API Key", not the v4 read-access token).</summary>
     public string TmdbApiKey { get; set; } = string.Empty;
 
@@ -83,6 +89,14 @@ public sealed class AppSettings
 
     /// <summary>Keep a <c>.bak</c> copy of each file before its tags are rewritten.</summary>
     public bool CreateBackup { get; set; }
+
+    /// <summary>
+    /// How far below a chosen folder the scan goes. 0 takes only what is directly inside it, 1 also
+    /// opens each subfolder, and <see cref="UnlimitedScanDepth"/> goes all the way down. The
+    /// shallow default keeps a first run pointed at the root of a NAS share from pulling in
+    /// everything on it.
+    /// </summary>
+    public int ScanDepth { get; set; }
 
     public double WindowWidth { get; set; } = 1280;
 

@@ -29,6 +29,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
 
     private readonly Mp4TagReader _reader = new();
 
+    private ScanDepthChoice _scanDepth;
+
     private TmdbService? _tmdb;
     private MatchResolver? _resolver;
     private CancellationTokenSource? _work;
@@ -74,6 +76,8 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     {
         _settingsStore = settingsStore;
         _settings = settingsStore.Load();
+        ScanDepths = ScanDepthCatalog.Including(_settings.ScanDepth);
+        _scanDepth = ScanDepths.FirstOrDefault(d => d.Depth == _settings.ScanDepth) ?? ScanDepths[^1];
         Preview = new PreviewPaneViewModel(this, _artwork);
 
         RebuildTmdbClient();
@@ -155,6 +159,27 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     /// <summary>Files may only be added or removed while nothing is in flight.</summary>
     public bool CanEditList => !IsBusy;
 
+    /// <summary>
+    /// The depths the toolbar dropdown offers. Built once, since a dropdown needs the same list
+    /// back every time it is read.
+    /// </summary>
+    public IReadOnlyList<ScanDepthChoice> ScanDepths { get; }
+
+    /// <summary>How far a chosen folder is opened. Saved as soon as it is picked.</summary>
+    public ScanDepthChoice ScanDepth
+    {
+        get => _scanDepth;
+        set
+        {
+            if (_scanDepth == value)
+                return;
+            _scanDepth = value;
+            Settings.ScanDepth = value.Depth;
+            _settingsStore.Save(Settings);
+            OnPropertyChanged();
+        }
+    }
+
     public bool RenameEnabled
     {
         get => Settings.RenameEnabled;
@@ -217,9 +242,10 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
     }
 
     /// <summary>
-    /// Adds files and folders, expanding folders recursively and keeping only containers we can
-    /// tag. Used by the toolbar and by drag-and-drop alike. Adding looks nothing up: dropping a
-    /// folder is not a decision to spend an API call on every file in it.
+    /// Adds files and folders, opening folders as deep as <see cref="AppSettings.ScanDepth"/>
+    /// allows and keeping only containers we can tag. Used by the toolbar and by drag-and-drop
+    /// alike. Adding looks nothing up: dropping a folder is not a decision to spend an API call
+    /// on every file in it.
     /// </summary>
     public void AddPaths(IEnumerable<string> paths)
     {
@@ -229,7 +255,7 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
         var existing = Files.Select(f => f.Path).ToHashSet(PathComparer);
         var added = new List<FileItemViewModel>();
 
-        foreach (var path in MediaFiles.Expand(requested))
+        foreach (var path in MediaFiles.Expand(requested, Settings.ScanDepth))
         {
             if (!existing.Add(path))
                 continue;

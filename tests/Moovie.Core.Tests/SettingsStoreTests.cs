@@ -44,6 +44,29 @@ public class SettingsStoreTests : IDisposable
     }
 
     [Fact]
+    public void Round_trips_the_scan_depth()
+    {
+        new SettingsStore(Path("depth.json"))
+            .Save(new AppSettings { ScanDepth = AppSettings.UnlimitedScanDepth });
+
+        Assert.Equal(
+            AppSettings.UnlimitedScanDepth,
+            new SettingsStore(Path("depth.json")).Load().ScanDepth);
+    }
+
+    /// <summary>
+    /// The shallow default is what keeps a first run pointed at a whole NAS share from pulling in
+    /// everything on it, so a file that predates the setting has to read that way too.
+    /// </summary>
+    [Fact]
+    public void Takes_only_the_folder_itself_when_the_file_does_not_mention_a_depth()
+    {
+        System.IO.File.WriteAllText(Path("old-depth.json"), """{ "TmdbApiKey": "abc123" }""");
+
+        Assert.Equal(0, new SettingsStore(Path("old-depth.json")).Load().ScanDepth);
+    }
+
+    [Fact]
     public void A_missing_file_comes_back_as_defaults_rather_than_an_error()
     {
         var loaded = new SettingsStore(Path("nothing-here.json")).Load();

@@ -1,3 +1,4 @@
+using Moovie.Core.Settings;
 using Moovie.Core.Writing;
 
 namespace Moovie.Core.Files;
@@ -16,16 +17,23 @@ public static class MediaFiles
         ["@eaDir", "#recycle", "@Recycle", ".@__thumb", "$RECYCLE.BIN", "#snapshot", ".DS_Store"];
 
     /// <summary>
-    /// Expands folders recursively, keeping only files that can be tagged. Anything unreadable is
-    /// skipped rather than allowed to stop the walk.
+    /// Expands folders, keeping only files that can be tagged. Anything unreadable is skipped
+    /// rather than allowed to stop the walk.
     /// </summary>
-    public static IEnumerable<string> Expand(IEnumerable<string> paths)
+    /// <param name="maxDepth">
+    /// How far below each folder to look: 0 for what is directly inside it and nothing else, 1 to
+    /// also open its subfolders, <see cref="AppSettings.UnlimitedScanDepth"/> for the whole tree.
+    /// A file named directly is taken whatever this says.
+    /// </param>
+    public static IEnumerable<string> Expand(
+        IEnumerable<string> paths,
+        int maxDepth = AppSettings.UnlimitedScanDepth)
     {
         foreach (var path in paths)
         {
             if (Directory.Exists(path))
             {
-                foreach (var file in Under(path))
+                foreach (var file in Under(path, maxDepth))
                     yield return file;
             }
             else if (File.Exists(path) && Mp4TagWriter.IsSupported(path))
@@ -39,14 +47,16 @@ public static class MediaFiles
     /// The result is built inside the try rather than returned lazily: enumeration is deferred, so
     /// a guard around the query that composes it would catch nothing.
     /// </summary>
-    private static List<string> Under(string directory)
+    private static List<string> Under(string directory, int maxDepth)
     {
         try
         {
             return Directory
                 .EnumerateFiles(directory, "*", new EnumerationOptions
                 {
-                    RecurseSubdirectories = true,
+                    // MaxRecursionDepth will not take the negative that stands for unlimited.
+                    RecurseSubdirectories = maxDepth != 0,
+                    MaxRecursionDepth = maxDepth < 0 ? int.MaxValue : maxDepth,
 
                     // Without this, one directory the app may not read ends the whole walk. A
                     // Synology share always has at least one.

@@ -27,6 +27,11 @@
     <Style Selector="Path.status.info">
       <Setter Property="Fill" Value="{DynamicResource InfoColor}" />
     </Style>
+
+    <Style Selector="ListBox.depth ListBoxItem">
+      <Setter Property="Padding" Value="10,3" />
+      <Setter Property="MinHeight" Value="0" />
+    </Style>
   </UserControl.Styles>
 
   <Grid RowDefinitions="Auto,Auto,*,Auto">
@@ -36,7 +41,23 @@
       <Grid ColumnDefinitions="Auto,*,Auto">
         <StackPanel Orientation="Horizontal" Spacing="6">
           <Button Content="{loc:T main.addFiles}" Command="{Binding AddFilesCommand}" />
-          <Button Content="{loc:T main.addFolder}" Command="{Binding AddFolderCommand}" />
+          <StackPanel Orientation="Horizontal" Spacing="2">
+            <Button Content="{loc:T main.addFolder}" Command="{Binding AddFolderCommand}" />
+            <Button Name="ScanDepthButton" Content="&#x25BE;" Padding="9,5"
+                    ToolTip.Tip="{loc:T main.scanDepthTitle}">
+              <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedLeft">
+                  <StackPanel Spacing="8" MaxWidth="320">
+                    <TextBlock Text="{loc:T main.scanDepthTitle}" Classes="fieldLabel" />
+                    <ListBox Classes="depth" ItemsSource="{Binding ScanDepths}"
+                             SelectedItem="{Binding ScanDepth}" PointerReleased="OnScanDepthPicked" />
+                    <TextBlock Text="{loc:T main.scanDepthHint}" Classes="subtle" FontSize="11"
+                               TextWrapping="Wrap" />
+                  </StackPanel>
+                </Flyout>
+              </Button.Flyout>
+            </Button>
+          </StackPanel>
           <Rectangle Width="1" Margin="4,3" Fill="{DynamicResource PanelBorder}" />
           <Button Content="{loc:T main.lookUpSelected}" Command="{Binding LookUpSelectedCommand}" />
           <Button Content="{loc:T main.lookUpAll}" Command="{Binding LookUpAllCommand}" />
