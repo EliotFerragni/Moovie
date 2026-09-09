@@ -117,6 +117,47 @@ public partial class MainView : UserControl
     }
 
     /// <summary>
+    /// Commits a hand-typed new name as its box is left. The view model does the cleaning: only
+    /// it knows which characters the settings say to write.
+    /// </summary>
+    private void OnRenameBoxLostFocus(object? sender, RoutedEventArgs e)
+    {
+        if (sender is TextBox { DataContext: FileItemViewModel file } box)
+            CommitRename(box, file);
+    }
+
+    /// <summary>
+    /// Enter commits where it stands and Escape puts the name back first, both without waiting
+    /// for the box to be left: the list is not a form and there is nowhere obvious to tab to.
+    /// </summary>
+    private void OnRenameBoxKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (sender is not TextBox { DataContext: FileItemViewModel file } box)
+            return;
+
+        if (e.Key == Key.Escape)
+            box.Text = file.RenamePreview;
+        else if (e.Key != Key.Enter)
+            return;
+
+        CommitRename(box, file);
+        e.Handled = true;
+    }
+
+    private void CommitRename(TextBox box, FileItemViewModel file)
+    {
+        if (ViewModel is not { } viewModel)
+            return;
+
+        viewModel.SetRenameOverride(file, box.Text);
+
+        // Written back rather than left to the binding: a typed name that cleans up to the one
+        // the row was already showing leaves the bound property untouched, and the box would go
+        // on showing characters the file is never going to get.
+        box.Text = file.RenamePreview;
+    }
+
+    /// <summary>
     /// Keeps the view model's selection in step. Bound in code rather than XAML because
     /// <see cref="ListBox.SelectedItems"/> is an untyped list that is awkward to bind reliably.
     /// </summary>

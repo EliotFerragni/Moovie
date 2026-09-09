@@ -84,6 +84,13 @@
                     HorizontalAlignment="Left" MinWidth="330" />
           <TextBlock Classes="subtle" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,0"
                      Text="{loc:T settings.omitResolutionHint}" />
+
+          <TextBlock Text="{loc:T settings.illegalCharacters}" Classes="fieldLabel" Margin="0,8,0,3" />
+          <ComboBox ItemsSource="{Binding Replacements}"
+                    SelectedItem="{Binding IllegalCharacterReplacement}"
+                    HorizontalAlignment="Left" MinWidth="330" />
+          <TextBlock Classes="subtle" FontSize="11" TextWrapping="Wrap" Margin="0,3,0,0"
+                     Text="{loc:T settings.illegalCharactersHint}" />
         </StackPanel>
 
         <!-- The two template editors -->

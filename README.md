@@ -212,9 +212,27 @@ line at the threshold whenever one is set, so you can see which of the two you h
 This is a naming preference only: the resolution is still read from the video, still shown in
 the preview pane, and still decides the HD flag written into the file.
 
-Renaming happens in place, so only the filename changes and never the folder. Characters that
-are illegal on Windows are stripped whatever platform you are on, and name collisions get a
-` (2)` suffix.
+**Characters Windows will not take** (`\ / : * ? " < > |`) are dealt with whatever platform you
+are on, since a library is rarely read from only one. Settings has **Unsupported characters**
+for what goes in their place: nothing, a space, a dot, an underscore or a dash.
+
+```
+Face/Off (1997)   →   FaceOff (1997).mp4     nothing, the default
+                  →   Face-Off (1997).mp4    a dash
+```
+
+A colon is the one exception and always becomes a dash, because it usually separates a title
+from its subtitle: `Mission: Impossible` reads as `Mission - Impossible` rather than running the
+two together or leaving a stray mark behind.
+
+**Any one file can be named by hand.** The `→ new name` in the file list is a box, not a label:
+type over it and that file takes the name you gave it, whatever the template says. It goes
+through the same character rules, so what the row shows afterwards is what the file will get,
+and it survives a refetch in another language. The ↺ beside it hands the file back to its
+template, and applying clears the name once the file is carrying it.
+
+Renaming happens in place, so only the filename changes and never the folder, and name
+collisions get a ` (2)` suffix.
 
 ## Artwork
 

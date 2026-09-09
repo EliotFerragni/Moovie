@@ -22,6 +22,12 @@ public sealed record SeparatorChoice(SeparatorStyle Style, string DisplayName)
     public override string ToString() => DisplayName;
 }
 
+/// <summary>What a character Windows forbids is written as. The value is the replacement itself.</summary>
+public sealed record ReplacementChoice(string Value, string DisplayName)
+{
+    public override string ToString() => DisplayName;
+}
+
 /// <summary>
 /// A resolution the rename templates may leave out, plus the "never" entry that turns the
 /// threshold off. The value is the label itself, or empty for never.
@@ -72,6 +78,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private ResolutionFloorChoice _omitResolutionAtOrBelow;
 
+    [ObservableProperty]
+    private ReplacementChoice _illegalCharacterReplacement;
+
     /// <summary>Result of the Strings.Get("settings.testKey") button.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasKeyStatus))]
@@ -99,14 +108,17 @@ public sealed partial class SettingsViewModel : ObservableObject
         _omitResolutionAtOrBelow =
             ResolutionFloors.FirstOrDefault(c => c.Value == settings.OmitResolutionAtOrBelow)
             ?? ResolutionFloors[0];
+        _illegalCharacterReplacement =
+            Replacements.FirstOrDefault(c => c.Value == settings.IllegalCharacterReplacement)
+            ?? Replacements[0];
 
         MovieTemplate = new RenameTemplateEditorViewModel(
             Strings.Get("settings.movies"), MediaKind.Movie, settings.MovieRenameTemplate, AppSettings.DefaultMovieTemplate,
-            RenameEngine.SampleMovie, settings.Separator, settings.OmitResolutionAtOrBelow);
+            RenameEngine.SampleMovie, settings.Naming);
 
         TvTemplate = new RenameTemplateEditorViewModel(
             Strings.Get("settings.tvShows"), MediaKind.TvEpisode, settings.TvRenameTemplate, AppSettings.DefaultTvTemplate,
-            RenameEngine.SampleEpisode, settings.Separator, settings.OmitResolutionAtOrBelow);
+            RenameEngine.SampleEpisode, settings.Naming);
     }
 
     public RenameTemplateEditorViewModel MovieTemplate { get; }
@@ -121,6 +133,19 @@ public sealed partial class SettingsViewModel : ObservableObject
         new(SeparatorStyle.Dot, Strings.Get("settings.sepDot")),
         new(SeparatorStyle.Underscore, Strings.Get("settings.sepUnderscore")),
         new(SeparatorStyle.Dash, Strings.Get("settings.sepDash")),
+    ];
+
+    /// <summary>
+    /// What a forbidden character is written as, "nothing" first because dropping them is what
+    /// the app did before the setting existed.
+    /// </summary>
+    public IReadOnlyList<ReplacementChoice> Replacements { get; } =
+    [
+        new(string.Empty, Strings.Get("settings.replaceNothing")),
+        new(" ", Strings.Get("settings.replaceSpace")),
+        new(".", Strings.Get("settings.replaceDot")),
+        new("_", Strings.Get("settings.replaceUnderscore")),
+        new("-", Strings.Get("settings.replaceDash")),
     ];
 
     /// <summary>
@@ -188,18 +213,22 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
     }
 
-    partial void OnSeparatorChanged(SeparatorChoice value)
+    partial void OnSeparatorChanged(SeparatorChoice value) => PushNamingRules();
+
+    partial void OnOmitResolutionAtOrBelowChanged(ResolutionFloorChoice value) => PushNamingRules();
+
+    partial void OnIllegalCharacterReplacementChanged(ReplacementChoice value) => PushNamingRules();
+
+    /// <summary>Both previews render under these rules, so keep them in step with the dropdowns.</summary>
+    private void PushNamingRules()
     {
-        // Both previews show the separator, so keep them in step with the dropdown.
-        MovieTemplate.Separator = value.Style;
-        TvTemplate.Separator = value.Style;
+        var rules = CurrentNamingRules;
+        MovieTemplate.Rules = rules;
+        TvTemplate.Rules = rules;
     }
 
-    partial void OnOmitResolutionAtOrBelowChanged(ResolutionFloorChoice value)
-    {
-        MovieTemplate.OmitResolutionAtOrBelow = value.Value;
-        TvTemplate.OmitResolutionAtOrBelow = value.Value;
-    }
+    private NamingRules CurrentNamingRules =>
+        new(Separator.Style, OmitResolutionAtOrBelow.Value, IllegalCharacterReplacement.Value);
 
     /// <summary>Folds the edits back into a settings object ready to persist.</summary>
     public AppSettings ToSettings()
@@ -216,6 +245,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         settings.MovieArtwork = MovieArtwork.Kind;
         settings.CreateBackup = CreateBackup;
         settings.OmitResolutionAtOrBelow = OmitResolutionAtOrBelow.Value;
+        settings.IllegalCharacterReplacement = IllegalCharacterReplacement.Value;
         settings.MovieRenameTemplate = MovieTemplate.Template;
         settings.TvRenameTemplate = TvTemplate.Template;
         return settings;

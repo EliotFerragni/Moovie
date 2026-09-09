@@ -42,7 +42,7 @@ needed: the app embeds Inter. WSL2 with WSLg runs the app fine.
 
 ```bash
 dotnet --info                          # should report 10.0.x
-dotnet test                            # 340 tests
+dotnet test                            # 365 tests
 dotnet run --project src/Moovie.App
 ```
 
@@ -319,6 +319,18 @@ Taking the larger gets both right, and a DVD-class frame stays SD however far it
 
 `1440p` is deliberately not shortened by `{resolution:short}`: "2K" properly means a 1080p-class
 frame, so borrowing it would name the file wrongly.
+
+**A colon is not governed by the unsupported-character setting.** Every other character Windows
+forbids is written as whatever the setting says, but a colon nearly always separates a title
+from its subtitle, and `Mission_ Impossible` would be the odd one out however the rest are
+handled. It becomes a dash, and the space after it is absorbed rather than doubled.
+
+**A name typed into the file list belongs to the file, not to the template.** It wins over what
+the template renders, survives a refetch, and is dropped only when the user reverts it or the
+file is applied and carrying it. It goes through the same character rules a rendered name does,
+which is why the view commits it through the view model rather than storing the raw text: only
+the view model knows which characters the settings ask for. The separator is the one rule it
+escapes, since spaces typed on purpose are not the template's business.
 
 **Angle brackets delimit optional template sections** because no filesystem allows them in a
 name, which leaves square brackets free for the common `[{resolution}]` style.

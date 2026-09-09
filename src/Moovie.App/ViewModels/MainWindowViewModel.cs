@@ -907,15 +907,20 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
 
             if (Settings.RenameEnabled)
             {
-                var template = TemplateFor(file.Metadata.Kind);
+                // A name typed in the list is taken as it stands; the rest go through the template.
+                var typed = file.RenameOverride;
+                var template = typed is null ? TemplateFor(file.Metadata.Kind) : null;
                 var renamed = await Task.Run(
-                    () => RenameEngine.Rename(
-                        file.Path, template, file.Metadata,
-                        Settings.Separator, Settings.OmitResolutionAtOrBelow), token);
+                    () => template is null
+                        ? RenameEngine.RenameTo(file.Path, typed, Settings.IllegalCharacterReplacement)
+                        : RenameEngine.Rename(file.Path, template, file.Metadata, Settings.Naming),
+                    token);
                 file.UpdatePath(renamed);
             }
 
             file.Status = FileStatus.Applied;
+            // The typed name has been given to the file, so it is no longer something pending.
+            file.RenameOverride = null;
             file.RenamePreview = null;
             return true;
         }
@@ -1053,17 +1058,60 @@ public sealed partial class MainWindowViewModel : ObservableObject, IMediaLookup
 
     private void RefreshRenamePreview(FileItemViewModel file)
     {
-        var template = Settings.RenameEnabled ? TemplateFor(file.Metadata.Kind) : null;
-
-        if (template is null || !template.Validation.IsValid)
+        if (file.RenameOverride is { } typed)
         {
-            file.RenamePreview = null;
+            // A name typed by hand is not the template's to overwrite, but it is still hidden
+            // while renaming is off, where nothing is going to be renamed to anything.
+            file.RenamePreview = Settings.RenameEnabled ? typed : null;
             return;
         }
 
-        var preview = RenameEngine.PreviewFileName(
-            file.Path, template, file.Metadata, Settings.Separator, Settings.OmitResolutionAtOrBelow);
-        file.RenamePreview = string.Equals(preview, file.FileName, StringComparison.Ordinal) ? null : preview;
+        var rendered = RenderedName(file);
+        file.RenamePreview =
+            rendered is null || string.Equals(rendered, file.FileName, StringComparison.Ordinal)
+                ? null
+                : rendered;
+    }
+
+    /// <summary>
+    /// What the template makes of a file, or null when renaming is off or the template is broken.
+    /// </summary>
+    private string? RenderedName(FileItemViewModel file)
+    {
+        var template = Settings.RenameEnabled ? TemplateFor(file.Metadata.Kind) : null;
+        if (template is null || !template.Validation.IsValid)
+            return null;
+
+        return RenameEngine.PreviewFileName(file.Path, template, file.Metadata, Settings.Naming);
+    }
+
+    /// <summary>
+    /// Takes a name typed over the preview in the list. It goes through the same character rules
+    /// a rendered name does, so what the row shows afterwards is what the file will get. Clearing
+    /// the box, or typing exactly what the template renders, hands the file back to the template.
+    /// </summary>
+    public void SetRenameOverride(FileItemViewModel file, string? typed)
+    {
+        var cleaned = RenameEngine.CleanFileName(
+            typed, file.Extension, Settings.IllegalCharacterReplacement);
+
+        file.RenameOverride =
+            cleaned.Length == 0 || string.Equals(cleaned, RenderedName(file), StringComparison.Ordinal)
+                ? null
+                : cleaned;
+
+        RefreshRenamePreview(file);
+    }
+
+    /// <summary>Drops a hand-typed name, putting the file back under its template.</summary>
+    [RelayCommand]
+    private void RevertRename(FileItemViewModel? file)
+    {
+        if (file is null)
+            return;
+
+        file.RenameOverride = null;
+        RefreshRenamePreview(file);
     }
 
     /// <summary>The rename template for a medium, parsed once and reused until the setting changes.</summary>

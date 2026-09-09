@@ -36,7 +36,8 @@ public class RenameEngineTests
     public void AppliesTheSeparatorStyle(SeparatorStyle separator, string expected)
     {
         var name = RenameEngine.BuildFileName(
-            RenameTemplate.Parse("{title} ({year})"), Movie("Blade Runner"), ".mp4", separator);
+            RenameTemplate.Parse("{title} ({year})"), Movie("Blade Runner"), ".mp4",
+            new NamingRules(separator));
 
         Assert.Equal(expected, name);
     }
@@ -82,7 +83,7 @@ public class RenameEngineTests
         var blank = new MediaMetadata { Kind = MediaKind.Movie };
 
         var preview = RenameEngine.PreviewFileName(
-            "/media/original name.mp4", RenameTemplate.Parse("{title}"), blank, SeparatorStyle.Space);
+            "/media/original name.mp4", RenameTemplate.Parse("{title}"), blank);
 
         Assert.Equal("original name.mp4", preview);
     }
@@ -135,7 +136,7 @@ public class RenameEngineTests
 
             var metadata = new MediaMetadata { Kind = MediaKind.Movie, Title = "Arrival", Year = 2016 };
             var renamed = RenameEngine.Rename(
-                original, RenameTemplate.Parse("{title} ({year})"), metadata, SeparatorStyle.Space);
+                original, RenameTemplate.Parse("{title} ({year})"), metadata);
 
             Assert.Equal(Path.Combine(directory, "Arrival (2016).mp4"), renamed);
             Assert.True(File.Exists(renamed));
@@ -188,7 +189,7 @@ public class RenameEngineTests
     {
         var name = RenameEngine.BuildFileName(
             RenameTemplate.Parse(OptionalResolution), At(resolution), ".mp4",
-            SeparatorStyle.Space, omitResolutionAtOrBelow: "576p");
+            new NamingRules(OmitResolutionAtOrBelow: "576p"));
 
         Assert.Equal(expected, name);
     }
@@ -201,7 +202,8 @@ public class RenameEngineTests
         Assert.Equal("Blade Runner 2049 (2017) [576p].mp4",
             RenameEngine.BuildFileName(template, At("576p"), ".mp4"));
         Assert.Equal("Blade Runner 2049 (2017) [576p].mp4",
-            RenameEngine.BuildFileName(template, At("576p"), ".mp4", SeparatorStyle.Space, string.Empty));
+            RenameEngine.BuildFileName(
+                template, At("576p"), ".mp4", new NamingRules(OmitResolutionAtOrBelow: string.Empty)));
     }
 
     /// <summary>
@@ -214,7 +216,7 @@ public class RenameEngineTests
     {
         var name = RenameEngine.BuildFileName(
             RenameTemplate.Parse("{title} ({year}) [{resolution}]"), At("576p"), ".mp4",
-            SeparatorStyle.Space, "576p");
+            new NamingRules(OmitResolutionAtOrBelow: "576p"));
 
         Assert.Equal("Blade Runner 2049 (2017) [].mp4", name);
     }
@@ -229,7 +231,8 @@ public class RenameEngineTests
         var metadata = At("576p");
 
         RenameEngine.BuildFileName(
-            RenameTemplate.Parse(OptionalResolution), metadata, ".mp4", SeparatorStyle.Space, "576p");
+            RenameTemplate.Parse(OptionalResolution), metadata, ".mp4",
+            new NamingRules(OmitResolutionAtOrBelow: "576p"));
 
         Assert.Equal("576p", metadata.Resolution);
     }
@@ -238,7 +241,8 @@ public class RenameEngineTests
     public void A_whole_name_that_empties_out_leaves_the_file_alone()
     {
         var name = RenameEngine.BuildFileName(
-            RenameTemplate.Parse("{resolution}"), At("480p"), ".mp4", SeparatorStyle.Space, "576p");
+            RenameTemplate.Parse("{resolution}"), At("480p"), ".mp4",
+            new NamingRules(OmitResolutionAtOrBelow: "576p"));
 
         Assert.Equal(string.Empty, name);
     }
@@ -261,9 +265,130 @@ public class RenameEngineTests
     {
         var template = RenameTemplate.Parse("{title} ({year})< [{resolution:short}]>");
 
+        var rules = new NamingRules(OmitResolutionAtOrBelow: "576p");
+
         Assert.Equal("Blade Runner 2049 (2017).mp4", RenameEngine.BuildFileName(
-            template, At("576p"), ".mp4", SeparatorStyle.Space, "576p"));
+            template, At("576p"), ".mp4", rules));
         Assert.Equal("Blade Runner 2049 (2017) [4k].mp4", RenameEngine.BuildFileName(
-            template, At("2160p"), ".mp4", SeparatorStyle.Space, "576p"));
+            template, At("2160p"), ".mp4", rules));
+    }
+
+    // ---------------------------------------------- what stands in for a forbidden character
+
+    private static NamingRules Replacing(string replacement) =>
+        new(IllegalCharacterReplacement: replacement);
+
+    [Theory]
+    [InlineData("", "FaceOff (2019).mp4")]
+    [InlineData(" ", "Face Off (2019).mp4")]
+    [InlineData(".", "Face.Off (2019).mp4")]
+    [InlineData("_", "Face_Off (2019).mp4")]
+    [InlineData("-", "Face-Off (2019).mp4")]
+    public void Writes_the_chosen_stand_in_for_a_forbidden_character(string replacement, string expected)
+    {
+        var name = RenameEngine.BuildFileName(
+            RenameTemplate.Parse("{title} ({year})"), Movie("Face/Off"), ".mp4", Replacing(replacement));
+
+        Assert.Equal(expected, name);
+    }
+
+    /// <summary>
+    /// The one character the setting does not govern: a colon separates a title from its subtitle
+    /// often enough that a dash reads better than whatever the rest are written as.
+    /// </summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData("_")]
+    [InlineData("-")]
+    public void A_colon_is_always_a_dash(string replacement)
+    {
+        var name = RenameEngine.BuildFileName(
+            RenameTemplate.Parse("{title}"), Movie("Mission: Impossible"), ".mp4", Replacing(replacement));
+
+        Assert.Equal("Mission - Impossible.mp4", name);
+    }
+
+    /// <summary>Otherwise "Who??" would come out as "Who__", and a name would end on one.</summary>
+    [Fact]
+    public void Stand_ins_neither_pile_up_nor_hang_off_the_end()
+    {
+        Assert.Equal("Who_ Me", RenameEngine.Sanitize("Who?? Me*", "_"));
+        Assert.Equal("Me", RenameEngine.Sanitize("*Me*", "_"));
+    }
+
+    /// <summary>A hand-edited settings file must not be able to ask for an unusable name.</summary>
+    [Fact]
+    public void A_stand_in_that_is_itself_forbidden_is_ignored()
+    {
+        Assert.Equal("FaceOff", RenameEngine.Sanitize("Face/Off", "/"));
+    }
+
+    // ---------------------------------------------- a name given by hand
+
+    [Fact]
+    public void A_typed_name_keeps_the_file_s_own_extension()
+    {
+        Assert.Equal("My Own Name.mp4", RenameEngine.CleanFileName("My Own Name", ".mp4"));
+        Assert.Equal("My Own Name.mp4", RenameEngine.CleanFileName("My Own Name.mp4", ".mp4"));
+        Assert.Equal("My Own Name.mkv.mp4", RenameEngine.CleanFileName("My Own Name.mkv", ".mp4"));
+    }
+
+    [Fact]
+    public void A_typed_name_goes_through_the_same_character_rules()
+    {
+        Assert.Equal("What-Ever.mp4", RenameEngine.CleanFileName("What/Ever", ".mp4", "-"));
+        Assert.Equal("WhatEver.mp4", RenameEngine.CleanFileName("What/Ever", ".mp4"));
+    }
+
+    /// <summary>
+    /// Spaces typed on purpose are not the template's business, so the separator does not reach
+    /// them. There is no separator to apply here in any case: a typed name is not rendered.
+    /// </summary>
+    [Fact]
+    public void A_typed_name_keeps_its_spaces()
+    {
+        Assert.Equal("Two Words.mp4", RenameEngine.CleanFileName("  Two Words  ", ".mp4"));
+    }
+
+    [Fact]
+    public void Nothing_usable_typed_leaves_the_file_alone()
+    {
+        var directory = Directory.CreateTempSubdirectory("vmf-typed-empty").FullName;
+        try
+        {
+            var path = Path.Combine(directory, "keep me.mp4");
+            File.WriteAllText(path, "x");
+
+            Assert.Equal(string.Empty, RenameEngine.CleanFileName("  ", ".mp4"));
+            Assert.Equal(path, RenameEngine.RenameTo(path, "???"));
+            Assert.True(File.Exists(path));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Renames_to_a_typed_name_and_still_resolves_collisions()
+    {
+        var directory = Directory.CreateTempSubdirectory("vmf-typed").FullName;
+        try
+        {
+            var taken = Path.Combine(directory, "My Own Name.mp4");
+            File.WriteAllText(taken, "x");
+            var path = Path.Combine(directory, "arrival.2016.mp4");
+            File.WriteAllText(path, "x");
+
+            var renamed = RenameEngine.RenameTo(path, "My Own Name");
+
+            Assert.Equal(Path.Combine(directory, "My Own Name (2).mp4"), renamed);
+            Assert.True(File.Exists(renamed));
+            Assert.False(File.Exists(path));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
     }
 }

@@ -105,10 +105,22 @@ public sealed partial class FileItemViewModel : ObservableObject
         ThumbnailPath = null;
     }
 
-    /// <summary>What the file would be renamed to, or null when renaming is off.</summary>
+    /// <summary>
+    /// The name Apply will give this file, or null when nothing is planned: renaming is off, or
+    /// the file is already called that. Written by the view model that owns the templates.
+    /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasRenamePreview))]
     private string? _renamePreview;
+
+    /// <summary>
+    /// A name typed over the preview in the list. It wins over whatever the template renders and
+    /// survives a refetch, so a file named by hand stays named by hand until it is applied or the
+    /// edit is dropped. Null when this file follows its template.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsRenameOverridden))]
+    private string? _renameOverride;
 
     public FileItemViewModel(string path)
     {
@@ -166,6 +178,8 @@ public sealed partial class FileItemViewModel : ObservableObject
     public bool HasMessage => !string.IsNullOrWhiteSpace(Message);
 
     public bool HasRenamePreview => !string.IsNullOrWhiteSpace(RenamePreview);
+
+    public bool IsRenameOverridden => RenameOverride is not null;
 
     /// <summary>
     /// The one-line description under the filename: what we think this file holds. A description

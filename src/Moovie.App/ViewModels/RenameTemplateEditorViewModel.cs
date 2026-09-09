@@ -61,24 +61,20 @@ public sealed partial class RenameTemplateEditorViewModel : ObservableObject
     [ObservableProperty]
     private int _episodeDigits = 2;
 
+    /// <summary>Mirrors the dropdowns above, so the preview shows what they do.</summary>
     [ObservableProperty]
-    private SeparatorStyle _separator;
-
-    /// <summary>Mirrors the setting above, so the preview shows what the threshold does.</summary>
-    [ObservableProperty]
-    private string? _omitResolutionAtOrBelow;
+    private NamingRules _rules;
 
     public RenameTemplateEditorViewModel(
         string title, MediaKind kind, string template, string defaultTemplate,
-        MediaMetadata sample, SeparatorStyle separator, string? omitResolutionAtOrBelow = null)
+        MediaMetadata sample, NamingRules rules)
     {
         Title = title;
         _kind = kind;
         _sample = sample;
         _defaultTemplate = defaultTemplate;
         _template = template;
-        _separator = separator;
-        _omitResolutionAtOrBelow = omitResolutionAtOrBelow;
+        _rules = rules;
 
         // {ext} is added automatically when a template leaves it out, so the palette does not
         // offer it.
@@ -116,7 +112,7 @@ public sealed partial class RenameTemplateEditorViewModel : ObservableObject
     private string RenderSample(RenameToken token, string? format)
     {
         var rendered = RenameTemplate.Parse(token.Written(format))
-            .Render(_sample, ".mp4", OmitResolutionAtOrBelow);
+            .Render(_sample, ".mp4", Rules.OmitResolutionAtOrBelow);
 
         // A sample with nothing in that field says so, rather than trailing off into blank space.
         return string.IsNullOrEmpty(rendered) ? "-" : rendered;
@@ -157,9 +153,7 @@ public sealed partial class RenameTemplateEditorViewModel : ObservableObject
         Revalidate();
     }
 
-    partial void OnSeparatorChanged(SeparatorStyle value) => Revalidate();
-
-    partial void OnOmitResolutionAtOrBelowChanged(string? value)
+    partial void OnRulesChanged(NamingRules value)
     {
         RefreshTokenForms();
         Revalidate();
@@ -229,25 +223,24 @@ public sealed partial class RenameTemplateEditorViewModel : ObservableObject
         var parsed = RenameTemplate.Parse(Template);
         Errors = parsed.Validation.IsValid ? null : string.Join("  ", parsed.Validation.Errors);
         Preview = parsed.Validation.IsValid
-            ? RenameEngine.BuildFileName(parsed, _sample, ".mp4", Separator, OmitResolutionAtOrBelow)
+            ? RenameEngine.BuildFileName(parsed, _sample, ".mp4", Rules)
             : "-";
         ThresholdPreview = BuildThresholdPreview(parsed);
     }
 
     private string? BuildThresholdPreview(RenameTemplate parsed)
     {
-        if (!parsed.Validation.IsValid || string.IsNullOrEmpty(OmitResolutionAtOrBelow))
+        if (!parsed.Validation.IsValid || string.IsNullOrEmpty(Rules.OmitResolutionAtOrBelow))
             return null;
 
         var atThreshold = _sample.Clone();
-        atThreshold.Resolution = OmitResolutionAtOrBelow;
-        var name = RenameEngine.BuildFileName(
-            parsed, atThreshold, ".mp4", Separator, OmitResolutionAtOrBelow);
+        atThreshold.Resolution = Rules.OmitResolutionAtOrBelow;
+        var name = RenameEngine.BuildFileName(parsed, atThreshold, ".mp4", Rules);
 
         // A template with no resolution in it renders the same either way, so a second line would
         // only repeat the first.
         return name == Preview
             ? null
-            : Strings.Format("settings.previewAtThreshold", OmitResolutionAtOrBelow, name);
+            : Strings.Format("settings.previewAtThreshold", Rules.OmitResolutionAtOrBelow, name);
     }
 }

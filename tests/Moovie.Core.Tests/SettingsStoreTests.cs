@@ -24,6 +24,28 @@ public class SettingsStoreTests : IDisposable
     }
 
     [Fact]
+    public void Round_trips_what_stands_in_for_a_forbidden_character()
+    {
+        new SettingsStore(Path("naming.json")).Save(new AppSettings { IllegalCharacterReplacement = "_" });
+
+        var loaded = new SettingsStore(Path("naming.json")).Load();
+
+        Assert.Equal("_", loaded.IllegalCharacterReplacement);
+        Assert.Equal("_", loaded.Naming.IllegalCharacterReplacement);
+    }
+
+    /// <summary>Dropping them is what the app did before the setting existed.</summary>
+    [Fact]
+    public void Drops_forbidden_characters_when_the_file_does_not_mention_them()
+    {
+        System.IO.File.WriteAllText(Path("older.json"), """{ "TmdbApiKey": "abc123" }""");
+
+        Assert.Equal(
+            string.Empty,
+            new SettingsStore(Path("older.json")).Load().IllegalCharacterReplacement);
+    }
+
+    [Fact]
     public void Round_trips_the_theme()
     {
         new SettingsStore(Path("theme.json")).Save(new AppSettings { Theme = AppTheme.Dark });

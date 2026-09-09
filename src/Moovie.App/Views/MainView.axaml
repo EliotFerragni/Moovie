@@ -126,13 +126,24 @@
                                TextTrimming="CharacterEllipsis" />
                     <TextBlock Text="{Binding Subtitle}" Classes="subtle"
                                TextTrimming="CharacterEllipsis" />
-                    <StackPanel Orientation="Horizontal" Spacing="4"
-                                IsVisible="{Binding HasRenamePreview}">
-                      <TextBlock Text="→" Classes="subtle" />
-                      <TextBlock Text="{Binding RenamePreview}" FontSize="11"
-                                 Foreground="{DynamicResource InfoColor}"
-                                 TextTrimming="CharacterEllipsis" />
-                    </StackPanel>
+                    <!--
+                      The new name is a box rather than a label: it is both the preview and the
+                      place to correct it. Committed when it is left, by the view model, which is
+                      the only side that knows the character rules the settings ask for.
+                    -->
+                    <Grid ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding HasRenamePreview}">
+                      <TextBlock Text="→" Classes="subtle" VerticalAlignment="Center" />
+                      <TextBox Grid.Column="1" Classes="renameEdit"
+                               Classes.manual="{Binding IsRenameOverridden}"
+                               Text="{Binding RenamePreview, Mode=OneWay}"
+                               LostFocus="OnRenameBoxLostFocus" KeyDown="OnRenameBoxKeyDown"
+                               ToolTip.Tip="{loc:T main.renameEditTip}" />
+                      <Button Grid.Column="2" Classes="revert" Content="↺"
+                              IsVisible="{Binding IsRenameOverridden}"
+                              ToolTip.Tip="{loc:T main.renameRevertTip}"
+                              Command="{Binding $parent[ListBox].((vm:MainWindowViewModel)DataContext).RevertRenameCommand}"
+                              CommandParameter="{Binding}" />
+                    </Grid>
                   </StackPanel>
 
                   <Path Grid.Column="2" Classes="status"

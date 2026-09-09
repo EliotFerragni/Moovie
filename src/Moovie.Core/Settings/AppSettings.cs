@@ -72,6 +72,17 @@ public sealed class AppSettings
     public string OmitResolutionAtOrBelow { get; set; } = string.Empty;
 
     /// <summary>
+    /// What stands in for a character no Windows filename may hold. Empty drops them. A colon is
+    /// the exception and always becomes a dash, because it separates a title from its subtitle
+    /// often enough that anything else reads badly.
+    /// </summary>
+    public string IllegalCharacterReplacement { get; set; } = string.Empty;
+
+    /// <summary>The three settings that shape a rendered filename, as one value to hand around.</summary>
+    [JsonIgnore]
+    public NamingRules Naming => new(Separator, OmitResolutionAtOrBelow, IllegalCharacterReplacement);
+
+    /// <summary>
     /// TMDB image size for embedded artwork. The preview pane downloads this same size, so what
     /// is on screen is what gets written.
     /// </summary>

@@ -115,6 +115,56 @@
     <Setter Property="Margin" Value="0,1" />
   </Style>
 
+  <!--
+    The new name in a file row. It stays flat until it is pointed at, so a list of rows still
+    reads as a list rather than as a form. The border is set on the template part because the
+    Fluent TextBox paints its own and would otherwise win.
+  -->
+  <Style Selector="TextBox.renameEdit">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="3,1" />
+    <Setter Property="Margin" Value="2,0,0,0" />
+    <Setter Property="Foreground" Value="{DynamicResource InfoColor}" />
+  </Style>
+
+  <Style Selector="TextBox.renameEdit /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+
+  <Style Selector="TextBox.renameEdit:pointerover /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="{DynamicResource ChipBackground}" />
+  </Style>
+
+  <Style Selector="TextBox.renameEdit:focus /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="{DynamicResource PanelBackground}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{DynamicResource InfoColor}" />
+  </Style>
+
+  <!-- A name typed by hand rather than rendered, so the row says whose name it is. -->
+  <Style Selector="TextBox.renameEdit.manual">
+    <Setter Property="Foreground" Value="{DynamicResource WarnColor}" />
+  </Style>
+
+  <!-- The button that gives a hand-named file back to its template. -->
+  <Style Selector="Button.revert">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="4,0" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource SubtleText}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+
+  <Style Selector="Button.revert:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource ChipBackground}" />
+    <Setter Property="Foreground" Value="{DynamicResource StrongText}" />
+  </Style>
+
   <!-- Token chips in the rename template editor -->
   <Style Selector="Button.chip">
     <Setter Property="Background" Value="{DynamicResource ChipBackground}" />
