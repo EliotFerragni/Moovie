@@ -13,10 +13,14 @@ on:
         type: choice
         default: linux-x64
         options: [linux-x64, linux-arm64, win-x64, win-arm64, osx-x64, osx-arm64, all, none]
-      docker:
-        description: "Also build the Docker image (linux-x64)"
+      docker_amd64:
+        description: "Also build the Docker image for amd64"
         type: boolean
         default: true
+      docker_arm64:
+        description: "Also build the Docker image for arm64"
+        type: boolean
+        default: false
       cross_platform_tests:
         description: "Also run the tests on Windows and macOS (slow: bills at 2x and 10x)"
         type: boolean
@@ -162,16 +166,23 @@ jobs:
   # in, so the whole job is about a minute. It runs on its own rather than off the publish job, so
   # a manual run can ask for the image with the target set to none.
   #
-  # linux-x64 only. arm64 has no native runner on a private repo, so it would go through QEMU; an
-  # ARM NAS is served by running build/package-docker.sh arm64 locally.
+  # Each architecture builds on a runner of its own kind. Unlike the binaries, an image cannot be
+  # cross-built here: the Dockerfile runs apt-get, so arm64 on an x64 runner would mean QEMU. The
+  # arm64 runners are free to this repository because it is public.
   #
   # Output is a loadable tarball rather than a registry push, which is what the readme documents
   # and what a NAS with no registry access can use.
   docker:
-    name: docker (linux-x64)
+    name: docker (${{ matrix.arch }})
     needs: test
-    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.docker)
-    runs-on: ubuntu-latest
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && (inputs.docker_amd64 || inputs.docker_arm64))
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # A release ships both. A manual run builds whichever boxes were ticked, since an image
+        # is usually wanted for one NAS, and the job condition above has ruled out neither.
+        arch: ${{ fromJSON((github.event_name == 'release' || (inputs.docker_amd64 && inputs.docker_arm64)) && '["amd64", "arm64"]' || inputs.docker_amd64 && '["amd64"]' || '["arm64"]') }}
     permissions:
       contents: write
     steps:
@@ -192,17 +203,17 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-publish-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
-          restore-keys: ${{ runner.os }}-nuget-publish-
+          key: ${{ runner.os }}-${{ runner.arch }}-nuget-publish-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: ${{ runner.os }}-${{ runner.arch }}-nuget-publish-
 
       - name: Build the image
-        run: ./build/package-docker.sh amd64
+        run: ./build/package-docker.sh ${{ matrix.arch }}
 
       - name: Upload the image
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
-          name: Moovie-docker-linux-x64
+          name: Moovie-docker-${{ matrix.arch }}
           path: dist/*.docker.tar.gz
           if-no-files-found: error
           retention-days: 3

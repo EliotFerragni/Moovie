@@ -332,11 +332,12 @@ Run that once from an administrator prompt and `--web` works as an ordinary user
 
 ### On a NAS, in Docker
 
-Every release carries an `amd64` image as a loadable file,
-`moovie-<version>-amd64.docker.tar.gz`, so on an Intel NAS the usual path is to download it.
+Every release carries a loadable image for both architectures,
+`moovie-<version>-amd64.docker.tar.gz` and `moovie-<version>-arm64.docker.tar.gz`, so the usual
+path is to download the one that matches the NAS.
 
-For an ARM NAS, and to build either yourself, `build/package-docker.sh` produces the same file.
-No registry is involved either way, and the NAS never needs the source or the .NET SDK.
+To build one yourself, `build/package-docker.sh` produces the same file. No registry is involved
+either way, and the NAS never needs the source or the .NET SDK.
 
 ```bash
 ./build/package-docker.sh              # for this machine's architecture

@@ -91,6 +91,10 @@ since otherwise the release name and the binaries inside it would drift apart si
 `dist/moovie-<version>-<arch>.docker.tar.gz` (about 90 MB). No registry is involved. See
 [Running it on a server](README.md#running-it-on-a-server) for the deploy side.
 
+A release ships both architectures, each built on a runner of its own kind. The binaries
+cross-compile but the image cannot: the Dockerfile runs `apt-get`, so an arm64 image on an x64
+runner would go through QEMU. Arm runners are free here because the repository is public.
+
 The image carries no X11 and no desktop, because `--web` draws into a frame buffer and needs
 neither. On top of what .NET itself requires it needs only fontconfig and one font, without
 which Skia will not load and Avalonia has no default font family to fall back on.
