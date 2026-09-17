@@ -5,7 +5,7 @@
 </h1>
 
 <p align="center">
-  <a href="https://github.com/EliotFerragni/Video-metadata-filler/actions/workflows/build.yml"><img src="https://github.com/EliotFerragni/Video-metadata-filler/actions/workflows/build.yml/badge.svg?branch=main" alt="build"></a>
+  <a href="https://github.com/EliotFerragni/Moovie/actions/workflows/build.yml"><img src="https://github.com/EliotFerragni/Moovie/actions/workflows/build.yml/badge.svg?branch=main" alt="build"></a>
   <img src="https://img.shields.io/badge/Claude%20Code-%23D97757.svg?style=for-the-badge&logo=claudecode&logoColor=white" alt="Claude Code">
 </p>
 
