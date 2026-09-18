@@ -370,5 +370,5 @@ than looked up gets caught.
 This project was written by [Claude Code](https://claude.com/claude-code) across a series of
 sessions: the filename parser, the TMDB client, the MP4 tag writer, the Avalonia UI, the tests,
 the packaging scripts and the CI workflow. What to build, which trade-offs to take and what
-counted as broken came from the human side. Every commit but the very first carries a
+counted as broken came from the human side. Every commit written by Claude carries a
 `Co-Authored-By: Claude` trailer, so the history says which is which.
