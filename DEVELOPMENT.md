@@ -142,6 +142,7 @@ src/Moovie.App/      Avalonia UI
                IAppShell, DesktopShell, WebShell        (pickers and dialogs, per host)
   Web/         BrowserTransport, WebHost, FrameEncoder, WebClientPage.html
                ClipboardBridge                            (copy and paste across the wire)
+               SoftKeyboard                               (when a touch device may offer one)
                DrawingClock, QuietDispatcher              (what the app draws and runs by)
 
 tests/Moovie.Core.Tests/
@@ -174,6 +175,59 @@ for itself, asking for files and opening a dialog, which a desktop window answer
 platform's pickers and `WebShell` answers inside the single view. A browser's own file dialog
 would have been wrong twice over: it offers the wrong machine's files, and it hands back a
 stream where the tag writer needs a path.
+
+### A finger is not a mouse
+
+The app has only ever been told about a mouse, and the remote protocol carries nothing else, so
+the page works out what a finger meant before it says anything. A tap is a press and a release
+where it landed. A drag scrolls what is under it, the way a wheel would, since the browser's own
+scrolling is turned off over the canvas and a drag would otherwise select text nobody asked to
+select. A finger held still for 450 ms presses first and drags after that, which is how text is
+selected and how a scroll bar's thumb is moved. The press a tap sends is the one built when the
+finger landed rather than one built as it lifts, because a press that does not say a button is
+down selects nothing, for the reason given above.
+
+A double tap needs one thing more. Two taps are two presses, and a press is counted as the second
+click of a pair only where a mouse would have stayed between them, within a pixel or two, which no
+finger manages: measured, three pixels apart is already two single clicks. So a tap landing within
+350 ms and 20 pixels of the last one is sent from exactly where that one was. Little in the app
+wants a double click, but the file browser opens a folder on one, and without this there was no
+way into a folder from a tablet at all.
+
+Pixels become lines at the wheel's own rate, 40 to one, which puts a drag within a few percent of
+moving the content with the finger. The distance is accumulated rather than sampled: a finger
+crosses a good part of the window between two frames and none of that may be dropped.
+
+The window is sized from `visualViewport` rather than in `vh` units. Those units count the strip a
+phone or tablet browser's toolbars sit over, so the app laid its footer out below the bottom of
+the screen and the **Apply** button could not be reached at all. The visual viewport is also what
+shrinks when the on-screen keyboard appears, so the app lays itself out above the keyboard instead
+of typing into something it cannot see. It is measured once it settles, 120 ms after the last
+report, since a keyboard sliding into place reports its size the whole way and each of those
+would lay the app out again and repaint the whole window.
+
+### The on-screen keyboard has to be asked for
+
+A browser raises that keyboard for one reason only: a field of its own has just been focused from
+a gesture the browser itself handled. Both halves are a problem here. The app's fields are
+pictures, so the only real field on the page is the hidden one the clipboard already uses; and
+word that one of the app's fields has the focus comes back from the server long after the tap that
+focused it, which no browser counts as that gesture. Focusing on the tap itself and undoing it
+when the answer arrives is the obvious way out and a bad one: it would raise the keyboard, drop it
+again and lay the app out twice over, for every tap on anything at all.
+
+So the page asks. `SoftKeyboard` says whenever the app's focus enters or leaves a box that can be
+typed into, and while it is in one and the keyboard is down, a button offers it. Pressing that
+button is the gesture the browser was waiting for. Putting a keyboard away needs no gesture, so
+that much is done for the user, as soon as the app says there is nothing left to type into.
+
+An on-screen keyboard is also worse than a real one at saying what was pressed. Most send no
+`code`, there being no key on a board to name, so `BrowserTransport` falls back to the key's own
+name where that is a name rather than a character: `Backspace`, `Enter` and the arrows are spelled
+the same on both sides, and without them a tablet can type but never correct itself. Android's
+goes further and reports only the edit it is making, so the hidden field's own `beforeinput` is
+read as what the user typed, prevented, and sent on. The field itself is never edited: the app
+holds the text, as it does for everything else here.
 
 ### The clipboard is the browser's, and is met halfway
 

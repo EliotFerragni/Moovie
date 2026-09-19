@@ -2,16 +2,26 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Moovie</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #1e1e1e; }
-  #screen { display: block; width: 100vw; height: 100vh; outline: none; touch-action: none; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1e1e1e; overscroll-behavior: none; }
+  /* Sized from script rather than in vh: on a phone or tablet those units count the space the
+     browser's own toolbars sit over, which put the app's footer off the bottom of the screen. */
+  #screen {
+    position: fixed; top: 0; left: 0; display: block; width: 100vw; height: 100vh; outline: none;
+    touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  }
   /* Out of sight but still a field the browser will copy from and paste into. Not hidden and not
      moved off the page: neither can hold the focus, and a field off the page is scrolled to. */
   #clipboard {
     position: fixed; top: 0; left: 0; width: 1px; height: 1px;
     opacity: 0; border: 0; padding: 0; resize: none; pointer-events: none;
+  }
+  #keyboard {
+    position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%); display: none;
+    padding: 9px 16px; border: 0; border-radius: 999px; font: 15px system-ui, sans-serif;
+    background: #3d5a80; color: #fff; box-shadow: 0 2px 8px #0006;
   }
   #status {
     position: fixed; inset: auto 0 0 0; padding: 6px 10px; font: 13px system-ui, sans-serif;
@@ -21,12 +31,15 @@
 </head>
 <body>
 <canvas id="screen" tabindex="0"></canvas>
-<textarea id="clipboard" tabindex="-1" aria-hidden="true" autocomplete="off" spellcheck="false"></textarea>
+<textarea id="clipboard" tabindex="-1" aria-hidden="true" autocomplete="off" spellcheck="false"
+          autocapitalize="off" autocorrect="off"></textarea>
+<button id="keyboard" type="button">⌨ Keyboard</button>
 <div id="status"></div>
 <script>
 (() => {
   const canvas = document.getElementById('screen');
   const clipboard = document.getElementById('clipboard');
+  const keyboard = document.getElementById('keyboard');
   const status = document.getElementById('status');
   const ctx = canvas.getContext('2d');
   let socket = null;
@@ -36,15 +49,32 @@
 
   const modifiers = e => ({ alt: e.altKey, control: e.ctrlKey, shift: e.shiftKey, meta: e.metaKey });
 
+  // Avalonia counts scroll in lines and a browser reports pixels unless the device is line-wise,
+  // so a pixel distance is divided down to something that scrolls at a sane speed. A finger is
+  // scaled the same way, which keeps dragging and the wheel at one speed.
+  const linesPerPixel = 1 / 40;
+
   // Avalonia lays out in logical pixels and scales by the DPI it is told, so the viewport goes
   // over in CSS pixels with the device pixel ratio as the DPI. Frames then come back at the
   // physical size, which is what keeps text sharp on a HiDPI screen.
-  const sendSize = () => send({
-    type: 'size',
-    width: canvas.clientWidth,
-    height: canvas.clientHeight,
-    dpi: 96 * (window.devicePixelRatio || 1),
-  });
+  //
+  // The measurement is the visual viewport, not the window: a browser's toolbars and an on-screen
+  // keyboard are outside it, so the app is given exactly the area the user can see and lays its
+  // footer out at the bottom of that.
+  const viewport = window.visualViewport;
+
+  const sendSize = () => {
+    const width = Math.round(viewport ? viewport.width : window.innerWidth);
+    const height = Math.round(viewport ? viewport.height : window.innerHeight);
+    canvas.style.width = width + 'px';
+    canvas.style.height = height + 'px';
+    send({ type: 'size', width, height, dpi: 96 * (window.devicePixelRatio || 1) });
+  };
+
+  // A keyboard sliding in or out reports its size the whole way, and every one of those relaid out
+  // the app and redrew the whole window, so only where it comes to rest is acted on.
+  let settling = 0;
+  const resized = () => { clearTimeout(settling); settling = setTimeout(sendSize, 120); };
 
   // Script may only put text on the browser's clipboard from inside a gesture it has just handled
   // or over a secure connection, which a page served from a NAS over plain HTTP is not. So the
@@ -68,17 +98,56 @@
 
   // A focused field raises the on-screen keyboard on a touch device, over the window it would be
   // typing into, so there the canvas keeps the focus and the clipboard is left to the browser's
-  // own long-press menu.
+  // own long-press menu, until the user asks for the keyboard through the button below.
   let physicalKeyboard = matchMedia('(pointer: fine)').matches;
-  const focusApp = () => (physicalKeyboard ? clipboard : canvas).focus();
+  const focusApp = () => (physicalKeyboard || keyboardUp ? clipboard : canvas).focus();
+
+  // A browser raises its on-screen keyboard only for a field of its own that has just been focused
+  // from a gesture the browser itself handled. The app's fields are pictures, and word that one of
+  // them has the focus comes back from the server long after the tap that focused it, far too late
+  // to count as that gesture. So the page asks instead: while the app is somewhere the user can
+  // type and the keyboard is down, the button offers it, and pressing the button is a gesture.
+  let textFocused = false;
+  let keyboardUp = false;
+
+  const offerKeyboard = () =>
+    keyboard.style.display = !physicalKeyboard && textFocused && !keyboardUp ? 'block' : 'none';
+
+  const showKeyboard = () => {
+    keyboardUp = true;
+    prime();
+    clipboard.focus();
+    offerKeyboard();
+  };
+
+  const hideKeyboard = () => {
+    keyboardUp = false;
+    canvas.focus();
+    offerKeyboard();
+  };
+
+  // On pointerdown rather than click: the default of a press on a button is to focus it, which
+  // would take the focus straight back off the field the press is there to focus.
+  keyboard.addEventListener('pointerdown', e => { e.preventDefault(); showKeyboard(); });
+
+  // The keyboard's own dismiss key only takes the focus off the field, and says nothing else, so
+  // the offer is put back from the blur.
+  clipboard.addEventListener('blur', () => { if (keyboardUp) { keyboardUp = false; offerKeyboard(); } });
+
+  const textFocus = active => {
+    textFocused = active;
+    // Nothing left to type into. Putting a keyboard away needs no gesture, so that is done here.
+    if (!active && keyboardUp) hideKeyboard();
+    else offerKeyboard();
+  };
 
   // Which buttons are held goes over with every pointer message, not only the press, as the
   // browser's bitmask: 1 left, 2 right, 4 middle. A text box will not extend its selection unless
   // a move says the left button is down, so without this a drag across text selected nothing.
-  const pointerAt = (e, type) => {
+  const pointerAt = (e, type, clientX = e.clientX, clientY = e.clientY) => {
     const box = canvas.getBoundingClientRect();
     return {
-      type, x: e.clientX - box.left, y: e.clientY - box.top,
+      type, x: clientX - box.left, y: clientY - box.top,
       button: e.button, buttons: e.buttons, ...modifiers(e),
     };
   };
@@ -86,22 +155,117 @@
   // A mouse reports far more moves than a window can be redrawn for, and every one of them costs
   // a round trip and possibly a repaint. Only the latest is kept, and it goes out once a frame.
   let pendingMove = null;
-  canvas.addEventListener('pointermove', e => {
+  const flushMove = () => { if (pendingMove) { send(pendingMove); pendingMove = null; } };
+  const queueMove = e => {
     const wasIdle = pendingMove === null;
     pendingMove = pointerAt(e, 'pointer-moved');
-    if (wasIdle) requestAnimationFrame(() => { if (pendingMove) { send(pendingMove); pendingMove = null; } });
+    if (wasIdle) requestAnimationFrame(flushMove);
+  };
+
+  // Scrolling by hand is coalesced the same way, and by distance rather than by position: the
+  // finger may travel a long way between two frames and none of it should be lost.
+  let pendingPan = null;
+  const flushPan = () => { if (pendingPan) { send(pendingPan); pendingPan = null; } };
+  const panBy = (e, dx, dy) => {
+    const box = canvas.getBoundingClientRect();
+    if (!pendingPan) {
+      pendingPan = { type: 'scroll', x: 0, y: 0, deltaX: 0, deltaY: 0, ...modifiers(e) };
+      requestAnimationFrame(flushPan);
+    }
+
+    pendingPan.x = e.clientX - box.left;
+    pendingPan.y = e.clientY - box.top;
+    pendingPan.deltaX += dx * linesPerPixel;
+    pendingPan.deltaY += dy * linesPerPixel;
+  };
+
+  // A finger has to say which of three things it means, since the app was written for a mouse and
+  // the browser's own scrolling is turned off over the canvas. A tap is a click. A drag scrolls
+  // what is under it, the way it would anywhere else on a touch device. A finger held still first
+  // presses and then drags in the app, which is what selects text and moves a scroll bar's thumb.
+  const dragSlop = 10;
+  const holdMs = 450;
+  let finger = null;
+
+  // A double tap is two presses to the app, and the app counts a second press as the same click
+  // only where a mouse would have stayed: within a couple of pixels. A finger never lands twice in
+  // the same place, so nothing that wants a double click could be reached at all, a folder in the
+  // file browser among them. A tap that follows hard on the last one is therefore sent from
+  // exactly where that one was, which is what makes the two a pair.
+  const doubleSlop = 20;
+  const doubleMs = 350;
+  let lastTap = null;
+
+  const startFinger = e => {
+    const paired = lastTap !== null && e.timeStamp - lastTap.at < doubleMs
+      && Math.abs(e.clientX - lastTap.x) < doubleSlop && Math.abs(e.clientY - lastTap.y) < doubleSlop;
+    const tapX = paired ? lastTap.x : e.clientX;
+    const tapY = paired ? lastTap.y : e.clientY;
+
+    const started = {
+      id: e.pointerId, x: e.clientX, y: e.clientY, tapX, tapY, mode: 'tap',
+      pressed: pointerAt(e, 'pointer-pressed', tapX, tapY),
+    };
+    started.hold = setTimeout(() => { started.mode = 'drag'; send(started.pressed); }, holdMs);
+    finger = started;
+  };
+
+  const moveFinger = e => {
+    if (finger.mode === 'drag') { queueMove(e); return; }
+
+    if (finger.mode === 'pan') panBy(e, e.clientX - finger.x, e.clientY - finger.y);
+    else if (Math.abs(e.clientX - finger.x) > dragSlop || Math.abs(e.clientY - finger.y) > dragSlop) {
+      // The slop itself is not scrolled: the content follows the finger from where it is now.
+      clearTimeout(finger.hold);
+      finger.mode = 'pan';
+    } else return;
+
+    finger.x = e.clientX;
+    finger.y = e.clientY;
+  };
+
+  const endFinger = (e, cancelled) => {
+    clearTimeout(finger.hold);
+    const { mode, pressed, tapX, tapY } = finger;
+    finger = null;
+
+    if (mode === 'pan') { flushPan(); return; }
+    if (mode === 'drag') { flushMove(); send(pointerAt(e, 'pointer-released')); return; }
+    if (cancelled) return;
+
+    // A tap is the press the hold was still waiting on, with its release straight after. The press
+    // is the one built when the finger landed, which is the only one saying a button is down, and
+    // the release goes to the same point so that the app sees one click rather than a tiny drag.
+    send(pressed);
+    send(pointerAt(e, 'pointer-released', tapX, tapY));
+    lastTap = { x: tapX, y: tapY, at: e.timeStamp };
+  };
+
+  canvas.addEventListener('pointermove', e => {
+    if (finger) { if (e.pointerId === finger.id) moveFinger(e); return; }
+    if (e.pointerType !== 'touch') queueMove(e);
   });
   canvas.addEventListener('pointerdown', e => {
     physicalKeyboard = e.pointerType !== 'touch';
+    offerKeyboard();
     focusApp();
     canvas.setPointerCapture(e.pointerId);
-    send(pointerAt(e, 'pointer-pressed'));
+
+    if (e.pointerType !== 'touch') send(pointerAt(e, 'pointer-pressed'));
+    // A second finger is ignored rather than left to fight the first over what the gesture is.
+    else if (!finger) startFinger(e);
   });
   canvas.addEventListener('pointerup', e => {
     canvas.releasePointerCapture(e.pointerId);
+    if (finger) { if (e.pointerId === finger.id) endFinger(e, false); return; }
+    if (e.pointerType === 'touch') return;
+
     // A move still waiting for its frame happened before the release and has to go out first.
-    if (pendingMove) { send(pendingMove); pendingMove = null; }
+    flushMove();
     send(pointerAt(e, 'pointer-released'));
+  });
+  canvas.addEventListener('pointercancel', e => {
+    if (finger && e.pointerId === finger.id) endFinger(e, true);
   });
   canvas.addEventListener('contextmenu', e => e.preventDefault());
 
@@ -113,9 +277,7 @@
   canvas.addEventListener('wheel', e => {
     e.preventDefault();
     const box = canvas.getBoundingClientRect();
-    // Avalonia counts scroll in lines and a browser reports pixels unless the device is
-    // line-wise, so a pixel delta is divided down to something that scrolls at a sane speed.
-    const scale = e.deltaMode === 0 ? 1 / 40 : 1;
+    const scale = e.deltaMode === 0 ? linesPerPixel : 1;
     send({
       type: 'scroll', x: e.clientX - box.left, y: e.clientY - box.top,
       deltaX: -e.deltaX * scale, deltaY: -e.deltaY * scale, ...modifiers(e),
@@ -139,6 +301,10 @@
   };
 
   window.addEventListener('keydown', e => {
+    // A key named after a place on a keyboard came from one, and a tablet with one attached has no
+    // use for the on-screen keyboard's button. An on-screen key carries no such name.
+    if (e.code && !keyboardUp && !physicalKeyboard) { physicalKeyboard = true; offerKeyboard(); }
+
     // These three are the browser's to carry out on the hidden field, so they must not be
     // prevented the way everything below is. A paste comes back as a paste event; the other two
     // only have to be told to the app, which has the selection to cut and the text to remember.
@@ -164,6 +330,23 @@
   window.addEventListener('keyup', e => {
     if (clipboardAction(e)) return;
     send({ type: 'key', down: false, code: e.code, key: e.key, ...modifiers(e) });
+  });
+
+  // Some on-screen keyboards, Android's in particular, will not say which key was pressed and
+  // report only the edit they are making. Those edits are read off the hidden field as what the
+  // user typed, and the field itself is never changed: the app holds the text, not the page.
+  const tap = key => {
+    const stroke = { type: 'key', code: key, key, alt: false, control: false, shift: false, meta: false };
+    send({ ...stroke, down: true });
+    send({ ...stroke, down: false });
+  };
+
+  clipboard.addEventListener('beforeinput', e => {
+    e.preventDefault();
+    if (e.inputType === 'deleteContentBackward') tap('Backspace');
+    else if (e.inputType === 'deleteContentForward') tap('Delete');
+    else if (e.inputType.startsWith('insertLineBreak') || e.inputType.startsWith('insertParagraph')) tap('Enter');
+    else if (e.data) send({ type: 'text', text: e.data });
   });
 
   window.addEventListener('paste', e => {
@@ -201,9 +384,11 @@
   const control = message => {
     if (message.type === 'selection') mirror(message.text);
     else if (message.type === 'copied') offerCopy(message.text);
+    else if (message.type === 'text-focus') textFocus(message.active);
   };
 
-  window.addEventListener('resize', sendSize);
+  window.addEventListener('resize', resized);
+  viewport?.addEventListener('resize', resized);
 
   // Each message is a patch: the size of the whole window, where the patch belongs in it, and a
   // PNG of that part. Decoding is asynchronous, so draws are chained rather than raced: two
@@ -254,6 +439,7 @@
     socket.onerror = () => socket.close();
   };
 
+  sendSize();
   connect();
 })();
 </script>

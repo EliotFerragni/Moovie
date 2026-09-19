@@ -66,15 +66,27 @@ public static class WebHost
         view.Shell = new WebShell(view);
         server.Content = view;
 
+        var top = TopLevel.GetTopLevel(view)
+            ?? throw new InvalidOperationException("The view is not in a top level, so its focus cannot be read.");
+
         // The clipboard the user shares with the rest of their machine is the browser's, so
         // copying and pasting is a conversation with the page. ClipboardBridge explains the split.
-        var clipboard = new ClipboardBridge(TopLevel.GetTopLevel(view)
-            ?? throw new InvalidOperationException("The view is not in a top level, so the selection cannot be read."));
+        var clipboard = new ClipboardBridge(top);
         clipboard.SelectionChanged += text => transport.Post(new { type = "selection", text });
         clipboard.Copied += text => transport.Post(new { type = "copied", text });
         transport.ClipboardRequested += (action, text) =>
             Dispatcher.UIThread.Post(() => clipboard.Apply(action, text));
-        transport.ViewerArrived += () => Dispatcher.UIThread.Post(clipboard.Announce);
+
+        // Where the focus is is the page's business too, so a tablet knows when to offer its
+        // on-screen keyboard.
+        var keyboard = new SoftKeyboard(top);
+        keyboard.Changed += active => transport.Post(new { type = "text-focus", active });
+
+        transport.ViewerArrived += () => Dispatcher.UIThread.Post(() =>
+        {
+            clipboard.Announce();
+            keyboard.Announce();
+        });
 
         transport.Start();
 

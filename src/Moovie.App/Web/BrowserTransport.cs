@@ -501,12 +501,22 @@ public sealed class BrowserTransport : IAvaloniaRemoteTransportConnection
     /// letter key is dropped: typing still works, since that arrives as text, but Ctrl+A does not.
     /// The protocol's enums are distinct types from Avalonia's own but share their numeric values,
     /// which is what makes the casts safe.
+    ///
+    /// An on-screen keyboard names no place on a keyboard, since it is not one, and several send
+    /// no <c>code</c> at all. The key's own name is taken instead where it is a name rather than a
+    /// character: <c>Backspace</c>, <c>Enter</c> and the arrows are spelled the same on both sides,
+    /// and without them a tablet could type but not correct itself. A character is left alone,
+    /// both because it arrives as text anyway and because <c>Enum.TryParse</c> would read a digit
+    /// as a number and answer with whichever key happens to hold that value.
     /// </summary>
     private static object? KeyMessage(ClientMessage message)
     {
         var code = message.Code ?? string.Empty;
         if (code.Length == 4 && code.StartsWith("Key", StringComparison.Ordinal))
             code = code[3..];
+
+        if (code.Length == 0 && message.Key is { Length: > 1 })
+            code = message.Key;
 
         if (!Enum.TryParse<Avalonia.Input.PhysicalKey>(code, ignoreCase: true, out var physical))
             return null;

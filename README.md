@@ -305,6 +305,17 @@ over the same cursor. And **it is sized for a LAN** rather than the open interne
 are pictures and scrolling a long list is genuinely expensive. Nothing authenticates the page
 either, so it belongs behind whatever already guards the machine.
 
+**On a phone or a tablet** the page is driven by touch. A tap is a click and a double tap is a
+double click, which is how the file browser goes into a folder. A drag scrolls whatever is under
+your finger, and holding a finger still for a moment before dragging does what dragging with a
+mouse does: it selects text, and it moves a scroll bar's thumb. The window is fitted to the
+part of the screen the browser actually leaves visible, so the footer and its **Apply** button are
+where they belong rather than off the bottom. Typing has to ask for the keyboard: tap into a field
+and a **⌨ Keyboard** button appears at the bottom of the page, which raises it. That is a browser
+rule rather than a choice, since only a field of the browser's own may raise a keyboard and every
+field you can see here is a picture. It goes away by itself as soon as you tap something that is
+not a field.
+
 **Copy and paste use your own machine's clipboard**, not the server's. Ctrl+C, Ctrl+X and Ctrl+V
 work in the fields as they do in any other tab, and text copied here can be pasted into anything
 else on your desk. The field's own right-click menu works too, with one wrinkle: a browser
